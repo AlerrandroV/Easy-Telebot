@@ -3,7 +3,9 @@
 
 Requisitos: Python 3.8 ou mais novo. Nenhum pacote extra.
 
-    python3 run.py
+    python3 run.py                 liga o bot
+    python3 run.py newadmin [N]    gera um código para virar admin da classe N
+                                   (1 = classe I, a mais alta; padrão 1)
 
 O token é lido, nesta ordem, de: variável de ambiente BOT_TOKEN, arquivo
 token.txt ao lado deste script, ou digitado no terminal.
@@ -22,6 +24,7 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
+from telebot_engine import admins  # noqa: E402
 from telebot_engine.engine import Engine  # noqa: E402
 
 
@@ -55,7 +58,20 @@ def read_token():
     return input("Token do bot: ").strip()
 
 
+def new_admin_code(level):
+    data = json.loads(admins.create_code(HERE, level))
+    minutes = (data["expires_at"] - int(time.time())) // 60
+    print("Mande esta mensagem para o bot, em conversa privada, nos próximos %d minutos:" % minutes)
+    print()
+    print("    /newadmin %s" % data["code"])
+    print()
+    print("O código só funciona uma vez e o bot precisa estar ligado (python3 run.py).")
+
+
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] == "newadmin":
+        new_admin_code(sys.argv[2] if len(sys.argv) > 2 else 1)
+        return
     engine = Engine(read_token(), os.path.join(HERE, "config.json"), HERE, ConsoleCallbacks())
 
     def stop(*_):

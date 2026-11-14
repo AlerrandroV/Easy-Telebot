@@ -51,6 +51,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import io.github.alerrandrov.easytelebot.R
+import io.github.alerrandrov.easytelebot.data.AdminLevels
 import io.github.alerrandrov.easytelebot.data.BotMessage
 import io.github.alerrandrov.easytelebot.data.ConfigRepository
 import io.github.alerrandrov.easytelebot.data.LinkButton
@@ -81,16 +82,18 @@ private fun toRows(buttons: List<ButtonDraft>): List<List<LinkButton>> {
 }
 
 @Composable
-fun CommandEditorScreen(botId: Long, commandId: String?, onDone: () -> Unit) {
+fun CommandEditorScreen(botId: Long, commandId: String?, newAsAdmin: Boolean = false, onDone: () -> Unit) {
     val context = LocalContext.current
     val config = remember { ConfigRepository.load(botId) }
     val original = remember { config.commands.firstOrNull { it.id == commandId } }
-    val start = remember { original ?: SimpleCommand() }
+    val start = remember { original ?: SimpleCommand(adminLevel = if (newAsAdmin) 1 else null, showInMenu = true) }
 
     var triggers by remember { mutableStateOf(start.triggers) }
     var triggerInput by remember { mutableStateOf("") }
     var description by remember { mutableStateOf(start.description) }
     var showInMenu by remember { mutableStateOf(start.showInMenu) }
+    var adminLevel by remember { mutableStateOf(start.adminLevel) }
+    var lastLevel by remember { mutableStateOf(start.adminLevel ?: 1) }
     var nextKey by remember { mutableLongStateOf(start.messages.size.toLong()) }
     var drafts by remember {
         mutableStateOf(start.messages.ifEmpty { listOf(BotMessage()) }.mapIndexed { i, m -> Draft(i.toLong(), m) })
@@ -105,6 +108,7 @@ fun CommandEditorScreen(botId: Long, commandId: String?, onDone: () -> Unit) {
         triggers = triggers,
         description = description.trim(),
         showInMenu = showInMenu,
+        adminLevel = adminLevel,
         messages = drafts.map { it.msg },
     )
     val changed = current() != start
@@ -139,7 +143,13 @@ fun CommandEditorScreen(botId: Long, commandId: String?, onDone: () -> Unit) {
     Scaffold(
         topBar = {
             AppBar(
-                stringResource(if (original == null) R.string.cmd_new else R.string.cmd_edit),
+                stringResource(
+                    when {
+                        original != null -> R.string.cmd_edit
+                        newAsAdmin -> R.string.cmd_new_admin
+                        else -> R.string.cmd_new
+                    }
+                ),
                 onBack = { if (changed) confirmDiscard = true else onDone() },
             ) {
                 if (original != null) {
@@ -196,9 +206,42 @@ fun CommandEditorScreen(botId: Long, commandId: String?, onDone: () -> Unit) {
                         )
                         SwitchRow(
                             title = stringResource(R.string.cmd_show_in_menu),
-                            subtitle = stringResource(R.string.cmd_show_in_menu_sub),
+                            subtitle = stringResource(
+                                if (adminLevel != null) R.string.cmd_show_in_menu_admin_sub else R.string.cmd_show_in_menu_sub
+                            ),
                             checked = showInMenu,
                         ) { showInMenu = it }
+                    }
+                }
+            }
+            item {
+                Card(
+                    Modifier.fillMaxWidth(),
+                    colors = if (adminLevel != null) {
+                        CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
+                    } else {
+                        CardDefaults.cardColors()
+                    },
+                ) {
+                    Column {
+                        SwitchRow(
+                            title = stringResource(R.string.cmd_admin_only),
+                            subtitle = stringResource(R.string.cmd_admin_only_sub),
+                            checked = adminLevel != null,
+                        ) { on -> adminLevel = if (on) lastLevel else null }
+                        val level = adminLevel
+                        if (level != null) {
+                            Column(
+                                Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Text(stringResource(R.string.cmd_admin_level), style = MaterialTheme.typography.titleSmall)
+                                LevelPicker(level, explain = { l -> commandLevelExplanation(l) }) {
+                                    adminLevel = it
+                                    lastLevel = it
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -276,6 +319,7 @@ private fun validate(
     otherTriggers: Set<String>,
 ): List<String> = buildList {
     if (triggers.isEmpty()) add(context.getString(R.string.cmd_err_no_trigger))
+    if (AdminLevels.NEWADMIN in triggers) add(context.getString(R.string.cmd_err_reserved, AdminLevels.NEWADMIN))
     triggers.filter { it in otherTriggers }.forEach { add(context.getString(R.string.cmd_err_trigger_taken, it)) }
     if (messages.none { it.text.isNotBlank() || it.media != null }) add(context.getString(R.string.cmd_err_no_message))
     messages.forEachIndexed { i, m ->
@@ -285,6 +329,19 @@ private fun validate(
         }
     }
 }
+
+/** "Admins da classe I até a III podem usar." */
+@Composable
+private fun commandLevelExplanation(level: Int): String =
+    if (level == 1) {
+        stringResource(R.string.cmd_admin_level_explain_top)
+    } else {
+        stringResource(
+            R.string.cmd_admin_level_explain,
+            (1..level).joinToString(", ") { AdminLevels.roman(it) },
+            (level + 1..AdminLevels.MAX).joinToString(", ") { AdminLevels.roman(it) }.ifEmpty { "—" },
+        )
+    }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

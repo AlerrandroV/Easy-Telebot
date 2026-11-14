@@ -261,6 +261,10 @@
     <string name="add_simple_command">Comando simples</string>
     <string name="add_simple_command_sub">Um ou mais comandos (ex.: /start e /iniciar) que respondem com uma ou mais mensagens: texto formatado, fotos, vídeos, arquivos e botões com links.</string>
     <string name="add_more_soon">Em breve: boas-vindas, palavras-chave, mensagens agendadas e mais.</string>
+    <string name="add_admin_command">Comando de admin</string>
+    <string name="add_admin_command_sub">Igual ao comando simples, mas só administradores da classe escolhida (ou acima) podem usar. Para os outros, o bot não responde nada.</string>
+    <string name="add_admin">Adicionar administrador</string>
+    <string name="add_admin_sub">Gera um código secreto para alguém virar admin do bot pelo Telegram.</string>
 
     <string name="export_explain">O arquivo .zip traz o motor do bot (o mesmo código Python que roda aqui), seus comandos, as mídias e um run.py. Para usar: descompacte e rode “python3 run.py” em qualquer computador com Python 3.8+. Lembre de desligar o bot no celular antes, pois ele só pode rodar em um lugar por vez.</string>
     <string name="export_include_token">Incluir o token no arquivo</string>
@@ -361,4 +365,53 @@
     </string-array>
     <string name="err_wrong_bot_title">Esse token é de outro bot</string>
     <string name="err_wrong_bot_msg">O token que você colou pertence a outro bot. Para trocar o token deste bot, pegue o token dele no @BotFather (/mybots › escolha o bot › API Token). Se quiser adicionar o outro bot, use “Adicionar bot” na tela inicial.</string>
+    <!-- Administradores -->
+    <string name="admins_title">Administradores</string>
+    <string name="bot_admins_sub">Quem pode usar os comandos de admin, e em qual classe</string>
+    <string name="admins_intro">Administradores têm classes de I a X. A classe I é a mais alta e pode tudo. Uma classe pode usar os comandos dela e das classes abaixo: a classe III usa os comandos de III, IV, V…, mas não os de II e I. Pode haver quantos admins quiser em cada classe.</string>
+    <string name="admins_add">Adicionar administrador</string>
+    <string name="admins_list_title">Administradores (%1$d)</string>
+    <string name="admins_empty">Ninguém ainda. Toque em “Adicionar administrador” para gerar um código.</string>
+    <string name="admin_choose_class">Classe do novo admin</string>
+    <string name="admin_continue">Continuar</string>
+    <string name="admin_class_explain_top">Classe I: a mais alta. Pode usar todos os comandos de admin.</string>
+    <string name="admin_class_explain">Classe %1$s: usa os comandos de classe %1$s a %2$s. Não usa os comandos de classe %3$s.</string>
+    <string name="admin_class_n">Classe %1$s</string>
+    <string name="admin_class_short">Classe</string>
+    <string name="admin_badge_prefix">Admin</string>
+    <string name="admin_auth_title">Confirme que é você</string>
+    <string name="admin_auth_subtitle">Para gerar um código de administrador de %1$s</string>
+    <string name="admin_no_lock_title">Ative o bloqueio de tela</string>
+    <string name="admin_no_lock_msg">Por segurança, só é possível criar administradores em um celular com bloqueio de tela (PIN, padrão, senha ou digital). Assim, ninguém que pegue seu celular desbloqueado por um instante consegue virar admin do seu bot.</string>
+    <string name="admin_open_security">Abrir configurações de segurança</string>
+    <string name="admin_code_title">Código de admin — classe %1$s</string>
+    <string name="admin_code_steps">Quem vai ser admin deve abrir a conversa privada com @%1$s e mandar exatamente esta mensagem:</string>
+    <string name="admin_code_expires">Expira em %1$d:%2$02d. Só funciona uma vez.</string>
+    <string name="admin_code_copy">Copiar mensagem</string>
+    <string name="admin_code_copied">Copiado! Cole na conversa com o bot.</string>
+    <string name="admin_code_open_bot">Abrir o bot</string>
+    <string name="admin_code_cancel">Cancelar código</string>
+    <string name="admin_code_bot_off">O bot está desligado. Ligue-o para ele receber o código.</string>
+    <string name="admin_code_warning">Não compartilhe este código em grupos: quem mandar primeiro vira admin. Em grupos o bot ignora o comando. Depois de usado, o bot tenta apagar a mensagem com o código.</string>
+    <string name="admin_success">%1$s agora é administrador (classe %2$s)!</string>
+    <string name="admin_added_on">Admin desde %1$s</string>
+    <string name="admin_change_class">Mudar classe</string>
+    <string name="admin_remove_title">Remover %1$s dos administradores?</string>
+    <string name="admin_remove_msg">A pessoa deixa de poder usar os comandos de admin na hora. Para voltar, é preciso gerar um código novo.</string>
+
+    <string name="cmd_new_admin">Novo comando de admin</string>
+    <string name="cmd_admin_only">Comando de administrador</string>
+    <string name="cmd_admin_only_sub">Só admins podem usar. Para quem não é admin, o bot não responde nada (o comando parece não existir).</string>
+    <string name="cmd_admin_level">Classe necessária</string>
+    <string name="cmd_admin_level_explain_top">Só admins de classe I podem usar.</string>
+    <string name="cmd_admin_level_explain">Podem usar: classes %1$s. Não podem: classes %2$s.</string>
+    <string name="cmd_show_in_menu_admin_sub">Aparece só no menu dos admins que podem usar (na conversa privada com o bot)</string>
+    <string name="cmd_err_reserved">/%1$s é um comando reservado do app (usado para adicionar admins).</string>
+
+    <string name="log_admin_added">%1$s virou administrador (classe %2$s).</string>
+    <string name="log_denied">%1$s tentou usar /%2$s, mas não é admin. Nada foi respondido.</string>
+    <string name="log_denied_level">%1$s (classe %3$s) tentou usar /%2$s, que exige classe %4$s. Nada foi respondido.</string>
+    <string name="log_newadmin_empty">%1$s mandou /newadmin sem código. Nada foi respondido.</string>
+    <string name="log_newadmin_invalid">%1$s mandou /newadmin com um código inválido ou vencido. Nada foi respondido.</string>
+    <string name="log_newadmin_group">%1$s mandou /newadmin em um grupo. Ignorado: só vale em conversa privada.</string>
 </resources>

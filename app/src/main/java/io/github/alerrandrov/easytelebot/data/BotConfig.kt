@@ -26,6 +26,8 @@ data class SimpleCommand(
     val description: String = "",
     val showInMenu: Boolean = true,
     val messages: List<BotMessage> = listOf(BotMessage()),
+    /** `null` = qualquer pessoa. 1..10 = só admins dessa classe ou acima (1 = classe I). */
+    val adminLevel: Int? = null,
 )
 
 /**
@@ -46,6 +48,7 @@ data class BotConfig(
                     put("triggers", JSONArray(c.triggers))
                     put("description", c.description)
                     put("show_in_menu", c.showInMenu)
+                    put("admin_level", c.adminLevel ?: JSONObject.NULL)
                     put("messages", JSONArray().apply {
                         c.messages.forEach { m -> put(messageJson(m)) }
                     })
@@ -116,6 +119,7 @@ data class BotConfig(
                         triggers = (0 until t.length()).map { t.getString(it) },
                         description = o.optString("description"),
                         showInMenu = o.optBoolean("show_in_menu", true),
+                        adminLevel = if (o.isNull("admin_level")) null else o.optInt("admin_level", 1).coerceIn(1, AdminLevels.MAX),
                         messages = (0 until m.length()).mapNotNull { j -> m.optJSONObject(j)?.let(::parseMessage) },
                     )
                 } else {
@@ -164,6 +168,19 @@ object ConfigRepository {
             if ("media/${file.name}" !in used) file.delete()
         }
     }
+}
+
+/** Classes de admin: 1 = classe I (a mais alta) ... 10 = classe X. */
+object AdminLevels {
+    const val MAX = 10
+    /** Comando secreto do motor para virar admin; não pode ser usado em comandos. */
+    const val NEWADMIN = "newadmin"
+    private val ROMAN = listOf("I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X")
+
+    fun roman(level: Int): String = ROMAN.getOrElse(level - 1) { level.toString() }
+
+    /** Classe I pode tudo; classe N pode o que exige N ou mais (número maior). */
+    fun canUse(adminLevel: Int, required: Int) = adminLevel <= required
 }
 
 /** Mesmas regras do motor Python (template.py). */

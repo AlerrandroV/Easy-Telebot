@@ -90,6 +90,53 @@ object PythonBridge {
         if (json.optBoolean("ok")) Result.Ok(json.photo()) else Result.Failed(json.error())
     }
 
+    // --- administradores (admins.py) ---
+
+    data class Admin(
+        val id: Long,
+        val firstName: String,
+        val lastName: String,
+        val username: String,
+        val level: Int,
+        val addedAt: Long,
+    ) {
+        val displayName get() = listOf(firstName, lastName).filter { it.isNotBlank() }.joinToString(" ")
+    }
+
+    data class AdminCode(val code: String, val level: Int, val expiresAt: Long)
+
+    fun createAdminCode(context: Context, botDir: String, level: Int): AdminCode {
+        val json = parse(module(context, "admins").callAttr("create_code", botDir, level))
+        return AdminCode(json.getString("code"), json.getInt("level"), json.getLong("expires_at") * 1000)
+    }
+
+    fun cancelAdminCode(context: Context, botDir: String, code: String) {
+        module(context, "admins").callAttr("cancel_code", botDir, code)
+    }
+
+    fun listAdmins(context: Context, botDir: String): List<Admin> {
+        val arr = org.json.JSONArray(module(context, "admins").callAttr("list_admins", botDir).toString())
+        return (0 until arr.length()).map { i ->
+            val o = arr.getJSONObject(i)
+            Admin(
+                id = o.getLong("id"),
+                firstName = o.optString("first_name"),
+                lastName = o.optString("last_name"),
+                username = o.optString("username"),
+                level = o.optInt("level", 1),
+                addedAt = o.optLong("added_at") * 1000,
+            )
+        }
+    }
+
+    fun setAdminLevel(context: Context, botDir: String, userId: Long, level: Int) {
+        module(context, "admins").callAttr("set_level", botDir, userId, level)
+    }
+
+    fun removeAdmin(context: Context, botDir: String, userId: Long) {
+        module(context, "admins").callAttr("remove_admin", botDir, userId)
+    }
+
     /** Cria o motor de um bot. Chame `run` numa thread própria; `stop`/`wake`/`request_reload` de qualquer thread. */
     fun createEngine(
         context: Context,

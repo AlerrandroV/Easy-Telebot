@@ -55,7 +55,7 @@ class FakeApi:
                 raise exc
         if method == "getMe":
             return {"id": 1, "username": "MeuBot", "first_name": "Meu Bot"}
-        if method in ("setMyCommands", "deleteMyCommands"):
+        if method in ("setMyCommands", "deleteMyCommands", "deleteMessage"):
             return True
         if method == "sendMessage":
             self.sent.append(params)
@@ -74,11 +74,11 @@ class FakeApi:
         raise AssertionError(method)
 
 
-def msg(text, update_id=1, first="Ana", username=None, chat_type="private", title=None):
-    user = {"id": 42, "first_name": first}
+def msg(text, update_id=1, first="Ana", username=None, chat_type="private", title=None, user_id=42):
+    user = {"id": user_id, "first_name": first}
     if username:
         user["username"] = username
-    chat = {"id": 42 if chat_type == "private" else -100, "type": chat_type}
+    chat = {"id": user_id if chat_type == "private" else -100, "type": chat_type}
     if title:
         chat["title"] = title
     return {"update_id": update_id, "message": {"message_id": 7, "from": user, "chat": chat, "text": text}}
@@ -268,6 +268,86 @@ class EngineTests(unittest.TestCase):
         t.start()
         t.join(5)
         self.assertFalse(t.is_alive())
+
+
+class AdminTests(unittest.TestCase):
+    def setUp(self):
+        from telebot_engine import admins
+        self.admins = admins
+        self.dir = tempfile.mkdtemp()
+
+    def make_engine(self, script, commands):
+        path = os.path.join(self.dir, "config.json")
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump({"version": 2, "commands": commands}, fh)
+        cb = Callbacks()
+        api = FakeApi(script)
+        eng = engine.Engine("1:x", path, self.dir, cb, api=api)
+        api.engine = eng
+        eng.sleep = lambda s: None
+        return eng, api, cb
+
+    def test_code_is_long_single_use_and_expires(self):
+        a = self.admins
+        c1 = json.loads(a.create_code(self.dir, 3))
+        self.assertEqual(len(c1["code"]), 32)
+        self.assertTrue(c1["code"].isalnum())
+        with open(os.path.join(self.dir, a.CODES_FILE)) as fh:
+            self.assertNotIn(c1["code"], fh.read())  # só o hash fica salvo
+        user = {"id": 7, "first_name": "Bia"}
+        self.assertEqual(a.redeem_code(self.dir, c1["code"], user)["level"], 3)
+        self.assertIsNone(a.redeem_code(self.dir, c1["code"], user))  # uso único
+        c2 = json.loads(a.create_code(self.dir, 1, ttl=-1))  # já vencido
+        self.assertIsNone(a.redeem_code(self.dir, c2["code"], user))
+        self.assertIsNone(a.redeem_code(self.dir, "x" * 32, user))
+
+    def test_class_hierarchy(self):
+        can = self.admins.can_use
+        self.assertTrue(can(1, 5))   # classe I faz tudo
+        self.assertTrue(can(3, 3))
+        self.assertTrue(can(3, 5))   # III faz o que IV e V fazem
+        self.assertFalse(can(3, 2))  # III não faz o que II faz
+        self.assertFalse(can(None, 5))
+
+    def test_newadmin_flow_and_permissions(self):
+        code = json.loads(self.admins.create_code(self.dir, 3))["code"]
+        cmds = [
+            {"triggers": ["publico"], "messages": [{"text": "p"}]},
+            {"triggers": ["painel"], "description": "Painel", "admin_level": 3, "messages": [{"text": "a3"}]},
+            {"triggers": ["chefe"], "admin_level": 2, "messages": [{"text": "a2"}]},
+        ]
+        eng, api, cb = self.make_engine([
+            [msg("/newadmin", update_id=1)],                      # sem código: silêncio
+            [msg("/newadmin " + "y" * 32, update_id=2)],          # código errado: silêncio
+            [msg("/newadmin " + code, update_id=3, chat_type="group")],  # em grupo: silêncio
+            [msg("/painel", update_id=4)],                        # ainda não é admin
+            [msg("/newadmin " + code, update_id=5)],              # agora sim
+            [msg("/painel", update_id=6), msg("/chefe", update_id=7), msg("/publico", update_id=8)],
+        ], cmds)
+        eng.run()
+        texts = [m["text"] for m in api.sent]
+        self.assertEqual(texts, ["Parabéns! Agora você é um administrador!", "a3", "p"])
+        self.assertEqual(len(cb.of("newadmin_invalid")), 3)
+        self.assertEqual([e["command"] for e in cb.of("denied")], ["painel", "chefe"])
+        self.assertEqual(cb.of("admin_added")[0]["admin"]["level"], 3)
+        self.assertIn("deleteMessage", [m for m, p, f in api.calls])
+        # o código nunca aparece nos eventos de log
+        self.assertNotIn(code, json.dumps(cb.events))
+        menus = [p for m, p, f in api.calls if m == "setMyCommands"]
+        public = [c["command"] for c in menus[0]["commands"]]
+        self.assertEqual(public, ["publico"])
+        admin_menu = [p for p in menus if p.get("scope", {}).get("chat_id") == 42][-1]
+        self.assertEqual([c["command"] for c in admin_menu["commands"]], ["publico", "painel"])
+
+    def test_remove_and_set_level(self):
+        a = self.admins
+        a.redeem_code(self.dir, json.loads(a.create_code(self.dir, 5))["code"], {"id": 1, "first_name": "A"})
+        a.redeem_code(self.dir, json.loads(a.create_code(self.dir, 2))["code"], {"id": 2, "first_name": "B"})
+        a.set_level(self.dir, 1, 1)
+        listed = json.loads(a.list_admins(self.dir))
+        self.assertEqual([(x["id"], x["level"]) for x in listed], [(1, 1), (2, 2)])
+        a.remove_admin(self.dir, 2)
+        self.assertEqual(list(a.load(self.dir)), [1])
 
 
 if __name__ == "__main__":
