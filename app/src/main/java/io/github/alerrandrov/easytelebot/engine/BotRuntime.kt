@@ -56,6 +56,12 @@ object BotRuntime {
     private val _adminAdded = MutableStateFlow<Map<Long, AdminAdded>>(emptyMap())
     val adminAdded: StateFlow<Map<Long, AdminAdded>> = _adminAdded.asStateFlow()
 
+    /** Muda a cada mensagem nova (recebida ou enviada) de um bot, para as telas de conversa recarregarem. */
+    private val _chatVersion = MutableStateFlow<Map<Long, Long>>(emptyMap())
+    val chatVersion: StateFlow<Map<Long, Long>> = _chatVersion.asStateFlow()
+
+    fun bumpChats(id: Long) = _chatVersion.update { it + (id to ((it[id] ?: 0L) + 1)) }
+
     /** Motores Python ativos (para pedir recarga/parada de qualquer thread). */
     val engines = ConcurrentHashMap<Long, PyObject>()
 
@@ -149,6 +155,7 @@ object BotRuntime {
             "unknown_command" -> add(id, LogEntry.Level.WARN, s(R.string.log_unknown_command, e.optString("command")))
             "recovered" -> add(id, LogEntry.Level.INFO, s(R.string.log_recovered))
             "storage_ok" -> add(id, LogEntry.Level.INFO, s(R.string.log_storage_ok))
+            "chat" -> bumpChats(id)
             "admin_added" -> {
                 val a = e.optJSONObject("admin") ?: return
                 val name = a.optString("username").takeIf { it.isNotEmpty() }?.let { "@$it" } ?: a.optString("first_name")

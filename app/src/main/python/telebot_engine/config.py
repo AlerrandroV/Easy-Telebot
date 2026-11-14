@@ -29,7 +29,7 @@ A versão 1 (``command`` + ``response``) é convertida automaticamente.
 
 import json
 
-MEDIA_TYPES = ("photo", "video", "animation", "audio", "voice", "document")
+MEDIA_TYPES = ("photo", "video", "animation", "audio", "voice", "document", "sticker")
 
 
 def _clean_trigger(value):
@@ -40,8 +40,9 @@ def _message(item):
     if not isinstance(item, dict):
         return None
     media = item.get("media")
-    if isinstance(media, dict) and media.get("type") in MEDIA_TYPES and media.get("file"):
-        media = {"type": media["type"], "file": str(media["file"]), "name": str(media.get("name") or "")}
+    if isinstance(media, dict) and media.get("type") in MEDIA_TYPES and (media.get("file") or media.get("file_id")):
+        media = {"type": media["type"], "file": str(media.get("file") or ""), "name": str(media.get("name") or ""),
+                 "file_id": media.get("file_id")}
     else:
         media = None
     rows = []

@@ -67,12 +67,12 @@ private const val CAPTION_LIMIT = 1024
 private data class Draft(val key: Long, val msg: BotMessage)
 
 /** Botão em edição: lista "achatada" com a marca "na mesma linha do anterior". */
-private data class ButtonDraft(val text: String, val url: String, val sameRow: Boolean)
+internal data class ButtonDraft(val text: String, val url: String, val sameRow: Boolean)
 
-private fun toDrafts(rows: List<List<LinkButton>>): List<ButtonDraft> =
+internal fun toDrafts(rows: List<List<LinkButton>>): List<ButtonDraft> =
     rows.flatMap { row -> row.mapIndexed { i, b -> ButtonDraft(b.text, b.url, i > 0) } }
 
-private fun toRows(buttons: List<ButtonDraft>): List<List<LinkButton>> {
+internal fun toRows(buttons: List<ButtonDraft>): List<List<LinkButton>> {
     val rows = mutableListOf<MutableList<LinkButton>>()
     buttons.forEach { b ->
         val button = LinkButton(b.text.trim(), b.url.trim())
@@ -395,7 +395,7 @@ private fun TriggersEditor(
 }
 
 /** Envolve a seleção com marcadores (ou insere e põe o cursor no meio). */
-private fun wrap(v: TextFieldValue, prefix: String, suffix: String): TextFieldValue {
+internal fun wrap(v: TextFieldValue, prefix: String, suffix: String): TextFieldValue {
     val start = minOf(v.selection.start, v.selection.end).coerceIn(0, v.text.length)
     val end = maxOf(v.selection.start, v.selection.end).coerceIn(0, v.text.length)
     val selected = v.text.substring(start, end)
@@ -404,10 +404,10 @@ private fun wrap(v: TextFieldValue, prefix: String, suffix: String): TextFieldVa
     return TextFieldValue(text, cursor)
 }
 
-private fun insert(v: TextFieldValue, token: String): TextFieldValue = wrap(v, token, "")
+internal fun insert(v: TextFieldValue, token: String): TextFieldValue = wrap(v, token, "")
 
 /** Põe "> " no começo das linhas selecionadas (citação). */
-private fun quote(v: TextFieldValue): TextFieldValue {
+internal fun quote(v: TextFieldValue): TextFieldValue {
     val start = minOf(v.selection.start, v.selection.end).coerceIn(0, v.text.length)
     val lineStart = v.text.lastIndexOf('\n', (start - 1).coerceAtLeast(0)).let { if (start == 0 || it < 0) 0 else it + 1 }
     val text = v.text.substring(0, lineStart) + "> " + v.text.substring(lineStart)
@@ -597,7 +597,7 @@ private fun MediaRow(media: MessageMedia, onAsDocument: (Boolean) -> Unit, onRem
 }
 
 @Composable
-private fun ButtonEditor(button: ButtonDraft, first: Boolean, onChange: (ButtonDraft) -> Unit, onRemove: () -> Unit) {
+internal fun ButtonEditor(button: ButtonDraft, first: Boolean, onChange: (ButtonDraft) -> Unit, onRemove: () -> Unit) {
     val urlInvalid = button.url.isNotBlank() && Variables.normalizeUrl(button.url) == null
     Card(
         Modifier.fillMaxWidth(),
@@ -635,7 +635,7 @@ private fun ButtonEditor(button: ButtonDraft, first: Boolean, onChange: (ButtonD
 }
 
 @Composable
-private fun FormatButton(
+internal fun FormatButton(
     label: String,
     fontWeight: FontWeight? = null,
     fontStyle: FontStyle? = null,

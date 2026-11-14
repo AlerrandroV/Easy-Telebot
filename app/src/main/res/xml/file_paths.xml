@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Arquivos que o app pode abrir em outros apps (vídeos, documentos baixados das conversas). -->
+<paths>
+    <files-path name="bots" path="bots/" />
+</paths>

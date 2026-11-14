@@ -11,13 +11,13 @@ import java.util.zip.ZipOutputStream
 
 object MediaImporter {
     /** Copia um arquivo escolhido pela pessoa para `bots/<id>/media/` e diz como enviá-lo. */
-    fun import(context: Context, botId: Long, uri: Uri): MessageMedia? {
+    fun import(context: Context, botId: Long, uri: Uri, folder: String = "media"): MessageMedia? {
         val resolver = context.contentResolver
         val mime = resolver.getType(uri) ?: ""
         val name = displayName(context, uri) ?: "arquivo"
         val ext = name.substringAfterLast('.', "").lowercase().takeIf { it.isNotEmpty() && it.length <= 5 }
             ?: MimeTypeMap.getSingleton().getExtensionFromMimeType(mime) ?: "bin"
-        val dir = BotRepository.mediaDir(botId).apply { mkdirs() }
+        val dir = File(BotRepository.dir(botId), folder).apply { mkdirs() }
         val fileName = "${UUID.randomUUID()}.$ext"
         val target = File(dir, fileName)
         try {
@@ -27,7 +27,8 @@ object MediaImporter {
             target.delete()
             return null
         }
-        return MessageMedia(typeFor(mime, ext), "media/$fileName", name)
+        val path = if (folder == "media") "media/$fileName" else target.absolutePath
+        return MessageMedia(typeFor(mime, ext), path, name)
     }
 
     fun typeFor(mime: String, ext: String): String = when {

@@ -38,6 +38,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -58,6 +59,7 @@ import io.github.alerrandrov.easytelebot.data.StorageRepository
 import io.github.alerrandrov.easytelebot.data.TokenStore
 import io.github.alerrandrov.easytelebot.engine.BotRuntime
 import io.github.alerrandrov.easytelebot.engine.BotState
+import io.github.alerrandrov.easytelebot.engine.ChatsBridge
 import io.github.alerrandrov.easytelebot.engine.ErrorAction
 import io.github.alerrandrov.easytelebot.engine.ErrorExplainer
 import io.github.alerrandrov.easytelebot.engine.PythonBridge
@@ -78,6 +80,7 @@ fun BotScreen(
     /** true = já abrir o fluxo de adicionar admin */
     onAdmins: (Boolean) -> Unit,
     onStorage: () -> Unit,
+    onChats: () -> Unit,
     onChangeToken: () -> Unit,
     onBattery: () -> Unit,
 ) {
@@ -205,6 +208,20 @@ fun BotScreen(
                         }
                     }
                 }
+            }
+
+            item {
+                val chatVersions by BotRuntime.chatVersion.collectAsStateWithLifecycle()
+                val unread by produceState(0, chatVersions[botId]) {
+                    value = withContext(Dispatchers.IO) {
+                        runCatching { ChatsBridge.unreadTotal(context, BotRepository.dir(botId).path) }.getOrDefault(0)
+                    }
+                }
+                SectionCard(
+                    title = "💬  " + stringResource(R.string.chats_title),
+                    subtitle = if (unread > 0) stringResource(R.string.bot_chats_unread, unread) else stringResource(R.string.bot_chats_sub),
+                    onClick = onChats,
+                )
             }
 
             item { SectionTitle(stringResource(R.string.bot_section_commands)) }
@@ -349,6 +366,7 @@ fun BotScreen(
                 TextButton(onClick = {
                     showDelete = false
                     BotService.stop(context, botId)
+                    ChatsBridge.close(context, BotRepository.dir(botId).path)
                     BotRepository.delete(context, botId)
                     BotRuntime.clearLog(botId)
                     onBack()

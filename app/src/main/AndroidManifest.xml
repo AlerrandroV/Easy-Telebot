@@ -57,6 +57,16 @@
                 android:value="Runs a user-configured Telegram bot on the device via long polling. The user starts and stops it explicitly and it must keep running to answer messages." />
         </service>
 
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
         <receiver
             android:name=".service.BootReceiver"
             android:exported="true">

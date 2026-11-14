@@ -19,6 +19,7 @@ import threading
 import time
 
 from . import admins as admins_mod
+from . import chats
 from . import config as config_mod
 from . import errors, template
 from .api import Aborted, NetworkError, TelegramApi, TelegramError
@@ -39,7 +40,9 @@ MEDIA_METHODS = {
     "audio": "sendAudio",
     "voice": "sendVoice",
     "document": "sendDocument",
+    "sticker": "sendSticker",
 }
+NO_CAPTION = ("sticker",)  # tipos que não aceitam legenda: o texto vai numa mensagem separada
 
 
 def _json(obj):
@@ -153,6 +156,7 @@ class Engine:
         self._menu_scopes = set()  # chats de admins que receberam um menu próprio
         self._cache_path = os.path.join(self.base_dir, "media_cache.json")
         # Banco de dados (usuários/histórico). ``storage`` = configuração em JSON.
+        self.send_source = "auto"  # "auto" = resposta de comando; "manual" = enviada pelo app
         self.storage = None
         if storage:
             from .storage.worker import StorageWorker
@@ -316,7 +320,7 @@ class Engine:
         while not self.stopping:
             self.maybe_reload_config()
             try:
-                params = {"timeout": POLL_TIMEOUT, "allowed_updates": ["message"]}
+                params = {"timeout": POLL_TIMEOUT, "allowed_updates": ["message", "edited_message"]}
                 if self.offset is not None:
                     params["offset"] = self.offset
                 updates = self.api.call("getUpdates", params, timeout=POLL_TIMEOUT + 15)
@@ -344,6 +348,31 @@ class Engine:
                 message = update.get("message")
                 if message and not self.stopping:
                     self.handle_message(message)
+                elif update.get("edited_message"):
+                    self.record_chat(update["edited_message"], edited=True)
+
+    def record_chat(self, message, edited=False):
+        """Guarda a mensagem recebida nas conversas do app (sem nunca derrubar o bot)."""
+        try:
+            text = message.get("text") or ""
+            if text.split(" ")[0].split("@")[0].lower() == "/" + NEWADMIN_COMMAND:
+                message = dict(message, text="/" + NEWADMIN_COMMAND + " ••••", entities=[])
+            chat_id = chats.record(self.base_dir, message, outgoing=False, source="user", edited=edited)
+            if chat_id is not None:
+                self.emit("chat", chat_id=chat_id, incoming=not edited)
+        except Exception:  # noqa: BLE001
+            pass
+
+    def record_sent(self, result, chat_id):
+        if not isinstance(result, dict) or "message_id" not in result:
+            return
+        try:
+            cid = chats.record(self.base_dir, result, outgoing=True, source=self.send_source,
+                               fallback_chat_id=chat_id)
+            if cid is not None:
+                self.emit("chat", chat_id=cid, incoming=False)
+        except Exception:  # noqa: BLE001
+            pass
 
     def _connect(self):
         """``getMe`` com novas tentativas. ``False`` se o bot não pode rodar."""
@@ -389,6 +418,7 @@ class Engine:
     def handle_message(self, message):
         if self.storage:
             self.storage.record(message)
+        self.record_chat(message)
         text = message.get("text") or ""
         user = message.get("from") or {}
         chat = message.get("chat") or {}
@@ -451,6 +481,7 @@ class Engine:
         # Tira o código da conversa (se o Telegram deixar).
         try:
             self.api.call("deleteMessage", {"chat_id": chat.get("id"), "message_id": message.get("message_id")})
+            chats.mark_deleted(self.base_dir, chat.get("id"), message.get("message_id"))
         except Aborted:
             raise
         except Exception:  # noqa: BLE001
@@ -469,7 +500,8 @@ class Engine:
 
         media = msg.get("media")
         if media:
-            caption = body if template.plain_length(body) <= CAPTION_LIMIT else ""
+            fits = template.plain_length(body) <= CAPTION_LIMIT and media.get("type") not in NO_CAPTION
+            caption = body if fits else ""
             extra = body if body and not caption else ""
             params = dict(base)
             if caption:
@@ -501,6 +533,9 @@ class Engine:
     def _send_media(self, media, params, command_name):
         kind = media["type"]
         method = MEDIA_METHODS[kind]
+        if media.get("file_id") and not media.get("file"):
+            # Reenvio de algo que já está no Telegram (ex.: figurinha de uma conversa).
+            return bool(self._call_send(method, dict(params, **{kind: media["file_id"]}), command_name))
         key = media["file"]
         cached = self._media_cache.get(key)
         if cached:
@@ -547,6 +582,7 @@ class Engine:
         for attempt in range(3):
             try:
                 result = self.api.call(method, params, timeout=120 if files else 30, files=files)
+                self.record_sent(result, params.get("chat_id"))
                 return result if result else True
             except Aborted:
                 raise

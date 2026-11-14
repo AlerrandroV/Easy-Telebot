@@ -41,6 +41,15 @@ class FakeApi:
         self.engine = None
         self.fail_next = {}
 
+    _next_id = 1000
+
+    def _msg(self, params, **fields):
+        FakeApi._next_id += 1
+        out = {"message_id": FakeApi._next_id, "date": 1700000000,
+               "chat": {"id": params.get("chat_id"), "type": "private"}}
+        out.update({k: v for k, v in fields.items() if v is not None})
+        return out
+
     def abort(self):
         pass
 
@@ -59,10 +68,14 @@ class FakeApi:
             return True
         if method == "sendMessage":
             self.sent.append(params)
-            return {"message_id": 99}
+            return self._msg(params, text=params.get("text"))
         if method == "sendPhoto":
             self.sent.append(dict(params, _files=files))
-            return {"message_id": 100, "photo": [{"file_id": "small"}, {"file_id": "BIG"}]}
+            return self._msg(params, caption=params.get("caption"),
+                             photo=[{"file_id": "small", "file_unique_id": "s"}, {"file_id": "BIG", "file_unique_id": "b"}])
+        if method == "sendSticker":
+            self.sent.append(dict(params, _files=files))
+            return self._msg(params, sticker={"file_id": params.get("sticker"), "file_unique_id": "st", "emoji": "😀"})
         if method == "getUpdates":
             if not self.script:
                 self.engine.stop()
