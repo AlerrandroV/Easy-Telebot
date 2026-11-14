@@ -1,0 +1,20 @@
+# Gradle / Android Studio
+.gradle/
+build/
+/local.properties
+/.idea/
+*.iml
+.DS_Store
+/captures
+.externalNativeBuild
+.cxx
+.kotlin/
+
+# Python
+__pycache__/
+*.pyc
+
+# Assinatura: NUNCA commitar
+*.jks
+*.keystore
+keystore.properties

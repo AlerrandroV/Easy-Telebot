@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Avião de papel (mensagem) com um pequeno "olho" de robô. Provisório. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group android:translateX="27" android:translateY="27">
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M4,25.5L50,7.5C52,6.8 53.6,8.4 53,10.5L45.5,46C45,48.3 42.6,49.2 40.8,47.8L29,39L23.5,44.3C22.8,45 21.6,44.7 21.5,43.7L20.8,33.8L44,12.5L16.5,30.5L5,26.9C3.4,26.4 3,25.9 4,25.5Z" />
+        <path
+            android:fillColor="#D6F0FF"
+            android:pathData="M20.8,33.8L21.5,43.7C21.6,44.7 22.8,45 23.5,44.3L29,39Z" />
+    </group>
+</vector>
