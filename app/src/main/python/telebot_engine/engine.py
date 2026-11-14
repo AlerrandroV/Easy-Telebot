@@ -1,11 +1,15 @@
-"""Loop principal do bot (long polling com ``getUpdates``).
+"""Loop principal de um bot (long polling com ``getUpdates``).
 
-Comunicação com o Kotlin:
-- O Kotlin cria ``Engine(token, config_path, data_dir, callbacks)`` e chama
-  ``run()`` numa thread própria. ``stop()`` e ``wake()`` podem ser chamados de
-  outras threads.
+Comunicação com o app (Kotlin) ou com o ``run.py`` (computador):
+- Crie ``Engine(token, config_path, data_dir, callbacks)`` e chame ``run()``
+  numa thread própria. ``stop()``, ``wake()`` e ``request_reload()`` podem ser
+  chamados de outras threads.
 - ``callbacks.onEvent(json)`` recebe eventos (status, mensagens, erros).
-- ``callbacks.nowLocal()`` devolve ``"dd/MM/aaaa HH:mm"`` no fuso do celular.
+- ``callbacks.nowLocal()`` devolve ``"dd/MM/aaaa HH:mm"`` no fuso local.
+
+Arquivos de mídia citados no ``config.json`` são relativos à pasta dele.
+Depois do primeiro envio, o Telegram devolve um ``file_id`` que guardamos em
+``media_cache.json`` para não mandar o arquivo de novo.
 """
 
 import json
@@ -14,6 +18,7 @@ import re
 import threading
 import time
 
+from . import config as config_mod
 from . import errors, template
 from .api import Aborted, NetworkError, TelegramApi, TelegramError
 
@@ -21,6 +26,17 @@ POLL_TIMEOUT = 50  # segundos que o Telegram segura a conexão esperando mensage
 TOKEN_RE = re.compile(r"^\d{5,}:[A-Za-z0-9_-]{30,}$")
 COMMAND_RE = re.compile(r"^[a-z0-9_]{1,32}$")
 MAX_BACKOFF = 60
+TEXT_LIMIT = 4096
+CAPTION_LIMIT = 1024
+
+MEDIA_METHODS = {
+    "photo": "sendPhoto",
+    "video": "sendVideo",
+    "animation": "sendAnimation",
+    "audio": "sendAudio",
+    "voice": "sendVoice",
+    "document": "sendDocument",
+}
 
 
 def _json(obj):
@@ -35,8 +51,23 @@ def _format_error(detail):
     return {"code": errors.TOKEN_FORMAT, "detail": detail, "retry_after": None}
 
 
-def check_token(token, photo_dir):
-    """Valida o token com ``getMe`` e baixa a foto do bot (se houver).
+def download_profile_photo(api, user_id, dest):
+    """Baixa a foto de perfil atual do bot para ``dest``. Devolve o caminho ou ``None``."""
+    photos = api.call("getUserProfilePhotos", {"user_id": user_id, "limit": 1}, timeout=20)
+    if not photos or not photos.get("photos"):
+        if os.path.exists(dest):
+            os.remove(dest)
+        return None
+    sizes = photos["photos"][0]
+    big = [s for s in sizes if s.get("width", 0) >= 160]
+    chosen = min(big, key=lambda s: s.get("width", 0)) if big else sizes[-1]
+    info = api.call("getFile", {"file_id": chosen["file_id"]}, timeout=20)
+    os.makedirs(os.path.dirname(dest) or ".", exist_ok=True)
+    return api.download(info["file_path"], dest)
+
+
+def check_token(token, photo_path):
+    """Valida o token com ``getMe`` e baixa a foto do bot (se houver) para ``photo_path``.
 
     Devolve JSON: ``{"ok": true, "bot": {...}, "photo": caminho|null}`` ou
     ``{"ok": false, "error": {"code", "detail"}}``.
@@ -49,19 +80,10 @@ def check_token(token, photo_dir):
         me = api.call("getMe", timeout=20)
     except Exception as exc:  # noqa: BLE001 - tudo vira erro explicado
         return _error_result(exc)
-
-    photo = None
     try:
-        photos = api.call("getUserProfilePhotos", {"user_id": me["id"], "limit": 1}, timeout=20)
-        if photos and photos.get("photos"):
-            sizes = photos["photos"][0]
-            small = min(sizes, key=lambda s: s.get("width", 0) if s.get("width", 0) >= 160 else 10 ** 6)
-            info = api.call("getFile", {"file_id": small["file_id"]}, timeout=20)
-            os.makedirs(photo_dir, exist_ok=True)
-            photo = api.download(info["file_path"], os.path.join(photo_dir, "bot_photo.jpg"))
+        photo = download_profile_photo(api, me["id"], photo_path)
     except Exception:  # noqa: BLE001 - foto é opcional
         photo = None
-
     return _json({"ok": True, "bot": me, "photo": photo})
 
 
@@ -72,26 +94,6 @@ def delete_webhook(token):
     except Exception as exc:  # noqa: BLE001
         return _error_result(exc)
     return _json({"ok": True})
-
-
-def load_config(path):
-    try:
-        with open(path, "r", encoding="utf-8") as fh:
-            data = json.load(fh)
-    except (OSError, ValueError):
-        data = {}
-    commands = []
-    for item in data.get("commands") or []:
-        name = str(item.get("command", "")).strip().lstrip("/").lower()
-        if not name:
-            continue
-        commands.append({
-            "command": name,
-            "description": str(item.get("description") or "").strip(),
-            "response": str(item.get("response") or ""),
-        })
-    data["commands"] = commands
-    return data
 
 
 def parse_command(text, bot_username):
@@ -113,21 +115,38 @@ def parse_command(text, bot_username):
     return name, args.strip()
 
 
+def build_keyboard(rows):
+    keyboard = []
+    for row in rows or []:
+        clean = []
+        for b in row:
+            url = template.normalize_url(b.get("url"))
+            if url and b.get("text"):
+                clean.append({"text": b["text"][:64], "url": url})
+        if clean:
+            keyboard.append(clean[:8])
+    return {"inline_keyboard": keyboard} if keyboard else None
+
+
 class Engine:
     def __init__(self, token, config_path, data_dir, callbacks, api=None):
         self.token = token.strip()
         self.config_path = config_path
+        self.base_dir = os.path.dirname(os.path.abspath(config_path))
         self.data_dir = data_dir
         self.cb = callbacks
         self.api = api or TelegramApi(self.token)
         self._stop = threading.Event()
         self._wake = threading.Event()
+        self._reload = threading.Event()
         self._config_mtime = None
-        self.config = {"commands": []}
+        self.config = config_mod.normalize({})
         self.bot = None
         self.offset = None
         self._state = None
         self._last_error_code = None
+        self._cache_path = os.path.join(self.base_dir, "media_cache.json")
+        self._media_cache = self._load_cache()
 
     # -- controle (chamado de outras threads) ---------------------------------
 
@@ -139,6 +158,14 @@ class Engine:
     def wake(self):
         """A internet voltou: tenta de novo agora em vez de esperar o backoff."""
         self._wake.set()
+
+    def request_reload(self):
+        """A configuração mudou: recarrega na hora (interrompe o long polling atual)."""
+        self._reload.set()
+        self._wake.set()
+        interrupt = getattr(self.api, "interrupt", None)
+        if interrupt:
+            interrupt()
 
     @property
     def stopping(self):
@@ -176,6 +203,9 @@ class Engine:
     # -- configuração ----------------------------------------------------------
 
     def maybe_reload_config(self, force=False):
+        if self._reload.is_set():
+            self._reload.clear()
+            force = True
         try:
             mtime = os.path.getmtime(self.config_path)
         except OSError:
@@ -183,21 +213,28 @@ class Engine:
         if not force and mtime == self._config_mtime:
             return False
         self._config_mtime = mtime
-        self.config = load_config(self.config_path)
+        self.config = config_mod.load(self.config_path)
         self.emit("config", commands=len(self.config["commands"]))
         self.publish_commands()
         return True
 
-    def publish_commands(self):
-        """Registra os comandos no menu "/" do Telegram."""
-        menu = []
+    def menu(self):
+        items = []
         for c in self.config["commands"]:
-            if not COMMAND_RE.match(c["command"]):
+            if not c["show_in_menu"]:
                 continue
-            desc = c["description"] or c["command"]
-            menu.append({"command": c["command"], "description": desc[:256]})
+            name = next((t for t in c["triggers"] if COMMAND_RE.match(t)), None)
+            if name:
+                items.append({"command": name, "description": (c["description"] or name)[:256]})
+        return items[:100]
+
+    def publish_commands(self):
+        """Mantém o menu "/" do Telegram igual aos comandos do app."""
         try:
-            self.api.call("setMyCommands", {"commands": menu[:100]})
+            if self.config["auto_menu"]:
+                self.api.call("setMyCommands", {"commands": self.menu()})
+            else:
+                self.api.call("deleteMyCommands", {})
         except Aborted:
             raise
         except Exception as exc:  # noqa: BLE001
@@ -237,6 +274,8 @@ class Engine:
             except Exception as exc:  # noqa: BLE001
                 if self.stopping:
                     return
+                if self._reload.is_set():
+                    continue  # conexão fechada de propósito para recarregar
                 wait = self._handle_poll_error(exc, backoff)
                 if wait is None:
                     return
@@ -293,6 +332,9 @@ class Engine:
 
     # -- mensagens -------------------------------------------------------------
 
+    def find_command(self, name):
+        return next((c for c in self.config["commands"] if name in c["triggers"]), None)
+
     def handle_message(self, message):
         text = message.get("text") or ""
         user = message.get("from") or {}
@@ -303,13 +345,8 @@ class Engine:
             return
         name, args = parsed
         sender = user.get("username") and "@" + user["username"] or user.get("first_name", "")
-        self.emit(
-            "received",
-            user=sender,
-            chat=chat.get("title") or "",
-            text=text[:200],
-        )
-        command = next((c for c in self.config["commands"] if c["command"] == name), None)
+        self.emit("received", user=sender, chat=chat.get("title") or "", text=text[:200])
+        command = self.find_command(name)
         if command is None:
             self.emit("unknown_command", command=name)
             return
@@ -317,47 +354,160 @@ class Engine:
         stamp = self._now()
         date, _, hour = stamp.partition(" ")
         context = template.build_context(message, args, bot_username, date, hour)
-        body = template.render(command["response"], context)
-        if not body.strip():
-            return
-        params = {
-            "chat_id": chat.get("id"),
-            "text": body,
-            "parse_mode": "HTML",
-            "link_preview_options": {"is_disabled": True},
-        }
+        reply_to = None
         if chat.get("type") != "private":
-            params["reply_parameters"] = {
-                "message_id": message.get("message_id"),
-                "allow_sending_without_reply": True,
-            }
-        self._send(params, name)
+            reply_to = {"message_id": message.get("message_id"), "allow_sending_without_reply": True}
 
-    def _send(self, params, command_name):
-        for attempt in range(2):
-            try:
-                self.api.call("sendMessage", params)
-                self.emit("replied", command=command_name, chat=params["chat_id"])
+        sent = 0
+        for msg in command["messages"]:
+            if self.stopping:
+                return
+            if self.send_message(chat.get("id"), msg, context, name, reply_to):
+                sent += 1
+                reply_to = None  # só a primeira mensagem responde à do usuário
+        if sent:
+            self.emit("replied", command=name, chat=chat.get("id"), messages=sent)
+
+    def send_message(self, chat_id, msg, context, command_name, reply_to=None):
+        """Envia uma mensagem configurada (texto e/ou mídia + botões). ``True`` se deu certo."""
+        body = template.render(msg["text"], context) if msg["text"].strip() else ""
+        keyboard = build_keyboard(msg["buttons"])
+        base = {"chat_id": chat_id}
+        if reply_to:
+            base["reply_parameters"] = reply_to
+
+        media = msg.get("media")
+        if media:
+            caption = body if template.plain_length(body) <= CAPTION_LIMIT else ""
+            extra = body if body and not caption else ""
+            params = dict(base)
+            if caption:
+                params["caption"] = caption
+                params["parse_mode"] = "HTML"
+            if keyboard and not extra:
+                params["reply_markup"] = keyboard
+            if not self._send_media(media, params, command_name):
+                return False
+            if not extra:
                 return True
+            base.pop("reply_parameters", None)
+            body = extra
+
+        if not body:
+            return False
+        params = dict(base, text=body, parse_mode="HTML",
+                      link_preview_options={"is_disabled": not msg.get("link_preview")})
+        if keyboard:
+            params["reply_markup"] = keyboard
+        return self._call_send("sendMessage", params, command_name)
+
+    def _media_path(self, media):
+        path = media["file"]
+        if not os.path.isabs(path):
+            path = os.path.join(self.base_dir, path)
+        return path
+
+    def _send_media(self, media, params, command_name):
+        kind = media["type"]
+        method = MEDIA_METHODS[kind]
+        key = media["file"]
+        cached = self._media_cache.get(key)
+        if cached:
+            p = dict(params)
+            p[kind] = cached
+            result = self._call_send(method, p, command_name, quiet_media_error=True)
+            if result:
+                return True
+            if result is None:  # file_id não vale mais: manda o arquivo de novo
+                self._media_cache.pop(key, None)
+                self._save_cache()
+            else:
+                return False
+        path = self._media_path(media)
+        if not os.path.isfile(path):
+            self.emit("error", context="media", command=command_name, retry_in=None, fatal=False,
+                      code=errors.MEDIA_MISSING, detail=media.get("name") or key, retry_after=None)
+            return False
+        result = self._call_send(method, params, command_name, files={kind: path})
+        if isinstance(result, dict):
+            file_id = self._extract_file_id(result, kind)
+            if file_id:
+                self._media_cache[key] = file_id
+                self._save_cache()
+        return bool(result)
+
+    @staticmethod
+    def _extract_file_id(message, kind):
+        obj = message.get(kind)
+        if kind == "photo" and isinstance(obj, list) and obj:
+            return obj[-1].get("file_id")
+        if isinstance(obj, dict):
+            return obj.get("file_id")
+        # O Telegram às vezes converte (ex.: GIF enviado como documento).
+        for other in ("animation", "video", "document", "audio", "voice"):
+            if isinstance(message.get(other), dict):
+                return message[other].get("file_id")
+        return None
+
+    def _call_send(self, method, params, command_name, files=None, quiet_media_error=False):
+        """Envia e trata os erros. Devolve o resultado (truthy), ``False`` ou ``None``
+        (``None`` = erro de mídia silencioso, para tentar de novo com upload)."""
+        tried_plain = False
+        for attempt in range(3):
+            try:
+                result = self.api.call(method, params, timeout=120 if files else 30, files=files)
+                return result if result else True
             except Aborted:
                 raise
             except TelegramError as exc:
                 info = errors.classify(exc)
-                if info["code"] == errors.TOO_MANY_REQUESTS and attempt == 0:
+                if info["code"] == errors.TOO_MANY_REQUESTS and attempt < 2:
                     self.sleep((info["retry_after"] or 3) + 1)
                     if self.stopping:
                         return False
                     continue
-                if info["code"] == errors.PARSE_ENTITIES:
-                    self.emit("debug_text", text=params["text"][:500])
-                self.emit("error", context="sendMessage", command=command_name,
+                if info["code"] == errors.PARSE_ENTITIES and not tried_plain:
+                    # Plano B: manda sem formatação, para a pessoa não ficar sem resposta.
+                    tried_plain = True
+                    field = "caption" if "caption" in params else "text"
+                    self.emit("debug_text", text=params.get(field, "")[:500])
+                    params = dict(params)
+                    params[field] = template.html_to_plain(params[field])
+                    params.pop("parse_mode", None)
+                    continue
+                if quiet_media_error and info["code"] in (errors.MEDIA_ERROR, errors.UNKNOWN):
+                    return None
+                self.emit("error", context=method, command=command_name,
                           retry_in=None, fatal=False, **info)
                 return False
             except NetworkError as exc:
-                self.emit("error", context="sendMessage", command=command_name,
+                self.emit("error", context=method, command=command_name,
+                          retry_in=None, fatal=False, **errors.classify(exc))
+                return False
+            except OSError as exc:
+                self.emit("error", context=method, command=command_name,
                           retry_in=None, fatal=False, **errors.classify(exc))
                 return False
         return False
+
+    # -- cache de mídia --------------------------------------------------------
+
+    def _load_cache(self):
+        try:
+            with open(self._cache_path, "r", encoding="utf-8") as fh:
+                data = json.load(fh)
+            return data if isinstance(data, dict) else {}
+        except (OSError, ValueError):
+            return {}
+
+    def _save_cache(self):
+        try:
+            tmp = self._cache_path + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as fh:
+                json.dump(self._media_cache, fh)
+            os.replace(tmp, self._cache_path)
+        except OSError:
+            pass
 
     def _now(self):
         try:

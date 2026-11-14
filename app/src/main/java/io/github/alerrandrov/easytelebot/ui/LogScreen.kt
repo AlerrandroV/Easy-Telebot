@@ -36,9 +36,10 @@ import java.util.Date
 import java.util.Locale
 
 @Composable
-fun LogScreen(onBack: () -> Unit) {
+fun LogScreen(botId: Long, onBack: () -> Unit) {
     val context = LocalContext.current
-    val entries by BotRuntime.log.collectAsStateWithLifecycle()
+    val logs by BotRuntime.logs.collectAsStateWithLifecycle()
+    val entries = logs[botId] ?: emptyList()
     val fmt = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }
     var expanded by remember { mutableStateOf<Long?>(null) }
 
@@ -55,7 +56,7 @@ fun LogScreen(onBack: () -> Unit) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(1f),
                     )
-                    TextButton(onClick = { BotRuntime.clearLog() }) { Text(stringResource(R.string.log_clear)) }
+                    TextButton(onClick = { BotRuntime.clearLog(botId) }) { Text(stringResource(R.string.log_clear)) }
                 }
             }
             if (entries.isEmpty()) {

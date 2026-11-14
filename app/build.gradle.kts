@@ -57,7 +57,19 @@ android {
     buildFeatures {
         compose = true
     }
+
+    // Código-fonte do motor + run.py vão como assets para o "Exportar código".
+    sourceSets.getByName("main").assets.srcDir(layout.buildDirectory.dir("generated/exportAssets"))
 }
+
+val copyExportSources by tasks.registering(Copy::class) {
+    into(layout.buildDirectory.dir("generated/exportAssets/export"))
+    from("src/main/python") {
+        include("telebot_engine/**/*.py")
+    }
+    from("src/main/export")
+}
+tasks.named("preBuild") { dependsOn(copyExportSources) }
 
 kotlin {
     compilerOptions {

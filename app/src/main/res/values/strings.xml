@@ -67,7 +67,7 @@
     <string name="commands_title">Comandos</string>
     <string name="commands_add">Novo comando</string>
     <string name="commands_intro">Quando alguém mandar o comando para o bot, ele responde com o texto que você escreveu. Os comandos aparecem sozinhos no menu “/” do Telegram.</string>
-    <string name="commands_empty">Nenhum comando ainda. Toque em “Novo comando” para criar o primeiro.</string>
+    <string name="commands_empty">Nenhum comando ainda. Toque em “Adicionar” para criar o primeiro.</string>
     <string name="cmd_new">Novo comando</string>
     <string name="cmd_edit">Editar comando</string>
     <string name="cmd_name">Comando</string>
@@ -94,22 +94,21 @@
     <string name="log_config">Configuração carregada: %1$d comando(s) no menu.</string>
     <string name="log_received">%1$s: %2$s</string>
     <string name="log_received_group">%1$s em %2$s: %3$s</string>
-    <string name="log_replied">Resposta enviada para /%1$s.</string>
+    <string name="log_replied">Resposta enviada para /%1$s (%2$d mensagem(ns)).</string>
     <string name="log_unknown_command">/%1$s não está na sua lista de comandos; nada foi respondido.</string>
     <string name="log_recovered">Conexão restabelecida.</string>
     <string name="log_debug_text">Texto recusado pelo Telegram: %1$s</string>
     <string name="log_restarted_by_system">O Android tinha fechado o bot; ele foi religado sozinho.</string>
-    <string name="log_no_token">Nenhum token salvo. Configure o bot antes de ligar.</string>
+    <string name="log_no_token">Nenhum token salvo para este bot. Use “Trocar token” antes de ligar.</string>
     <string name="log_engine_crash">O motor do bot parou inesperadamente: %1$s</string>
 
     <!-- Notificação -->
     <string name="notif_channel">Status do bot</string>
     <string name="notif_channel_desc">Notificação fixa que mantém o bot funcionando</string>
-    <string name="notif_running">Bot ativo — %1$d mensagens hoje</string>
-    <string name="notif_starting">Ligando o bot…</string>
+        <string name="notif_starting">Ligando o bot…</string>
     <string name="notif_retrying">Bot com problema, tentando de novo</string>
     <string name="notif_fatal">Bot parado por um erro</string>
-    <string name="notif_stop">Desligar</string>
+    <string name="notif_stop_all">Desligar todos</string>
 
     <!-- Bateria -->
     <string name="battery_title">Manter o bot ligado</string>
@@ -219,4 +218,147 @@
 
     <string name="err_unknown_title">Aconteceu um erro inesperado</string>
     <string name="err_unknown_msg">Algo deu errado e não reconheci o problema. Tente de novo; se continuar, avise o desenvolvedor com o detalhe abaixo.</string>
+    <!-- Geral (v0.2) -->
+    <string name="add">Adicionar</string>
+    <string name="remove">Remover</string>
+    <string name="delete">Excluir</string>
+    <string name="discard">Descartar</string>
+    <string name="try_again">Tentar de novo</string>
+
+    <string name="elapsed_now">menos de 1 min</string>
+    <string name="elapsed_min">%1$d min</string>
+    <string name="elapsed_hours">%1$d h %2$d min</string>
+    <string name="elapsed_days">%1$d d %2$d h</string>
+    <string name="state_running_for">Ligado há %1$s</string>
+
+    <!-- Tela inicial (vários bots) -->
+    <string name="home_add_bot">Adicionar bot</string>
+    <string name="home_add_bot_sub">Cole o token de um bot criado no @BotFather</string>
+    <string name="home_no_bots">Você ainda não tem bots. Toque em “Adicionar bot” para começar.</string>
+    <string name="token_ok_existing">Esse bot já está no app. Vamos só atualizar o token dele.</string>
+    <string name="token_update">Atualizar token</string>
+
+    <string name="notif_one_running">%1$s ativo — %2$d mensagens hoje</string>
+    <string name="notif_many_running">%1$d bots ativos — %2$d mensagens hoje</string>
+    <string name="notif_all_ok">Tudo funcionando. Toque para abrir.</string>
+
+    <!-- Configurações do bot -->
+    <string name="bot_add">Adicionar</string>
+    <string name="bot_section_commands">Comandos</string>
+    <string name="bot_section_settings">Configurações</string>
+    <string name="bot_auto_menu">Menu de comandos automático</string>
+    <string name="bot_auto_menu_sub">Mostra os comandos no botão “Menu” do Telegram e quando a pessoa digita “/”. Desligado, o menu fica vazio.</string>
+    <string name="bot_profile">Perfil do bot</string>
+    <string name="bot_profile_sub">Foto, nome, “sobre” e descrição</string>
+    <string name="bot_export">Exportar código-fonte</string>
+    <string name="bot_export_sub">Baixe o bot completo (.zip) para rodar no computador ou servidor e modificar como quiser</string>
+    <string name="bot_delete">Remover bot</string>
+    <string name="bot_delete_sub">Apaga do app este bot, os comandos e o token (o bot continua existindo no Telegram)</string>
+    <string name="bot_delete_confirm_title">Remover %1$s?</string>
+    <string name="bot_delete_confirm_msg">O bot será desligado e os comandos, mídias e o token dele serão apagados deste celular. Se quiser guardar uma cópia, use “Exportar código-fonte” antes. O bot continua existindo no Telegram.</string>
+
+    <string name="add_title">O que você quer adicionar?</string>
+    <string name="add_simple_command">Comando simples</string>
+    <string name="add_simple_command_sub">Um ou mais comandos (ex.: /start e /iniciar) que respondem com uma ou mais mensagens: texto formatado, fotos, vídeos, arquivos e botões com links.</string>
+    <string name="add_more_soon">Em breve: boas-vindas, palavras-chave, mensagens agendadas e mais.</string>
+
+    <string name="export_explain">O arquivo .zip traz o motor do bot (o mesmo código Python que roda aqui), seus comandos, as mídias e um run.py. Para usar: descompacte e rode “python3 run.py” em qualquer computador com Python 3.8+. Lembre de desligar o bot no celular antes, pois ele só pode rodar em um lugar por vez.</string>
+    <string name="export_include_token">Incluir o token no arquivo</string>
+    <string name="export_token_warning">Quem tiver esse arquivo vai controlar o seu bot. Não compartilhe com ninguém.</string>
+    <string name="export_save">Escolher onde salvar</string>
+    <string name="export_done">Código-fonte exportado!</string>
+    <string name="export_failed">Não foi possível salvar o arquivo. Tente escolher outra pasta.</string>
+
+    <!-- Editor de comando -->
+    <string name="cmd_triggers">Comandos que ativam esta resposta</string>
+    <string name="cmd_triggers_help">Digite e toque em Adicionar. Pode ter mais de um, por exemplo /start e /iniciar.</string>
+    <string name="cmd_show_in_menu">Mostrar no menu</string>
+    <string name="cmd_show_in_menu_sub">Aparece no menu do Telegram (usa o primeiro comando e a descrição)</string>
+    <string name="cmd_messages_title">Mensagens enviadas</string>
+    <string name="cmd_message_n">Mensagem %1$d</string>
+    <string name="cmd_add_message">Adicionar mensagem</string>
+    <string name="cmd_messages_help">As mensagens são enviadas nesta ordem. Formatação: *negrito*, _itálico_, __sublinhado__, ~riscado~, ||spoiler||, `código`, [texto](link) e “> ” no começo da linha para citação. Os botões acima do texto fazem isso para você.</string>
+    <string name="cmd_text">Texto</string>
+    <string name="cmd_caption">Legenda (opcional)</string>
+    <string name="cmd_caption_too_long">Legendas vão até 1024 caracteres. O texto será enviado numa mensagem separada, logo depois da mídia.</string>
+    <string name="cmd_link_preview">Mostrar prévia dos links do texto</string>
+    <string name="cmd_saved">Comando salvo</string>
+    <string name="cmd_err_title">Falta pouco! Corrija antes de salvar:</string>
+    <string name="cmd_err_no_trigger">Adicione pelo menos um comando (ex.: start).</string>
+    <string name="cmd_err_trigger_taken">/%1$s já é usado por outro comando deste bot.</string>
+    <string name="cmd_err_no_message">Escreva um texto ou anexe uma mídia em pelo menos uma mensagem.</string>
+    <string name="cmd_err_too_long">Mensagem %1$d: o texto passa de 4096 caracteres (limite do Telegram).</string>
+    <string name="cmd_err_button">Mensagem %1$d: todo botão precisa de um texto e de um link válido.</string>
+    <string name="cmd_discard_title">Salvar as alterações?</string>
+    <string name="cmd_discard_msg">Você mudou este comando e ainda não salvou.</string>
+    <string name="cmd_delete_title">Excluir este comando?</string>
+    <string name="cmd_delete_msg">O comando e as mídias dele serão apagados. Não dá para desfazer.</string>
+
+    <string name="fmt_spoiler">Spoiler</string>
+    <string name="fmt_link">Link</string>
+    <string name="fmt_quote">Citação</string>
+
+    <string name="media_attach">Anexar foto, vídeo, áudio ou arquivo</string>
+    <string name="media_photo">Foto</string>
+    <string name="media_video">Vídeo</string>
+    <string name="media_animation">GIF</string>
+    <string name="media_audio">Áudio</string>
+    <string name="media_voice">Mensagem de voz</string>
+    <string name="media_document">Arquivo</string>
+    <string name="media_as_document">Enviar como arquivo (sem compressão)</string>
+    <string name="media_import_failed">Não foi possível ler esse arquivo. Tente outro.</string>
+
+    <string name="btn_title">Botões embaixo da mensagem</string>
+    <string name="btn_add">Adicionar botão</string>
+    <string name="btn_text">Texto do botão</string>
+    <string name="btn_url">Link, canal ou grupo</string>
+    <string name="btn_url_invalid">Use um link (https://…), t.me/… ou @canal</string>
+    <string name="btn_same_row">Na mesma linha do botão anterior</string>
+
+    <plurals name="cmd_messages_count">
+        <item quantity="one">%d mensagem</item>
+        <item quantity="other">%d mensagens</item>
+    </plurals>
+    <plurals name="cmd_media_count">
+        <item quantity="one">%d mídia</item>
+        <item quantity="other">%d mídias</item>
+    </plurals>
+    <plurals name="cmd_buttons_count">
+        <item quantity="one">%d botão</item>
+        <item quantity="other">%d botões</item>
+    </plurals>
+
+    <!-- Perfil -->
+    <string name="profile_loading">Buscando o perfil no Telegram…</string>
+    <string name="profile_photo">Foto de perfil</string>
+    <string name="profile_change_photo">Trocar foto</string>
+    <string name="profile_name">Nome</string>
+    <string name="profile_name_hint">Nome exibido do bot.</string>
+    <string name="profile_about">Sobre</string>
+    <string name="profile_about_hint">Aparece no perfil do bot e quando alguém compartilha o bot.</string>
+    <string name="profile_description">Descrição</string>
+    <string name="profile_description_hint">Aparece na conversa vazia, antes de a pessoa tocar em Iniciar.</string>
+    <string name="profile_save">Salvar no Telegram</string>
+    <string name="profile_saved">Perfil atualizado! Pode levar alguns minutos para aparecer no Telegram de todo mundo.</string>
+    <string name="profile_username_note">O usuário @%1$s só pode ser trocado pelo @BotFather (/mybots › Edit Bot).</string>
+
+    <!-- Erros novos -->
+    <string name="err_media_title">O Telegram recusou a mídia</string>
+    <string name="err_media_msg">O arquivo pode estar corrompido, ser grande demais (até 50 MB, fotos até 10 MB) ou ter um formato que o Telegram não aceita desse jeito. Tente marcar “Enviar como arquivo” ou escolher outro arquivo.</string>
+    <string name="err_media_missing_title">Arquivo de mídia não encontrado</string>
+    <string name="err_media_missing_msg">O arquivo anexado a esta mensagem sumiu do celular. Abra o comando e anexe a mídia de novo.</string>
+    <string name="err_too_long_title">Texto longo demais</string>
+    <string name="err_too_long_msg">O Telegram aceita até 4096 caracteres por mensagem (1024 em legendas). Encurte o texto ou divida em mais mensagens.</string>
+    <string name="err_button_url_title">Link de botão inválido</string>
+    <string name="err_button_url_msg">Algum botão tem um link que o Telegram não aceita. Confira se começa com https:// ou se é um t.me/… ou @canal que existe.</string>
+    <string name="err_photo_unsupported_title">Troque a foto pelo @BotFather</string>
+    <string name="err_photo_unsupported_msg">O Telegram ainda não deixa um bot trocar a própria foto pelo app. Leva menos de um minuto pelo @BotFather:</string>
+    <string-array name="botfather_photo_steps">
+        <item>Abra o @BotFather e mande /setuserpic.</item>
+        <item>Escolha este bot na lista.</item>
+        <item>Envie a foto nova (como foto, não como arquivo).</item>
+        <item>Volte aqui e abra o perfil de novo para ver a foto atualizada.</item>
+    </string-array>
+    <string name="err_wrong_bot_title">Esse token é de outro bot</string>
+    <string name="err_wrong_bot_msg">O token que você colou pertence a outro bot. Para trocar o token deste bot, pegue o token dele no @BotFather (/mybots › escolha o bot › API Token). Se quiser adicionar o outro bot, use “Adicionar bot” na tela inicial.</string>
 </resources>

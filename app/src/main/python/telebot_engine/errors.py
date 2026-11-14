@@ -17,6 +17,11 @@ NOT_ENOUGH_RIGHTS = "not_enough_rights"
 TOO_MANY_REQUESTS = "too_many_requests"
 PARSE_ENTITIES = "parse_entities"
 TOKEN_FORMAT = "token_format"
+MEDIA_ERROR = "media_error"
+MEDIA_MISSING = "media_missing"
+TOO_LONG = "too_long"
+BAD_BUTTON_URL = "bad_button_url"
+PHOTO_UNSUPPORTED = "photo_unsupported"
 UNKNOWN = "unknown"
 
 
@@ -46,9 +51,23 @@ def classify(exc):
             code = NOT_ENOUGH_RIGHTS
         elif "can't parse entities" in desc:
             code = PARSE_ENTITIES
+        elif "message is too long" in desc or "caption is too long" in desc \
+                or "too long" in desc:
+            code = TOO_LONG
+        elif "button_url_invalid" in desc or "wrong http url" in desc \
+                or "unsupported url protocol" in desc:
+            code = BAD_BUTTON_URL
+        elif "file" in desc and ("wrong" in desc or "too big" in desc or "invalid" in desc
+                                 or "failed to get http url" in desc or "type of file" in desc
+                                 or "image_process_failed" in desc or "photo_invalid" in desc):
+            code = MEDIA_ERROR
+        elif "image_process_failed" in desc or "photo_invalid" in desc or "dimensions" in desc:
+            code = MEDIA_ERROR
         return {
             "code": code,
             "detail": "%s %s" % (exc.error_code, exc.description),
             "retry_after": exc.retry_after,
         }
+    if isinstance(exc, (FileNotFoundError, IsADirectoryError)):
+        return {"code": MEDIA_MISSING, "detail": str(exc), "retry_after": None}
     return {"code": UNKNOWN, "detail": "%s: %s" % (type(exc).__name__, exc), "retry_after": None}
