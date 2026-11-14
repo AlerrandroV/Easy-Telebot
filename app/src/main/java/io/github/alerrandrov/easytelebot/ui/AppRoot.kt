@@ -2,19 +2,25 @@ package io.github.alerrandrov.easytelebot.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import io.github.alerrandrov.easytelebot.data.BotRepository
 import io.github.alerrandrov.easytelebot.data.Prefs
+import io.github.alerrandrov.easytelebot.service.Alerts
 
-enum class Screen { HOME, ADD_BOT, BATTERY, BOT, CHANGE_TOKEN, PROFILE, COMMAND, LOG, ADMINS, STORAGE, CHATS, CHAT, BROADCAST }
+enum class Screen { HOME, ADD_BOT, BATTERY, BOT, CHANGE_TOKEN, PROFILE, COMMAND, LOG, ADMINS, STORAGE, CHATS, CHAT, BROADCAST, ANTISPAM }
+
+/** Pedido vindo de fora (notificação) para abrir uma tela de um bot. */
+data class OpenRequest(val botId: Long, val screen: String)
 
 /** Navegação simples por estado: poucas telas, sem biblioteca extra. */
 @Composable
-fun AppRoot() {
+fun AppRoot(openRequest: OpenRequest? = null, onOpenHandled: () -> Unit = {}) {
     val context = LocalContext.current
     val prefs = Prefs(context)
     var screen by rememberSaveable { mutableStateOf(Screen.HOME) }
@@ -26,14 +32,25 @@ fun AppRoot() {
     /** Abrir a tela de admins já no fluxo de "adicionar". */
     var adminsAutoAdd by rememberSaveable { mutableStateOf(false) }
     var chatId by rememberSaveable { mutableLongStateOf(0L) }
+    /** Para onde voltar da conversa: lista de conversas ou antispam. */
+    var chatReturn by rememberSaveable { mutableStateOf(Screen.CHATS) }
+
+    LaunchedEffect(openRequest) {
+        val r = openRequest ?: return@LaunchedEffect
+        if (r.screen == Alerts.SCREEN_ANTISPAM && BotRepository.bots.value.any { it.id == r.botId }) {
+            botId = r.botId
+            screen = Screen.ANTISPAM
+        }
+        onOpenHandled()
+    }
 
     val goHome = { screen = Screen.HOME }
     val goBot = { screen = Screen.BOT }
 
     BackHandler(enabled = screen != Screen.HOME) {
         screen = when (screen) {
-            Screen.CHAT -> Screen.CHATS
-            Screen.CHATS, Screen.BROADCAST,
+            Screen.CHAT -> chatReturn
+            Screen.CHATS, Screen.BROADCAST, Screen.ANTISPAM,
             Screen.CHANGE_TOKEN, Screen.PROFILE, Screen.COMMAND, Screen.LOG, Screen.ADMINS, Screen.STORAGE -> Screen.BOT
             else -> Screen.HOME
         }
@@ -67,6 +84,7 @@ fun AppRoot() {
             onStorage = { screen = Screen.STORAGE },
             onChats = { screen = Screen.CHATS },
             onBroadcast = { screen = Screen.BROADCAST },
+            onAntispam = { screen = Screen.ANTISPAM },
             onChangeToken = { screen = Screen.CHANGE_TOKEN },
             onBattery = { screen = Screen.BATTERY },
         )
@@ -76,8 +94,13 @@ fun AppRoot() {
         Screen.LOG -> LogScreen(botId = botId, onBack = goBot)
         Screen.STORAGE -> StorageScreen(botId = botId, onBack = goBot)
         Screen.BROADCAST -> BroadcastScreen(botId = botId, onBack = goBot)
-        Screen.CHATS -> ChatsScreen(botId = botId, onOpenChat = { chatId = it; screen = Screen.CHAT }, onBack = goBot)
-        Screen.CHAT -> ChatScreen(botId = botId, chatId = chatId, onBack = { screen = Screen.CHATS })
+        Screen.CHATS -> ChatsScreen(botId = botId, onOpenChat = { chatId = it; chatReturn = Screen.CHATS; screen = Screen.CHAT }, onBack = goBot)
+        Screen.CHAT -> ChatScreen(botId = botId, chatId = chatId, onBack = { screen = chatReturn })
+        Screen.ANTISPAM -> AntispamScreen(
+            botId = botId,
+            onOpenChat = { chatId = it; chatReturn = Screen.ANTISPAM; screen = Screen.CHAT },
+            onBack = goBot,
+        )
         Screen.ADMINS -> AdminsScreen(botId = botId, autoAdd = adminsAutoAdd, onBack = goBot)
     }
 }

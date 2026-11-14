@@ -29,7 +29,8 @@ enum class StorageType(val key: String) {
 data class StorageSettings(
     val type: StorageType = StorageType.INTERNAL,
     val storeUsers: Boolean = true,
-    val storeHistory: Boolean = false,
+    /** Mensagens recebidas e enviadas. Ligado por padrão desde a v2 de `storage.json`. */
+    val storeHistory: Boolean = true,
     val devicePath: String = "",
     val firebaseUrl: String = "",
     val firestoreDatabase: String = "(default)",
@@ -37,6 +38,7 @@ data class StorageSettings(
     val awsTable: String = "easytelebot",
 ) {
     fun toJson(): JSONObject = JSONObject()
+        .put("v", 2)
         .put("type", type.key)
         .put("store_users", storeUsers)
         .put("store_history", storeHistory)
@@ -50,7 +52,8 @@ data class StorageSettings(
         fun fromJson(o: JSONObject) = StorageSettings(
             type = StorageType.from(o.optString("type")),
             storeUsers = o.optBoolean("store_users", true),
-            storeHistory = o.optBoolean("store_history", false),
+            // Antes da v2 o histórico vinha desligado por padrão; agora as mensagens vão para o banco.
+            storeHistory = if (o.has("v")) o.optBoolean("store_history", true) else true,
             devicePath = o.optString("device_path"),
             firebaseUrl = o.optString("firebase_url"),
             firestoreDatabase = o.optString("firestore_database", "(default)").ifEmpty { "(default)" },

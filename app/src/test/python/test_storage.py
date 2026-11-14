@@ -223,9 +223,12 @@ class EngineIntegrationTests(unittest.TestCase):
         path = os.path.join(bot, "config.json")
         with open(path, "w") as fh:
             json.dump({"version": 2, "commands": [{"triggers": ["oi"], "messages": [{"text": "oi"}]}]}, fh)
-        api = FakeApi([[msg("/oi"), msg("bom dia", update_id=2)]])
+        second = msg("bom dia", update_id=2)
+        second["message"]["message_id"] = 8
+        api = FakeApi([[msg("/oi"), second]])
+        # Sem "v": configuração antiga -> o histórico passa a ser gravado.
         eng = engine.Engine("777:x", path, bot, Callbacks(), api=api,
-                            storage=json.dumps({"type": "internal", "store_users": True}))
+                            storage=json.dumps({"type": "internal", "store_users": True, "store_history": False}))
         api.engine = eng
         eng.sleep = lambda s: None
         eng.run()
@@ -233,6 +236,14 @@ class EngineIntegrationTests(unittest.TestCase):
         doc = backends.LocalStore(os.path.join(bot, "db")).get("usuarios", 42)
         self.assertEqual(doc["messages"], 2)  # conta também mensagens que não são comandos
         self.assertEqual(len(api.sent), 1)
+        history = backends.LocalStore(os.path.join(bot, "db")).list("historico")
+        got = sorted((d["direction"], d["source"], d["text"]) for d in history)
+        self.assertEqual(got, [("in", "user", "/oi"), ("in", "user", "bom dia"), ("out", "auto", "oi")])
+
+    def test_history_can_be_turned_off(self):
+        s = storage.parse_settings({"v": 2, "store_history": False})
+        self.assertFalse(s["store_history"])
+        self.assertTrue(storage.parse_settings({})["store_history"])
 
 
 if __name__ == "__main__":

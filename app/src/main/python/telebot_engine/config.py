@@ -29,6 +29,8 @@ A versão 1 (``command`` + ``response``) é convertida automaticamente.
 
 import json
 
+from . import antispam
+
 MEDIA_TYPES = ("photo", "video", "animation", "audio", "voice", "document", "sticker")
 
 
@@ -105,6 +107,7 @@ def normalize(data):
     b_triggers = [_clean_trigger(t) for t in b.get("triggers") or ["post", "publi"]]
     return {
         "version": 2,
+        "antispam": antispam.normalize_settings(data.get("antispam")),
         "auto_menu": bool(data.get("auto_menu", True)),
         "commands": commands,
         "broadcast": {

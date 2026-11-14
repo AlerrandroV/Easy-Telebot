@@ -19,6 +19,7 @@ import threading
 import time
 
 from . import admins as admins_mod
+from . import antispam
 from . import broadcast as broadcast_mod
 from . import chats
 from .publish import PostFlow
@@ -123,6 +124,12 @@ def parse_command(text, bot_username):
     return name, args.strip()
 
 
+def _display_name(user):
+    if user.get("username"):
+        return "@" + user["username"]
+    return ((user.get("first_name") or "") + " " + (user.get("last_name") or "")).strip() or str(user.get("id", ""))
+
+
 def build_keyboard(rows):
     keyboard = []
     for row in rows or []:
@@ -157,6 +164,9 @@ class Engine:
         self._admins_mtime = None
         self._menu_scopes = set()  # chats de admins que receberam um menu próprio
         self._cache_path = os.path.join(self.base_dir, "media_cache.json")
+        self.spam = antispam.Detector()
+        self.bans = {}
+        self._bans_mtime = None
         # Banco de dados (usuários/histórico). ``storage`` = configuração em JSON.
         self.post = PostFlow(self)
         self.send_source = "auto"  # "auto" = resposta de comando; "manual" = enviada pelo app
@@ -255,6 +265,19 @@ class Engine:
         self.admins = admins_mod.load(self.base_dir)
         return True
 
+    def maybe_reload_bans(self):
+        try:
+            mtime = os.path.getmtime(os.path.join(self.base_dir, antispam.BANS_FILE))
+        except OSError:
+            mtime = None
+        if mtime == self._bans_mtime:
+            return
+        self._bans_mtime = mtime
+        old = self.bans
+        self.bans = antispam.load(self.base_dir)
+        for uid in set(old) - set(self.bans):
+            self.spam.reset(uid)  # desbloqueado: começa a contar do zero
+
     def menu(self, admin_level=None):
         """Comandos do menu: os públicos + os de admin que ``admin_level`` pode usar."""
         items = []
@@ -330,7 +353,8 @@ class Engine:
         while not self.stopping:
             self.maybe_reload_config()
             try:
-                params = {"timeout": POLL_TIMEOUT, "allowed_updates": ["message", "edited_message", "channel_post", "my_chat_member"]}
+                params = {"timeout": POLL_TIMEOUT, "allowed_updates": ["message", "edited_message", "channel_post", "my_chat_member",
+                                                                  "callback_query"]}
                 if self.offset is not None:
                     params["offset"] = self.offset
                 updates = self.api.call("getUpdates", params, timeout=POLL_TIMEOUT + 15)
@@ -364,6 +388,8 @@ class Engine:
                     self.record_chat(update["channel_post"])
                 elif update.get("my_chat_member"):
                     self.handle_membership(update["my_chat_member"])
+                elif update.get("callback_query") and not self.stopping:
+                    self.handle_callback(update["callback_query"])
 
     def handle_membership(self, change):
         """Bot adicionado/removido de grupo ou canal, ou bloqueado/desbloqueado por um usuário."""
@@ -395,6 +421,8 @@ class Engine:
             return
         if self.send_source == "broadcast":
             return  # publicação em massa não lota o mensageiro de cada pessoa
+        if self.storage:
+            self.storage.record_out(result, self.send_source)
         try:
             cid = chats.record(self.base_dir, result, outgoing=True, source=self.send_source,
                                fallback_chat_id=chat_id)
@@ -453,6 +481,8 @@ class Engine:
         chat = message.get("chat") or {}
         bot_username = (self.bot or {}).get("username", "")
         parsed = parse_command(text, bot_username)
+        if self.check_spam(message, parsed):
+            return
         if self.post.handle(message, parsed):
             return
         if parsed is None:
@@ -493,6 +523,115 @@ class Engine:
                 reply_to = None  # só a primeira mensagem responde à do usuário
         if sent:
             self.emit("replied", command=name, chat=chat.get("id"), messages=sent)
+
+    # -- antispam ----------------------------------------------------------------
+
+    def check_spam(self, message, parsed):
+        """``True`` = a pessoa está (ou acabou de ficar) bloqueada: o bot não responde nada."""
+        user = message.get("from") or {}
+        chat = message.get("chat") or {}
+        uid = user.get("id")
+        if uid is None or user.get("is_bot"):
+            return False
+        self.maybe_reload_admins()
+        if uid in self.admins:
+            return False  # admin nunca é bloqueado
+        self.maybe_reload_bans()
+        if uid in self.bans:
+            return True
+        settings = self.config.get("antispam") or {}
+        if not settings.get("enabled", True):
+            return False
+        # Em grupo, só conta o que é dirigido ao bot (comandos).
+        if chat.get("type") != "private" and parsed is None:
+            return False
+        hit = self.spam.check(message, settings.get("sensitivity", antispam.DEFAULT_LEVEL))
+        if not hit:
+            return False
+        self.auto_block(message, hit, settings)
+        return True
+
+    def auto_block(self, message, hit, settings):
+        user = message.get("from") or {}
+        chat = message.get("chat") or {}
+        uid = user["id"]
+        record = antispam.build_record(user, chat, hit, self.spam.recent(uid))
+        record["stamp"] = self._now()
+        antispam.add(self.base_dir, record)
+        self.maybe_reload_bans()
+        if self.storage:
+            self.storage.put_doc("bloqueios", uid, antispam.public(record))
+
+        if settings.get("warn_user", True) and chat.get("type") == "private":
+            self._call_send("sendMessage", {"chat_id": chat.get("id"), "text": antispam.BLOCK_NOTICE}, "antispam")
+
+        # Avisa os admins com classe para julgar o caso.
+        notices = []
+        required = settings.get("admin_level", 1)
+        text = antispam.notice_text(record)
+        for admin_id, admin in sorted(self.admins.items()):
+            if not admins_mod.can_use(admin.get("level"), required):
+                continue
+            sent = self._call_send("sendMessage", {
+                "chat_id": admin_id, "text": text, "parse_mode": "HTML",
+                "link_preview_options": {"is_disabled": True},
+                "reply_markup": antispam.keyboard(uid),
+            }, "antispam")
+            if isinstance(sent, dict) and sent.get("message_id"):
+                notices.append([admin_id, sent["message_id"]])
+        antispam.set_notices(self.base_dir, uid, notices)
+        self.emit("spam_blocked", user_id=uid, name=_display_name(user), reason=record["reason"],
+                  reason_text=antispam.reason_text(record), admins_notified=len(notices))
+
+    def handle_callback(self, query):
+        """Botões do aviso de antispam (✅ Desbloquear / 🚫 Manter bloqueado)."""
+        user = query.get("from") or {}
+        parsed = antispam.parse_callback(query.get("data"))
+        answer = {"callback_query_id": query.get("id")}
+        if parsed is not None:
+            action, target = parsed
+            self.maybe_reload_admins()
+            admin = self.admins.get(user.get("id"))
+            required = (self.config.get("antispam") or {}).get("admin_level", 1)
+            if admin is None or not admins_mod.can_use(admin.get("level"), required):
+                answer["text"] = "Só admins podem decidir bloqueios."
+            else:
+                by = _display_name(user)
+                record = antispam.decide(self.base_dir, target, action, by)
+                if record is None:
+                    answer["text"] = "Esse caso já foi resolvido por outro admin."
+                    msg = query.get("message") or {}
+                    try:  # tira os botões do aviso antigo
+                        self.api.call("editMessageReplyMarkup", {
+                            "chat_id": (msg.get("chat") or {}).get("id"), "message_id": msg.get("message_id"),
+                        }, timeout=20)
+                    except Aborted:
+                        raise
+                    except Exception:  # noqa: BLE001
+                        pass
+                else:
+                    self.maybe_reload_bans()
+                    antispam.update_notices(self.api, record, action)
+                    if self.storage:
+                        if action == antispam.RELEASE:
+                            self.storage.delete_doc("bloqueios", target)
+                        else:
+                            self.storage.put_doc("bloqueios", target, antispam.public(record))
+                    if action == antispam.RELEASE:
+                        answer["text"] = "Desbloqueado."
+                        if record.get("chat_type", "private") == "private":
+                            self._call_send("sendMessage", {"chat_id": target, "text": antispam.RELEASE_NOTICE},
+                                            "antispam")
+                    else:
+                        answer["text"] = "Mantido bloqueado."
+                    self.emit("spam_decided", user_id=target, action=action, by=by,
+                              name=_display_name(record))
+        try:
+            self.api.call("answerCallbackQuery", answer, timeout=20)
+        except Aborted:
+            raise
+        except Exception:  # noqa: BLE001
+            pass
 
     def handle_newadmin(self, message, args, sender):
         """``/newadmin CÓDIGO``: comando secreto. Sem código válido, não responde nada."""

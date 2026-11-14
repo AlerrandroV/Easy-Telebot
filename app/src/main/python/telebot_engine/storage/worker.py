@@ -33,9 +33,37 @@ class StorageWorker(threading.Thread):
             if text.split(" ")[0].split("@")[0].lower() == cmd:
                 text = cmd + " ••••"
         try:
-            self.queue.put_nowait(("message", message, text))
+            self.queue.put_nowait(("message", message, text, "in", "user"))
         except queue.Full:
             pass  # banco lento demais: descarta em vez de travar o bot
+
+    def record_out(self, message, source):
+        """Chamado pelo motor a cada mensagem que o bot enviou (resposta ou envio pelo app)."""
+        if not self.settings.get("store_history") or not isinstance(message, dict):
+            return
+        text = message.get("text") or message.get("caption") or ""
+        self._put(("message", message, text, "out", source))
+
+    def put_doc(self, collection, doc_id, doc):
+        """Grava um documento qualquer (ex.: bloqueios do antispam)."""
+        self._put(("put", collection, doc_id, doc))
+
+    def delete_doc(self, collection, doc_id):
+        self._put(("delete", collection, doc_id))
+
+    def _put(self, item):
+        if not self.enabled:
+            return
+        try:
+            self.queue.put_nowait(item)
+        except queue.Full:
+            pass
+
+    def flush(self, timeout=20):
+        """Envio pelo app: espera a fila esvaziar (a thread termina sozinha depois)."""
+        self.stop()
+        if self.is_alive():
+            self.join(timeout)
 
     def stop(self):
         try:
@@ -60,13 +88,19 @@ class StorageWorker(threading.Thread):
             item = self.queue.get()
             if item is None:
                 return
-            _, message, text = item
             try:
-                if self.settings.get("store_users"):
-                    record_user(store, message.get("from"), message.get("chat"))
-                if self.settings.get("store_history"):
-                    record_message(store, "%s-%s" % ((message.get("chat") or {}).get("id"), message.get("message_id")),
-                                   message, text)
+                if item[0] == "put":
+                    store.put(item[1], item[2], item[3])
+                elif item[0] == "delete":
+                    store.delete(item[1], item[2])
+                else:
+                    _, message, text, direction, source = item
+                    if direction == "in" and self.settings.get("store_users"):
+                        record_user(store, message.get("from"), message.get("chat"))
+                    if self.settings.get("store_history"):
+                        record_message(store, "%s-%s-%s" % ((message.get("chat") or {}).get("id"),
+                                                            message.get("message_id"), direction),
+                                       message, text, direction, source)
                 if self._last_error[0] is not None:
                     self._last_error = (None, 0.0)
                     self.emit("storage_ok")
