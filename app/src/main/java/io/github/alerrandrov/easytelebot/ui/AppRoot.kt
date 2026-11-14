@@ -10,7 +10,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import io.github.alerrandrov.easytelebot.data.Prefs
 
-enum class Screen { HOME, ADD_BOT, BATTERY, BOT, CHANGE_TOKEN, PROFILE, COMMAND, LOG }
+enum class Screen { HOME, ADD_BOT, BATTERY, BOT, CHANGE_TOKEN, PROFILE, COMMAND, LOG, ADMINS }
 
 /** Navegação simples por estado: poucas telas, sem biblioteca extra. */
 @Composable
@@ -21,13 +21,17 @@ fun AppRoot() {
     var botId by rememberSaveable { mutableLongStateOf(0L) }
     /** Comando em edição (`null` = novo). */
     var commandId by rememberSaveable { mutableStateOf<String?>(null) }
+    /** Novo comando já marcado como "de admin". */
+    var newCommandIsAdmin by rememberSaveable { mutableStateOf(false) }
+    /** Abrir a tela de admins já no fluxo de "adicionar". */
+    var adminsAutoAdd by rememberSaveable { mutableStateOf(false) }
 
     val goHome = { screen = Screen.HOME }
     val goBot = { screen = Screen.BOT }
 
     BackHandler(enabled = screen != Screen.HOME) {
         screen = when (screen) {
-            Screen.CHANGE_TOKEN, Screen.PROFILE, Screen.COMMAND, Screen.LOG -> Screen.BOT
+            Screen.CHANGE_TOKEN, Screen.PROFILE, Screen.COMMAND, Screen.LOG, Screen.ADMINS -> Screen.BOT
             else -> Screen.HOME
         }
     }
@@ -53,15 +57,17 @@ fun AppRoot() {
         Screen.BOT -> BotScreen(
             botId = botId,
             onBack = goHome,
-            onEditCommand = { commandId = it; screen = Screen.COMMAND },
+            onEditCommand = { id, admin -> commandId = id; newCommandIsAdmin = admin; screen = Screen.COMMAND },
             onProfile = { screen = Screen.PROFILE },
             onLog = { screen = Screen.LOG },
+            onAdmins = { add -> adminsAutoAdd = add; screen = Screen.ADMINS },
             onChangeToken = { screen = Screen.CHANGE_TOKEN },
             onBattery = { screen = Screen.BATTERY },
         )
         Screen.CHANGE_TOKEN -> TokenScreen(expectedBotId = botId, onBack = goBot, onSaved = { goBot() })
         Screen.PROFILE -> ProfileScreen(botId = botId, onBack = goBot)
-        Screen.COMMAND -> CommandEditorScreen(botId = botId, commandId = commandId, onDone = goBot)
+        Screen.COMMAND -> CommandEditorScreen(botId = botId, commandId = commandId, newAsAdmin = newCommandIsAdmin, onDone = goBot)
         Screen.LOG -> LogScreen(botId = botId, onBack = goBot)
+        Screen.ADMINS -> AdminsScreen(botId = botId, autoAdd = adminsAutoAdd, onBack = goBot)
     }
 }

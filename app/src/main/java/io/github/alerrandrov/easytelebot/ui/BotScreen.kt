@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -69,9 +70,12 @@ import kotlinx.coroutines.withContext
 fun BotScreen(
     botId: Long,
     onBack: () -> Unit,
-    onEditCommand: (String?) -> Unit,
+    /** (id do comando ou null para novo, novo já como comando de admin) */
+    onEditCommand: (String?, Boolean) -> Unit,
     onProfile: () -> Unit,
     onLog: () -> Unit,
+    /** true = já abrir o fluxo de adicionar admin */
+    onAdmins: (Boolean) -> Unit,
     onChangeToken: () -> Unit,
     onBattery: () -> Unit,
 ) {
@@ -211,7 +215,7 @@ fun BotScreen(
                     )
                 }
             }
-            items(config.commands, key = { it.id }) { cmd -> CommandCard(cmd) { onEditCommand(cmd.id) } }
+            items(config.commands, key = { it.id }) { cmd -> CommandCard(cmd) { onEditCommand(cmd.id, false) } }
 
             item { SectionTitle(stringResource(R.string.bot_section_settings)) }
             item {
@@ -236,6 +240,9 @@ fun BotScreen(
             }
             item {
                 SectionCard(stringResource(R.string.bot_profile), stringResource(R.string.bot_profile_sub), onProfile)
+            }
+            item {
+                SectionCard(stringResource(R.string.admins_title), stringResource(R.string.bot_admins_sub), { onAdmins(false) })
             }
             item { SectionCard(stringResource(R.string.home_log), stringResource(R.string.home_log_sub), onLog) }
             item {
@@ -265,7 +272,23 @@ fun BotScreen(
                     subtitle = stringResource(R.string.add_simple_command_sub),
                     onClick = {
                         showAddSheet = false
-                        onEditCommand(null)
+                        onEditCommand(null, false)
+                    },
+                )
+                SectionCard(
+                    title = stringResource(R.string.add_admin_command),
+                    subtitle = stringResource(R.string.add_admin_command_sub),
+                    onClick = {
+                        showAddSheet = false
+                        onEditCommand(null, true)
+                    },
+                )
+                SectionCard(
+                    title = stringResource(R.string.add_admin),
+                    subtitle = stringResource(R.string.add_admin_sub),
+                    onClick = {
+                        showAddSheet = false
+                        onAdmins(true)
                     },
                 )
                 Text(
@@ -328,14 +351,30 @@ fun BotScreen(
 
 @Composable
 private fun CommandCard(cmd: SimpleCommand, onClick: () -> Unit) {
-    Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+    val level = cmd.adminLevel
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        colors = if (level != null) {
+            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
+        } else {
+            CardDefaults.cardColors()
+        },
+    ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                cmd.triggers.joinToString("  ·  ") { "/$it" },
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    cmd.triggers.joinToString("  ·  ") { "/$it" },
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                if (level != null) {
+                    Spacer(Modifier.width(8.dp))
+                    AdminBadge(level, prefix = stringResource(R.string.admin_badge_prefix))
+                }
+            }
             if (cmd.description.isNotBlank()) Text(cmd.description, style = MaterialTheme.typography.bodyMedium)
             val media = cmd.messages.count { it.media != null }
             val buttons = cmd.messages.sumOf { m -> m.buttons.sumOf { it.size } }

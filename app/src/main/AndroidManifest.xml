@@ -9,6 +9,8 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- Confirmar o desbloqueio do celular antes de gerar código de admin. -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
 
     <!-- allowBackup desligado: o token é cifrado com uma chave do Keystore que
          não sai do aparelho, então um backup restaurado não serviria. -->

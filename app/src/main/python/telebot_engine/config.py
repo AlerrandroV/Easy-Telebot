@@ -11,6 +11,7 @@ Formato atual (versão 2)::
           "triggers": ["start", "iniciar"],
           "description": "Começar",
           "show_in_menu": true,
+          "admin_level": null,          (ou 1..10: só admins dessa classe ou acima)
           "messages": [
             {
               "text": "Olá, *{nome}*!",
@@ -79,8 +80,17 @@ def normalize(data):
         triggers = [t for t in dict.fromkeys(triggers) if t]
         if not triggers:
             continue
+        level = item.get("admin_level")
+        if level is None and item.get("admin_only"):
+            level = 1
+        if level is not None:
+            try:
+                level = max(1, min(10, int(level)))
+            except (TypeError, ValueError):
+                level = 1
         commands.append({
             "id": str(item.get("id") or "cmd%d" % i),
+            "admin_level": level,
             "triggers": triggers,
             "description": str(item.get("description") or "").strip(),
             "show_in_menu": bool(item.get("show_in_menu", True)),

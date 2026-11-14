@@ -3,6 +3,7 @@ package io.github.alerrandrov.easytelebot.engine
 import android.content.Context
 import com.chaquo.python.PyObject
 import io.github.alerrandrov.easytelebot.R
+import io.github.alerrandrov.easytelebot.data.AdminLevels
 import io.github.alerrandrov.easytelebot.data.BotRepository
 import io.github.alerrandrov.easytelebot.data.Prefs
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -48,6 +49,12 @@ object BotRuntime {
 
     private val _logs = MutableStateFlow<Map<Long, List<LogEntry>>>(emptyMap())
     val logs: StateFlow<Map<Long, List<LogEntry>>> = _logs.asStateFlow()
+
+    /** Último admin adicionado por bot (nome + classe + quando), para a tela de admins reagir. */
+    data class AdminAdded(val name: String, val level: Int, val at: Long)
+
+    private val _adminAdded = MutableStateFlow<Map<Long, AdminAdded>>(emptyMap())
+    val adminAdded: StateFlow<Map<Long, AdminAdded>> = _adminAdded.asStateFlow()
 
     /** Motores Python ativos (para pedir recarga/parada de qualquer thread). */
     val engines = ConcurrentHashMap<Long, PyObject>()
@@ -141,6 +148,30 @@ object BotRuntime {
             "replied" -> add(id, LogEntry.Level.OUT, s(R.string.log_replied, e.optString("command"), e.optInt("messages", 1)))
             "unknown_command" -> add(id, LogEntry.Level.WARN, s(R.string.log_unknown_command, e.optString("command")))
             "recovered" -> add(id, LogEntry.Level.INFO, s(R.string.log_recovered))
+            "admin_added" -> {
+                val a = e.optJSONObject("admin") ?: return
+                val name = a.optString("username").takeIf { it.isNotEmpty() }?.let { "@$it" } ?: a.optString("first_name")
+                val level = a.optInt("level", 1)
+                _adminAdded.update { it + (id to AdminAdded(name, level, System.currentTimeMillis())) }
+                add(id, LogEntry.Level.INFO, s(R.string.log_admin_added, name, AdminLevels.roman(level)))
+            }
+            "denied" -> {
+                val level = e.optInt("level", 0)
+                add(
+                    id, LogEntry.Level.WARN,
+                    if (level > 0) s(R.string.log_denied_level, e.optString("user"), e.optString("command"),
+                        AdminLevels.roman(level), AdminLevels.roman(e.optInt("required", 1)))
+                    else s(R.string.log_denied, e.optString("user"), e.optString("command")),
+                )
+            }
+            "newadmin_invalid" -> add(
+                id, LogEntry.Level.WARN,
+                when {
+                    !e.optBoolean("private", true) -> s(R.string.log_newadmin_group, e.optString("user"))
+                    e.optBoolean("had_code") -> s(R.string.log_newadmin_invalid, e.optString("user"))
+                    else -> s(R.string.log_newadmin_empty, e.optString("user"))
+                },
+            )
             "debug_text" -> add(id, LogEntry.Level.WARN, s(R.string.log_debug_text, e.optString("text")))
             "error" -> {
                 val err = EngineError.fromJson(e)

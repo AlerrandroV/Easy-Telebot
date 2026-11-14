@@ -18,6 +18,7 @@ import re
 import threading
 import time
 
+from . import admins as admins_mod
 from . import config as config_mod
 from . import errors, template
 from .api import Aborted, NetworkError, TelegramApi, TelegramError
@@ -28,6 +29,8 @@ COMMAND_RE = re.compile(r"^[a-z0-9_]{1,32}$")
 MAX_BACKOFF = 60
 TEXT_LIMIT = 4096
 CAPTION_LIMIT = 1024
+NEWADMIN_COMMAND = "newadmin"  # comando secreto: só responde com um código válido
+NEWADMIN_REPLY = "Parabéns! Agora você é um administrador!"
 
 MEDIA_METHODS = {
     "photo": "sendPhoto",
@@ -145,6 +148,9 @@ class Engine:
         self.offset = None
         self._state = None
         self._last_error_code = None
+        self.admins = {}
+        self._admins_mtime = None
+        self._menu_scopes = set()  # chats de admins que receberam um menu próprio
         self._cache_path = os.path.join(self.base_dir, "media_cache.json")
         self._media_cache = self._load_cache()
 
@@ -210,18 +216,36 @@ class Engine:
             mtime = os.path.getmtime(self.config_path)
         except OSError:
             mtime = None
+        admins_changed = self.maybe_reload_admins(force)
         if not force and mtime == self._config_mtime:
-            return False
+            if admins_changed:
+                self.publish_commands()
+            return admins_changed
         self._config_mtime = mtime
         self.config = config_mod.load(self.config_path)
-        self.emit("config", commands=len(self.config["commands"]))
+        self.emit("config", commands=len(self.config["commands"]), admins=len(self.admins))
         self.publish_commands()
         return True
 
-    def menu(self):
+    def maybe_reload_admins(self, force=False):
+        try:
+            mtime = os.path.getmtime(os.path.join(self.base_dir, admins_mod.ADMINS_FILE))
+        except OSError:
+            mtime = None
+        if not force and mtime == self._admins_mtime:
+            return False
+        self._admins_mtime = mtime
+        self.admins = admins_mod.load(self.base_dir)
+        return True
+
+    def menu(self, admin_level=None):
+        """Comandos do menu: os públicos + os de admin que ``admin_level`` pode usar."""
         items = []
         for c in self.config["commands"]:
             if not c["show_in_menu"]:
+                continue
+            required = c.get("admin_level")
+            if required is not None and not admins_mod.can_use(admin_level, required):
                 continue
             name = next((t for t in c["triggers"] if COMMAND_RE.match(t)), None)
             if name:
@@ -229,12 +253,30 @@ class Engine:
         return items[:100]
 
     def publish_commands(self):
-        """Mantém o menu "/" do Telegram igual aos comandos do app."""
+        """Mantém o menu "/" do Telegram igual aos comandos do app.
+
+        Todo mundo vê os comandos públicos. Cada admin, na conversa privada com
+        o bot, vê também os comandos de admin que a classe dele permite.
+        """
         try:
-            if self.config["auto_menu"]:
+            auto = self.config["auto_menu"]
+            if auto:
                 self.api.call("setMyCommands", {"commands": self.menu()})
             else:
                 self.api.call("deleteMyCommands", {})
+            wanted = set(self.admins) if auto else set()
+            has_admin_cmds = any(c.get("admin_level") is not None for c in self.config["commands"])
+            for admin_id in wanted:
+                if has_admin_cmds:
+                    self.api.call("setMyCommands", {
+                        "commands": self.menu(self.admins[admin_id].get("level")),
+                        "scope": {"type": "chat", "chat_id": admin_id},
+                    })
+                elif admin_id in self._menu_scopes:
+                    self.api.call("deleteMyCommands", {"scope": {"type": "chat", "chat_id": admin_id}})
+            for old in self._menu_scopes - wanted:
+                self.api.call("deleteMyCommands", {"scope": {"type": "chat", "chat_id": old}})
+            self._menu_scopes = wanted if has_admin_cmds else set()
         except Aborted:
             raise
         except Exception as exc:  # noqa: BLE001
@@ -345,11 +387,23 @@ class Engine:
             return
         name, args = parsed
         sender = user.get("username") and "@" + user["username"] or user.get("first_name", "")
+        if name == NEWADMIN_COMMAND:
+            self.handle_newadmin(message, args, sender)
+            return
         self.emit("received", user=sender, chat=chat.get("title") or "", text=text[:200])
         command = self.find_command(name)
         if command is None:
             self.emit("unknown_command", command=name)
             return
+        required = command.get("admin_level")
+        if required is not None:
+            self.maybe_reload_admins()
+            admin = self.admins.get(user.get("id"))
+            if not admins_mod.can_use(admin and admin.get("level"), required):
+                # Para quem não pode, o comando "não existe": nenhuma resposta.
+                self.emit("denied", user=sender, user_id=user.get("id"), command=name,
+                          required=required, level=admin and admin.get("level"))
+                return
 
         stamp = self._now()
         date, _, hour = stamp.partition(" ")
@@ -367,6 +421,32 @@ class Engine:
                 reply_to = None  # só a primeira mensagem responde à do usuário
         if sent:
             self.emit("replied", command=name, chat=chat.get("id"), messages=sent)
+
+    def handle_newadmin(self, message, args, sender):
+        """``/newadmin CÓDIGO``: comando secreto. Sem código válido, não responde nada."""
+        user = message.get("from") or {}
+        chat = message.get("chat") or {}
+        code = args.split()[0] if args else ""
+        # Só em conversa privada: em grupo o código ficaria visível para todos.
+        admin = None
+        if code and chat.get("type") == "private":
+            admin = admins_mod.redeem_code(self.base_dir, code, user)
+        if admin is None:
+            self.emit("newadmin_invalid", user=sender, user_id=user.get("id"),
+                      private=chat.get("type") == "private", had_code=bool(code))
+            return
+        self.admins[admin["id"]] = admin
+        self._call_send("sendMessage", {"chat_id": chat.get("id"), "text": NEWADMIN_REPLY}, NEWADMIN_COMMAND)
+        # Tira o código da conversa (se o Telegram deixar).
+        try:
+            self.api.call("deleteMessage", {"chat_id": chat.get("id"), "message_id": message.get("message_id")})
+        except Aborted:
+            raise
+        except Exception:  # noqa: BLE001
+            pass
+        self.emit("admin_added", admin=admin, user=sender)
+        self.maybe_reload_admins(force=True)
+        self.publish_commands()
 
     def send_message(self, chat_id, msg, context, command_name, reply_to=None):
         """Envia uma mensagem configurada (texto e/ou mídia + botões). ``True`` se deu certo."""

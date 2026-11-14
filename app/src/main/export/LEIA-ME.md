@@ -32,3 +32,14 @@ celular antes de ligá-lo aqui (senão aparece o erro 409 Conflict).
 `` `código` ``, `[texto](https://link)` e `> citação`. Variáveis: `{nome}`,
 `{sobrenome}`, `{usuario}`, `{id}`, `{grupo}`, `{args}`, `{data}`, `{hora}`,
 `{bot}`.
+
+## Administradores
+
+Para tornar alguém administrador (classe I a X, sendo I a mais alta):
+
+    python3 run.py newadmin 3
+
+O comando mostra um código de uso único, válido por 10 minutos. A pessoa manda
+`/newadmin CÓDIGO` para o bot em conversa privada. Os admins ficam em
+`admins.json`. Um admin de classe N pode usar comandos que exigem a classe N ou
+uma classe mais baixa (ex.: classe III usa os comandos de III, IV e V).
