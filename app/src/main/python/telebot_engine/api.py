@@ -7,10 +7,13 @@ sem esperar os ~50 s do timeout.
 
 import http.client
 import json
+import mimetypes
+import os
 import socket
 import ssl
 import threading
 import urllib.parse
+import uuid
 
 HOST = "api.telegram.org"
 
@@ -66,6 +69,25 @@ class TelegramApi:
             except OSError:
                 pass
 
+    def interrupt(self):
+        """Fecha a conexão atual sem parar o cliente (o long polling volta a ser feito).
+
+        Usado para o motor recarregar a configuração na hora, sem esperar os ~50 s.
+        """
+        with self._lock:
+            conn = self._conn
+            self._conn = None
+        if conn is not None:
+            try:
+                if conn.sock is not None:
+                    conn.sock.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+            try:
+                conn.close()
+            except OSError:
+                pass
+
     def _open(self, timeout):
         with self._lock:
             if self._aborted:
@@ -91,10 +113,18 @@ class TelegramApi:
 
     # -- chamadas --------------------------------------------------------------
 
-    def call(self, method, params=None, timeout=30):
-        body = json.dumps(params or {}).encode("utf-8")
+    def call(self, method, params=None, timeout=30, files=None):
+        """Chama um método da Bot API.
+
+        ``files`` = ``{"campo": caminho_do_arquivo}`` envia como multipart (upload).
+        """
+        if files:
+            body, ctype = _multipart(params or {}, files)
+        else:
+            body = json.dumps(params or {}).encode("utf-8")
+            ctype = "application/json"
         path = "/bot%s/%s" % (self.token, method)
-        headers = {"Content-Type": "application/json", "Connection": "keep-alive"}
+        headers = {"Content-Type": ctype, "Connection": "keep-alive"}
         try:
             conn = self._open(timeout)
             conn.request("POST", path, body=body, headers=headers)
@@ -141,3 +171,34 @@ class TelegramApi:
         with open(dest, "wb") as fh:
             fh.write(data)
         return dest
+
+
+def _safe_filename(name):
+    base = "".join(c if c.isalnum() or c in "._-" else "_" for c in os.path.basename(name))
+    return base or "arquivo"
+
+
+def _multipart(params, files):
+    boundary = "----easytelebot" + uuid.uuid4().hex
+    parts = []
+    for key, value in params.items():
+        if value is None:
+            continue
+        if not isinstance(value, str):
+            value = json.dumps(value, ensure_ascii=False)
+        parts.append(
+            ("--%s\r\nContent-Disposition: form-data; name=\"%s\"\r\n\r\n" % (boundary, key)).encode("utf-8")
+            + value.encode("utf-8") + b"\r\n"
+        )
+    for key, path in files.items():
+        filename = _safe_filename(path)
+        mime = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+        with open(path, "rb") as fh:
+            data = fh.read()
+        parts.append(
+            ("--%s\r\nContent-Disposition: form-data; name=\"%s\"; filename=\"%s\"\r\n"
+             "Content-Type: %s\r\n\r\n" % (boundary, key, filename, mime)).encode("utf-8")
+            + data + b"\r\n"
+        )
+    parts.append(("--%s--\r\n" % boundary).encode("utf-8"))
+    return b"".join(parts), "multipart/form-data; boundary=%s" % boundary

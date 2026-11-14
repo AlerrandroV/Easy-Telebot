@@ -38,46 +38,62 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import io.github.alerrandrov.easytelebot.R
-import io.github.alerrandrov.easytelebot.data.Prefs
+import io.github.alerrandrov.easytelebot.data.BotMeta
+import io.github.alerrandrov.easytelebot.data.BotRepository
+import io.github.alerrandrov.easytelebot.data.ConfigRepository
 import io.github.alerrandrov.easytelebot.data.TokenStore
+import io.github.alerrandrov.easytelebot.engine.EngineError
 import io.github.alerrandrov.easytelebot.engine.ErrorExplainer
 import io.github.alerrandrov.easytelebot.engine.PythonBridge
 import io.github.alerrandrov.easytelebot.service.BotService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 @Composable
-fun TokenScreen(canGoBack: Boolean, onBack: () -> Unit, onSaved: () -> Unit) {
+fun TokenScreen(expectedBotId: Long?, onBack: () -> Unit, onSaved: (Long) -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var token by remember { mutableStateOf("") }
     var showToken by remember { mutableStateOf(false) }
     var checking by remember { mutableStateOf(false) }
-    var result by remember { mutableStateOf<PythonBridge.CheckResult?>(null) }
-    var showHelp by remember { mutableStateOf(!canGoBack) }
+    var result by remember { mutableStateOf<PythonBridge.Result<PythonBridge.BotInfo>?>(null) }
+    var showHelp by remember { mutableStateOf(expectedBotId == null && BotRepository.bots.value.isEmpty()) }
+    val tempPhoto = remember { File(context.cacheDir, "check_photo.jpg") }
 
     fun check() {
         if (token.isBlank() || checking) return
         checking = true
         result = null
         scope.launch {
-            val r = withContext(Dispatchers.IO) {
-                try {
-                    PythonBridge.checkToken(context, token.trim())
-                } catch (e: Exception) {
-                    PythonBridge.CheckResult.Failed(
-                        io.github.alerrandrov.easytelebot.engine.EngineError("unknown", e.message ?: e.toString())
-                    )
-                }
+            tempPhoto.delete()
+            val r = withContext(Dispatchers.IO) { PythonBridge.checkToken(context, token.trim(), tempPhoto.path) }
+            result = if (r is PythonBridge.Result.Ok && expectedBotId != null && r.value.id != expectedBotId) {
+                PythonBridge.Result.Failed(EngineError("wrong_bot", "@" + r.value.username))
+            } else {
+                r
             }
-            result = r
             checking = false
         }
     }
 
+    fun save(bot: PythonBridge.BotInfo) {
+        val id = bot.id
+        TokenStore.save(context, id, token.trim())
+        val existing = BotRepository.get(id)
+        if (bot.photoPath != null) tempPhoto.copyTo(BotRepository.photoFile(id).apply { parentFile?.mkdirs() }, overwrite = true)
+        val meta = existing?.copy(name = bot.firstName, username = bot.username, photoVersion = existing.photoVersion + 1)
+            ?: BotMeta(id = id, name = bot.firstName, username = bot.username)
+        BotRepository.save(meta)
+        ConfigRepository.load(id)  // cria a configuração inicial, se ainda não existir
+        BotService.restartIfRunning(context, id)
+        onSaved(id)
+    }
+
+    val title = stringResource(if (expectedBotId == null) R.string.token_title else R.string.token_change)
     Scaffold(
-        topBar = { AppBar(stringResource(R.string.token_title), onBack = if (canGoBack) onBack else null) },
+        topBar = { AppBar(title, onBack = onBack) },
     ) { padding ->
         Column(
             Modifier
@@ -116,33 +132,25 @@ fun TokenScreen(canGoBack: Boolean, onBack: () -> Unit, onSaved: () -> Unit) {
             }
 
             when (val r = result) {
-                is PythonBridge.CheckResult.Ok -> Card(Modifier.fillMaxWidth()) {
+                is PythonBridge.Result.Ok -> Card(Modifier.fillMaxWidth()) {
+                    val bot = r.value
+                    val exists = expectedBotId == null && BotRepository.get(bot.id) != null
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            BotAvatar(r.bot.firstName, r.bot.photoPath)
+                            BotAvatar(bot.firstName, bot.photoPath, version = System.identityHashCode(r).toLong())
                             Spacer(Modifier.width(12.dp))
                             Column {
-                                Text(r.bot.firstName, style = MaterialTheme.typography.titleMedium)
-                                Text("@${r.bot.username}", style = MaterialTheme.typography.bodyMedium)
+                                Text(bot.firstName, style = MaterialTheme.typography.titleMedium)
+                                Text("@${bot.username}", style = MaterialTheme.typography.bodyMedium)
                             }
                         }
-                        Text(stringResource(R.string.token_ok))
-                        Button(
-                            onClick = {
-                                TokenStore.save(context, token.trim())
-                                Prefs(context).apply {
-                                    botName = r.bot.firstName
-                                    botUsername = r.bot.username
-                                    botPhoto = r.bot.photoPath
-                                }
-                                BotService.restartIfRunning(context)
-                                onSaved()
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) { Text(stringResource(R.string.token_save)) }
+                        Text(stringResource(if (exists) R.string.token_ok_existing else R.string.token_ok))
+                        Button(onClick = { save(bot) }, modifier = Modifier.fillMaxWidth()) {
+                            Text(stringResource(if (expectedBotId == null && !exists) R.string.token_save else R.string.token_update))
+                        }
                     }
                 }
-                is PythonBridge.CheckResult.Failed -> ExplanationCard(ErrorExplainer.explain(context, r.error))
+                is PythonBridge.Result.Failed -> ExplanationCard(ErrorExplainer.explain(context, r.error))
                 null -> {}
             }
 

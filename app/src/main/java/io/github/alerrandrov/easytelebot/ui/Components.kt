@@ -11,6 +11,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -24,27 +27,42 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.alerrandrov.easytelebot.R
+import io.github.alerrandrov.easytelebot.data.BotMeta
+import io.github.alerrandrov.easytelebot.data.BotRepository
+import io.github.alerrandrov.easytelebot.engine.BotState
+import io.github.alerrandrov.easytelebot.engine.BotStatus
 import io.github.alerrandrov.easytelebot.engine.Explanation
+import kotlinx.coroutines.delay
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppBar(title: String, onBack: (() -> Unit)? = null) {
+fun AppBar(
+    title: String,
+    onBack: (() -> Unit)? = null,
+    actions: @Composable RowScope.() -> Unit = {},
+) {
     TopAppBar(
-        title = { Text(title) },
+        title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        actions = actions,
         navigationIcon = {
             if (onBack != null) {
                 IconButton(onClick = onBack) {
@@ -59,8 +77,8 @@ fun AppBar(title: String, onBack: (() -> Unit)? = null) {
 }
 
 @Composable
-fun BotAvatar(name: String, photoPath: String?, size: Dp = 56.dp) {
-    val bitmap = remember(photoPath) {
+fun BotAvatar(name: String, photoPath: String?, size: Dp = 56.dp, version: Long = 0) {
+    val bitmap = remember(photoPath, version) {
         photoPath?.let { p -> File(p).takeIf { it.exists() }?.let { BitmapFactory.decodeFile(it.path) } }
     }
     if (bitmap != null) {
@@ -86,6 +104,66 @@ fun BotAvatar(name: String, photoPath: String?, size: Dp = 56.dp) {
             )
         }
     }
+}
+
+@Composable
+fun BotAvatar(meta: BotMeta, size: Dp = 56.dp) =
+    BotAvatar(meta.name, BotRepository.photoFile(meta.id).path, size, meta.photoVersion)
+
+/** "Agora" que se atualiza sozinho, para textos como "Ligado há 5 min". */
+@Composable
+fun rememberNow(): Long {
+    val now by produceState(System.currentTimeMillis()) {
+        while (true) {
+            delay(20_000)
+            value = System.currentTimeMillis()
+        }
+    }
+    return now
+}
+
+fun formatElapsed(context: Context, millis: Long): String {
+    val minutes = (millis / 60_000).coerceAtLeast(0)
+    return when {
+        minutes < 1 -> context.getString(R.string.elapsed_now)
+        minutes < 60 -> context.getString(R.string.elapsed_min, minutes)
+        minutes < 24 * 60 -> context.getString(R.string.elapsed_hours, minutes / 60, minutes % 60)
+        else -> context.getString(R.string.elapsed_days, minutes / (24 * 60), (minutes / 60) % 24)
+    }
+}
+
+@Composable
+fun statusLabel(status: BotStatus, now: Long): Pair<String, Color> {
+    val context = LocalContext.current
+    return when {
+        !status.running && status.state == BotState.FATAL -> stringResource(R.string.state_fatal) to Color(0xFFD32F2F)
+        !status.running -> stringResource(R.string.state_stopped) to Color(0xFF9E9E9E)
+        status.state == BotState.RUNNING ->
+            stringResource(R.string.state_running_for, formatElapsed(context, now - status.startedAt)) to Color(0xFF2E7D32)
+        status.state == BotState.RETRYING -> stringResource(R.string.state_retrying) to Color(0xFFF9A825)
+        status.state == BotState.FATAL -> stringResource(R.string.state_fatal) to Color(0xFFD32F2F)
+        else -> stringResource(R.string.state_starting) to Color(0xFFF9A825)
+    }
+}
+
+@Composable
+fun StatusLine(status: BotStatus, now: Long) {
+    val (label, color) = statusLabel(status, now)
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(10.dp).background(color, CircleShape))
+        Spacer(Modifier.width(8.dp))
+        Text(label, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+@Composable
+fun SectionTitle(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(top = 8.dp),
+    )
 }
 
 /** Erro explicado: o que aconteceu + passo a passo + botões de ação. */

@@ -39,6 +39,12 @@ object ErrorExplainer {
             "too_many_requests" -> e(R.string.err_429_title, R.string.err_429_msg, null)
             "parse_entities" -> e(R.string.err_parse_title, R.string.err_parse_msg, null)
             "killed" -> e(R.string.err_killed_title, R.string.err_killed_msg, null, ErrorAction.BATTERY_GUIDE)
+            "media_error" -> e(R.string.err_media_title, R.string.err_media_msg, null)
+            "media_missing" -> e(R.string.err_media_missing_title, R.string.err_media_missing_msg, null)
+            "too_long" -> e(R.string.err_too_long_title, R.string.err_too_long_msg, null)
+            "bad_button_url" -> e(R.string.err_button_url_title, R.string.err_button_url_msg, null)
+            "photo_unsupported" -> e(R.string.err_photo_unsupported_title, R.string.err_photo_unsupported_msg, R.array.botfather_photo_steps)
+            "wrong_bot" -> e(R.string.err_wrong_bot_title, R.string.err_wrong_bot_msg, null)
             else -> e(R.string.err_unknown_title, R.string.err_unknown_msg, null)
         }
         val extra = buildList {
