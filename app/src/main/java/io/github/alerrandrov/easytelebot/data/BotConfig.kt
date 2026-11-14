@@ -42,10 +42,26 @@ data class BroadcastSettings(
     val triggers: List<String> = listOf("post", "publi"),
 )
 
+/** Antispam: bloqueio automático de quem inunda o bot (veja `antispam.py`). */
+data class AntispamSettings(
+    val enabled: Boolean = true,
+    /** "baixa", "media" ou "alta". */
+    val sensitivity: String = "media",
+    /** Classe mínima de admin que recebe o aviso e pode julgar. */
+    val adminLevel: Int = 1,
+    /** Avisar a pessoa de que foi bloqueada e que um admin vai analisar. */
+    val warnUser: Boolean = true,
+) {
+    companion object {
+        val LEVELS = listOf("baixa", "media", "alta")
+    }
+}
+
 data class BotConfig(
     val autoMenu: Boolean = true,
     val commands: List<SimpleCommand> = emptyList(),
     val broadcast: BroadcastSettings = BroadcastSettings(),
+    val antispam: AntispamSettings = AntispamSettings(),
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("version", VERSION)
@@ -68,6 +84,11 @@ data class BotConfig(
             .put("enabled", broadcast.enabled)
             .put("admin_level", broadcast.adminLevel)
             .put("triggers", JSONArray(broadcast.triggers)))
+        put("antispam", JSONObject()
+            .put("enabled", antispam.enabled)
+            .put("sensitivity", antispam.sensitivity)
+            .put("admin_level", antispam.adminLevel)
+            .put("warn_user", antispam.warnUser))
         put("keywords", JSONArray())
         put("welcome", JSONObject().put("enabled", false).put("text", ""))
         put("schedules", JSONArray())
@@ -151,7 +172,14 @@ data class BotConfig(
                 triggers = b.optJSONArray("triggers")?.let { a -> (0 until a.length()).map { a.getString(it) } }
                     ?.takeIf { it.isNotEmpty() } ?: listOf("post", "publi"),
             )
-            return BotConfig(json.optBoolean("auto_menu", true), list, broadcast)
+            val a = json.optJSONObject("antispam")
+            val antispam = if (a == null) AntispamSettings() else AntispamSettings(
+                enabled = a.optBoolean("enabled", true),
+                sensitivity = a.optString("sensitivity", "media").takeIf { it in AntispamSettings.LEVELS } ?: "media",
+                adminLevel = a.optInt("admin_level", 1).coerceIn(1, AdminLevels.MAX),
+                warnUser = a.optBoolean("warn_user", true),
+            )
+            return BotConfig(json.optBoolean("auto_menu", true), list, broadcast, antispam)
         }
     }
 }

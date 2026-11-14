@@ -186,8 +186,9 @@ object ChatsBridge {
         null
     }
 
-    fun send(context: Context, token: String, dir: String, chatId: Long, payload: JSONObject) =
-        guard { result(module(context).callAttr("send", token, dir, chatId, payload.toString()).toString()) }
+    /** `storageJson` = banco do bot (a mensagem enviada também é gravada lá). */
+    fun send(context: Context, token: String, dir: String, chatId: Long, payload: JSONObject, storageJson: String) =
+        guard { result(module(context).callAttr("send", token, dir, chatId, payload.toString(), storageJson).toString()) }
 
     fun delete(context: Context, token: String, dir: String, chatId: Long, messageId: Long) =
         guard { result(module(context).callAttr("delete_message", token, dir, chatId, messageId).toString()) }

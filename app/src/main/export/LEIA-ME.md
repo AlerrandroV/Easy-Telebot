@@ -59,3 +59,11 @@ Admins (com a classe configurada no app) mandam `/post` em conversa privada,
 enviam as mensagens, `/pronto` para ver a prévia e `/confirmar CÓDIGO` para
 enviar a todos (ou `/confirmar CÓDIGO usuarios grupos canais`). Botões:
 linhas `[Texto | link]` no fim do texto ou da legenda.
+
+## Antispam
+
+Quem manda mensagens demais em pouco tempo (ou repete a mesma mensagem) é
+bloqueado sozinho: o bot passa a ignorar a pessoa e avisa os admins da classe
+configurada, com os botões ✅ Desbloquear e 🚫 Manter bloqueado. Os bloqueios
+ficam em `bans.json` (apague uma entrada para desbloquear à mão). A
+sensibilidade fica em `config.json`, no campo `antispam`.

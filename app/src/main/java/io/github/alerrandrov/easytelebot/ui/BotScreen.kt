@@ -57,6 +57,7 @@ import io.github.alerrandrov.easytelebot.data.ConfigRepository
 import io.github.alerrandrov.easytelebot.data.SimpleCommand
 import io.github.alerrandrov.easytelebot.data.StorageRepository
 import io.github.alerrandrov.easytelebot.data.TokenStore
+import io.github.alerrandrov.easytelebot.engine.AntispamBridge
 import io.github.alerrandrov.easytelebot.engine.BotRuntime
 import io.github.alerrandrov.easytelebot.engine.BotState
 import io.github.alerrandrov.easytelebot.engine.ChatsBridge
@@ -82,6 +83,7 @@ fun BotScreen(
     onStorage: () -> Unit,
     onChats: () -> Unit,
     onBroadcast: () -> Unit,
+    onAntispam: () -> Unit,
     onChangeToken: () -> Unit,
     onBattery: () -> Unit,
 ) {
@@ -98,6 +100,10 @@ fun BotScreen(
     val now = rememberNow()
 
     var config by remember { mutableStateOf(ConfigRepository.load(botId)) }
+    val bansVersions by BotRuntime.bansVersion.collectAsStateWithLifecycle()
+    val pending by produceState(0, bansVersions[botId]) {
+        value = withContext(Dispatchers.IO) { AntispamBridge.countPending(context, BotRepository.dir(botId).path) }
+    }
     var showAddSheet by remember { mutableStateOf(false) }
     var showExport by remember { mutableStateOf(false) }
     var includeToken by remember { mutableStateOf(false) }
@@ -230,6 +236,18 @@ fun BotScreen(
                     title = "📢  " + stringResource(R.string.broadcast_title),
                     subtitle = stringResource(R.string.bot_broadcast_sub),
                     onClick = onBroadcast,
+                )
+            }
+
+            item {
+                SectionCard(
+                    title = "🛡️  " + stringResource(R.string.antispam_title),
+                    subtitle = when {
+                        pending > 0 -> stringResource(R.string.bot_antispam_pending, pending)
+                        config.antispam.enabled -> stringResource(R.string.bot_antispam_on)
+                        else -> stringResource(R.string.bot_antispam_off)
+                    },
+                    onClick = onAntispam,
                 )
             }
 

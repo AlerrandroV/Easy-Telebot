@@ -6,6 +6,7 @@ import io.github.alerrandrov.easytelebot.R
 import io.github.alerrandrov.easytelebot.data.AdminLevels
 import io.github.alerrandrov.easytelebot.data.BotRepository
 import io.github.alerrandrov.easytelebot.data.Prefs
+import io.github.alerrandrov.easytelebot.service.Alerts
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -60,7 +61,15 @@ object BotRuntime {
     private val _chatVersion = MutableStateFlow<Map<Long, Long>>(emptyMap())
     val chatVersion: StateFlow<Map<Long, Long>> = _chatVersion.asStateFlow()
 
-    fun bumpChats(id: Long) = _chatVersion.update { it + (id to ((it[id] ?: 0L) + 1)) }
+    fun bumpChats(id: Long) = _chatVersion.bump(id)
+
+    /** Muda a cada bloqueio/decisão do antispam, para a tela de antispam recarregar. */
+    private val _bansVersion = MutableStateFlow<Map<Long, Long>>(emptyMap())
+    val bansVersion: StateFlow<Map<Long, Long>> = _bansVersion.asStateFlow()
+
+    fun bumpBans(id: Long) = _bansVersion.bump(id)
+
+    private fun MutableStateFlow<Map<Long, Long>>.bump(id: Long) = update { it + (id to ((it[id] ?: 0L) + 1)) }
 
     /** Motores Python ativos (para pedir recarga/parada de qualquer thread). */
     val engines = ConcurrentHashMap<Long, PyObject>()
@@ -156,6 +165,23 @@ object BotRuntime {
             "recovered" -> add(id, LogEntry.Level.INFO, s(R.string.log_recovered))
             "storage_ok" -> add(id, LogEntry.Level.INFO, s(R.string.log_storage_ok))
             "chat" -> bumpChats(id)
+            "spam_blocked" -> {
+                val name = e.optString("name")
+                val reason = e.optString("reason_text")
+                add(id, LogEntry.Level.WARN, s(R.string.log_spam_blocked, name, reason, e.optInt("admins_notified")))
+                bumpBans(id)
+                val botName = BotRepository.bots.value.firstOrNull { it.id == id }?.name ?: ""
+                Alerts.spamBlocked(app, id, botName, e.optLong("user_id"), name, reason)
+            }
+            "spam_decided" -> {
+                val released = e.optString("action") == "release"
+                add(
+                    id, LogEntry.Level.INFO,
+                    s(if (released) R.string.log_spam_released else R.string.log_spam_kept, e.optString("name"), e.optString("by")),
+                )
+                bumpBans(id)
+                Alerts.dismissSpam(app, id, e.optLong("user_id"))
+            }
             "post_started" -> add(id, LogEntry.Level.INFO, s(R.string.log_post_started, e.optString("user")))
             "broadcast_started" -> add(id, LogEntry.Level.INFO, s(R.string.log_broadcast_started, e.optInt("total")))
             "broadcast_done" -> add(

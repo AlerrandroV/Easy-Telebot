@@ -356,7 +356,7 @@ class _SendCallbacks:
         return time.strftime("%d/%m/%Y %H:%M")
 
 
-def send(token, bot_dir, chat_id, payload):
+def send(token, bot_dir, chat_id, payload, storage=None):
     """Envia uma mensagem em nome do bot, pelo app.
 
     ``payload`` (JSON): ``{"text", "media": {"type", "file"|"file_id", "name"}, "buttons": [[...]],
@@ -373,12 +373,14 @@ def send(token, bot_dir, chat_id, payload):
     user = {"id": int(chat_id), "first_name": (row and row["first_name"]) or "",
             "last_name": (row and row["last_name"]) or "", "username": row and row["username"]}
     cb = _SendCallbacks()
-    eng = Engine(token, os.path.join(bot_dir, "config.json"), bot_dir, cb)
+    eng = Engine(token, os.path.join(bot_dir, "config.json"), bot_dir, cb, storage=storage)
     eng.send_source = "manual"
     try:
         me = eng.api.call("getMe", timeout=20)
     except Exception as exc:  # noqa: BLE001
         return _fail(exc)
+    if eng.storage:
+        eng.storage.direct = True  # a mensagem enviada vai para o banco na hora, sem thread
     stamp = cb.nowLocal()
     context = template.build_context({"from": user, "chat": chat}, "", me.get("username", ""),
                                      *stamp.split(" "))

@@ -5,7 +5,7 @@ Configuração (``storage.json`` na pasta do bot + segredos guardados à parte):
     {
       "type": "internal" | "device" | "firebase_rtdb" | "firestore" | "dynamodb",
       "store_users": true,          # quem falou com o bot
-      "store_history": false,       # cada mensagem recebida
+      "store_history": true,        # cada mensagem recebida e enviada pelo bot
       "device_path": "/storage/emulated/0/EasyTelebot/meubot",
       "firebase_url": "https://xxx-default-rtdb.firebaseio.com",
       "firebase_secret": "...",                     (segredo)
@@ -24,6 +24,7 @@ import os
 import time
 
 from .. import admins as admins_mod
+from .. import chats
 from . import http
 from .backends import DynamoDBStore, FirebaseRealtimeStore, FirestoreStore, LocalStore
 from .http import StorageError
@@ -43,7 +44,10 @@ def parse_settings(settings):
     settings = dict(settings or {})
     settings.setdefault("type", "internal")
     settings.setdefault("store_users", True)
-    settings.setdefault("store_history", False)
+    if "v" not in settings or "store_history" not in settings:
+        # Antes da v2 o histórico vinha desligado; agora as mensagens vão para o banco
+        # (dá para desligar de novo na tela do banco). Mesma regra de Storage.kt.
+        settings["store_history"] = True
     return settings
 
 
@@ -99,18 +103,27 @@ def record_user(store, user, chat, now=None):
     store.put(USERS, user["id"], doc)
 
 
-def record_message(store, update_id, message, text):
+def record_message(store, update_id, message, text, direction="in", source="user"):
+    """Uma mensagem no histórico. ``direction``: ``in`` (recebida) ou ``out`` (enviada pelo bot);
+    ``source``: ``user``, ``auto`` (resposta de comando), ``manual`` (enviada pelo app)."""
     user = message.get("from") or {}
     chat = message.get("chat") or {}
     now = int(time.time())
+    kind = chats.parse_message(message)["kind"]
     store.put(HISTORY, "%d-%s" % (now, update_id), {
         "at": now,
+        "date": message.get("date") or now,
+        "direction": direction,
+        "source": source,
+        "kind": kind,
+        "message_id": message.get("message_id"),
         "user_id": user.get("id"),
         "username": user.get("username") or "",
         "name": user.get("first_name") or "",
         "chat_id": chat.get("id"),
-        "chat": chat.get("title") or "",
-        "text": text[:1000],
+        "chat_type": chat.get("type") or "",
+        "chat": chat.get("title") or chat.get("first_name") or "",
+        "text": text[:4096],
     })
 
 

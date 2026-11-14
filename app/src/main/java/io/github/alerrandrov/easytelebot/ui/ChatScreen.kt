@@ -55,6 +55,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -91,7 +93,10 @@ import io.github.alerrandrov.easytelebot.data.BotRepository
 import io.github.alerrandrov.easytelebot.data.MediaImporter
 import io.github.alerrandrov.easytelebot.data.MessageMedia
 import io.github.alerrandrov.easytelebot.data.TokenStore
+import io.github.alerrandrov.easytelebot.data.StorageRepository
 import io.github.alerrandrov.easytelebot.engine.BotRuntime
+import io.github.alerrandrov.easytelebot.engine.SpamBan
+import io.github.alerrandrov.easytelebot.engine.AntispamBridge
 import io.github.alerrandrov.easytelebot.engine.ChatMessage
 import io.github.alerrandrov.easytelebot.engine.ChatSummary
 import io.github.alerrandrov.easytelebot.engine.ChatsBridge
@@ -128,6 +133,11 @@ fun ChatScreen(botId: Long, chatId: Long, onBack: () -> Unit) {
     val chat by produceState<ChatSummary?>(null, version) {
         value = withContext(Dispatchers.IO) { ChatsBridge.listChats(context, dir).firstOrNull { it.chatId == chatId } }
     }
+    val bansVersions by BotRuntime.bansVersion.collectAsStateWithLifecycle()
+    val ban by produceState<SpamBan?>(null, bansVersions[botId]) {
+        value = withContext(Dispatchers.IO) { AntispamBridge.get(context, dir, chatId) }
+    }
+    var confirmBlock by remember { mutableStateOf(false) }
     var messages by remember { mutableStateOf<List<ChatMessage>>(emptyList()) }
     var hasMore by remember { mutableStateOf(true) }
     var loadingOlder by remember { mutableStateOf(false) }
@@ -209,7 +219,7 @@ fun ChatScreen(botId: Long, chatId: Long, onBack: () -> Unit) {
         sending = true
         sendError = null
         scope.launch {
-            val r = withContext(Dispatchers.IO) { ChatsBridge.send(context, token, dir, chatId, payload) }
+            val r = withContext(Dispatchers.IO) { ChatsBridge.send(context, token, dir, chatId, payload, StorageRepository.engineJson(context, botId)) }
             sending = false
             when (r) {
                 is PythonBridge.Result.Ok -> {
@@ -261,6 +271,12 @@ fun ChatScreen(botId: Long, chatId: Long, onBack: () -> Unit) {
                                     openUrl(context, "https://t.me/$u")
                                 })
                             }
+                            if (chat?.type == "private" && ban == null) {
+                                DropdownMenuItem(text = { Text(stringResource(R.string.chat_block)) }, onClick = {
+                                    topMenu = false
+                                    confirmBlock = true
+                                })
+                            }
                             DropdownMenuItem(text = { Text(stringResource(R.string.chat_clear)) }, onClick = {
                                 topMenu = false
                                 confirmClear = true
@@ -304,10 +320,32 @@ fun ChatScreen(botId: Long, chatId: Long, onBack: () -> Unit) {
             )
         },
     ) { padding ->
+      Column(Modifier.fillMaxSize().padding(padding)) {
+        ban?.let { b ->
+            Card(
+                Modifier.fillMaxWidth().padding(8.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                ),
+            ) {
+                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.chat_blocked_title), fontWeight = FontWeight.Bold)
+                        Text(banReason(b), style = MaterialTheme.typography.bodySmall)
+                    }
+                    TextButton(onClick = {
+                        scope.launch(Dispatchers.IO) {
+                            AntispamBridge.decide(context, token, dir, botId, chatId, AntispamBridge.RELEASE)
+                        }
+                    }) { Text(stringResource(R.string.antispam_release)) }
+                }
+            }
+        }
         LazyColumn(
             state = listState,
             reverseLayout = true,
-            modifier = Modifier.fillMaxSize().padding(padding),
+            modifier = Modifier.fillMaxWidth().weight(1f),
             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
@@ -360,6 +398,7 @@ fun ChatScreen(botId: Long, chatId: Long, onBack: () -> Unit) {
                 }
             }
         }
+      }
     }
 
     if (showButtons) {
@@ -375,6 +414,23 @@ fun ChatScreen(botId: Long, chatId: Long, onBack: () -> Unit) {
                 attachment = OutgoingMedia(MessageMedia("sticker", "", s.emoji.ifBlank { "sticker" }), s.fileId)
             },
             onPickFile = { showStickers = false; stickerFilePicker.launch(arrayOf("image/webp", "application/x-tgsticker", "video/webm")) },
+        )
+    }
+    if (confirmBlock) {
+        AlertDialog(
+            onDismissRequest = { confirmBlock = false },
+            title = { Text(stringResource(R.string.chat_block_title, chat?.displayName ?: "")) },
+            text = { Text(stringResource(R.string.chat_block_msg)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmBlock = false
+                    val c = chat
+                    scope.launch(Dispatchers.IO) {
+                        AntispamBridge.block(context, dir, botId, chatId, c?.firstName ?: "", c?.lastName ?: "", c?.username ?: "")
+                    }
+                }) { Text(stringResource(R.string.chat_block), color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { confirmBlock = false }) { Text(stringResource(R.string.cancel)) } },
         )
     }
     if (confirmClear) {
@@ -416,13 +472,34 @@ private fun DayHeader(date: Long) {
     }
 }
 
+/**
+ * Cores de um balão. As do bot usam o par primary/onPrimary do tema (contraste
+ * garantido pelo Material 3, inclusive com as cores dinâmicas do Android 12+);
+ * as recebidas, surfaceContainerHighest/onSurface. Links, citações e código
+ * derivam da cor do texto do próprio balão, para nunca sumirem no fundo.
+ */
+private data class BubbleColors(
+    val background: Color,
+    val content: Color,
+    val secondary: Color,
+    val accent: Color,
+    val tint: Color,
+)
+
+@Composable
+private fun bubbleColors(outgoing: Boolean, transparent: Boolean): BubbleColors {
+    val cs = MaterialTheme.colorScheme
+    return when {
+        transparent -> BubbleColors(Color.Transparent, cs.onBackground, cs.onSurfaceVariant, cs.primary, cs.onSurface.copy(alpha = 0.08f))
+        outgoing -> BubbleColors(cs.primary, cs.onPrimary, cs.onPrimary.copy(alpha = 0.8f), cs.onPrimary, cs.onPrimary.copy(alpha = 0.18f))
+        else -> BubbleColors(cs.surfaceContainerHighest, cs.onSurface, cs.onSurfaceVariant, cs.primary, cs.onSurface.copy(alpha = 0.08f))
+    }
+}
+
 /** Texto com a formatação do Telegram (entities): negrito, itálico, links, código, spoiler... */
 @Composable
-fun telegramText(text: String, entities: List<TgEntity>): AnnotatedString {
-    val link = MaterialTheme.colorScheme.primary
-    val codeBg = MaterialTheme.colorScheme.surfaceVariant
-    val spoiler = MaterialTheme.colorScheme.onSurface
-    return remember(text, entities, link) {
+private fun telegramText(text: String, entities: List<TgEntity>, link: Color, codeBg: Color, spoiler: Color): AnnotatedString {
+    return remember(text, entities, link, codeBg, spoiler) {
         buildAnnotatedString {
             append(text)
             val linkStyle = TextLinkStyles(SpanStyle(color = link, textDecoration = TextDecoration.Underline))
@@ -487,35 +564,33 @@ private fun MessageBubble(m: ChatMessage, showSender: Boolean, token: String?, d
     }
 
     val isSticker = m.kind == "sticker"
-    val bg = when {
-        isSticker -> Color.Transparent
-        m.outgoing -> MaterialTheme.colorScheme.primaryContainer
-        else -> MaterialTheme.colorScheme.surfaceVariant
-    }
+    val colors = bubbleColors(m.outgoing, transparent = isSticker)
     Column(Modifier.fillMaxWidth(), horizontalAlignment = if (m.outgoing) Alignment.End else Alignment.Start) {
+      CompositionLocalProvider(LocalContentColor provides colors.content) {
         Column(
             Modifier
                 .widthIn(max = 300.dp)
                 .clip(RoundedCornerShape(14.dp))
-                .background(bg)
+                .background(colors.background)
                 .combinedClickable(onClick = { if (m.fileId != null && m.kind != "photo") openMedia() }, onLongClick = onLongPress)
                 .padding(if (isSticker) 0.dp else 8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             if (showSender) {
-                Text(m.fromName, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                Text(m.fromName, style = MaterialTheme.typography.labelLarge, color = colors.accent)
             }
             m.reply?.let { r ->
                 Row(
-                    Modifier.clip(RoundedCornerShape(6.dp)).background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)).padding(6.dp),
+                    Modifier.clip(RoundedCornerShape(6.dp)).background(colors.tint).padding(6.dp),
                 ) {
-                    Box(Modifier.width(3.dp).height(32.dp).background(MaterialTheme.colorScheme.primary))
+                    Box(Modifier.width(3.dp).height(32.dp).background(colors.accent))
                     Spacer(Modifier.width(6.dp))
                     Column {
                         Text(
                             if (r.outgoing) stringResource(R.string.chat_bot_name) else r.fromName,
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary,
+                            color = colors.accent,
+                            fontWeight = FontWeight.Bold,
                         )
                         Text(
                             previewText(r.kind, if (r.kind == "sticker") r.emoji else r.text),
@@ -580,10 +655,10 @@ private fun MessageBubble(m: ChatMessage, showSender: Boolean, token: String?, d
                     val icon = when (m.kind) { "audio" -> "🎵"; "voice" -> "🎤"; else -> "📄" }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
-                            Modifier.size(44.dp).clip(RoundedCornerShape(50)).background(MaterialTheme.colorScheme.primary),
+                            Modifier.size(44.dp).clip(RoundedCornerShape(50)).background(colors.tint),
                             contentAlignment = Alignment.Center,
                         ) {
-                            if (opening) CircularProgressIndicator(Modifier.size(22.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+                            if (opening) CircularProgressIndicator(Modifier.size(22.dp), color = colors.content, strokeWidth = 2.dp)
                             else Text(icon, fontSize = 20.sp)
                         }
                         Spacer(Modifier.width(10.dp))
@@ -599,12 +674,13 @@ private fun MessageBubble(m: ChatMessage, showSender: Boolean, token: String?, d
                                 listOf(formatSize(m.fileSize), if (m.duration > 0) formatDuration(m.duration) else "")
                                     .filter { it.isNotEmpty() }.joinToString(" · "),
                                 style = MaterialTheme.typography.labelSmall,
+                                color = colors.secondary,
                             )
                         }
                     }
                 }
                 "location" -> TextButton(onClick = { openUrl(context, "geo:${m.text}?q=${m.text}") }) {
-                    Text("📍 " + stringResource(R.string.media_location) + "\n" + m.text)
+                    Text("📍 " + stringResource(R.string.media_location) + "\n" + m.text, color = colors.content)
                 }
                 "contact" -> Text("👤 " + m.text)
                 "poll" -> Text("📊 " + m.text, fontWeight = FontWeight.Medium)
@@ -613,7 +689,7 @@ private fun MessageBubble(m: ChatMessage, showSender: Boolean, token: String?, d
 
             if (m.text.isNotEmpty() && m.kind !in listOf("location", "contact", "poll", "other")) {
                 Text(
-                    telegramText(m.text, m.entities),
+                    telegramText(m.text, m.entities, link = colors.accent, codeBg = colors.tint, spoiler = colors.content),
                     style = MaterialTheme.typography.bodyLarge,
                     textDecoration = if (m.deleted) TextDecoration.LineThrough else null,
                     modifier = Modifier.padding(horizontal = if (isSticker) 8.dp else 0.dp),
@@ -633,10 +709,11 @@ private fun MessageBubble(m: ChatMessage, showSender: Boolean, token: String?, d
             Text(
                 footer,
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.secondary,
                 modifier = Modifier.align(Alignment.End).padding(horizontal = if (isSticker) 8.dp else 0.dp),
             )
         }
+      }
 
         // Botões inline embaixo da mensagem.
         m.buttons.forEach { row ->

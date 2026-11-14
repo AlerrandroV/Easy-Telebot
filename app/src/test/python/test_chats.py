@@ -125,7 +125,7 @@ class ManualSendTests(unittest.TestCase):
             out = json.loads(chats.send("1:x", d, 42, json.dumps({
                 "text": "Oi *{nome}*", "reply_to": 5,
                 "buttons": [[{"text": "Canal", "url": "@meucanal"}]],
-            })))
+            }), json.dumps({"type": "internal"})))
         finally:
             engine.TelegramApi = original
         self.assertTrue(out["ok"])
@@ -136,6 +136,9 @@ class ManualSendTests(unittest.TestCase):
         items = json.loads(chats.get_messages(d, 42))
         self.assertEqual((items[-1]["outgoing"], items[-1]["source"]), (1, "manual"))
         self.assertEqual(json.loads(chats.list_chats(d))[0]["unread"], 0)  # enviar zera não lidas
+        from telebot_engine.storage.backends import LocalStore
+        saved = LocalStore(os.path.join(d, "db")).list("historico")  # gravado na hora, sem thread
+        self.assertEqual([(h["direction"], h["source"]) for h in saved], [("out", "manual")])
         chats.close(d)
 
     def test_send_error_is_explained(self):

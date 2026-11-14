@@ -282,7 +282,7 @@ fun BroadcastScreen(botId: Long, onBack: () -> Unit) {
 }
 
 @Composable
-private fun adminClassExplanationShort(level: Int): String =
+internal fun adminClassExplanationShort(level: Int): String =
     if (level == 1) stringResource(R.string.broadcast_level_top)
     else stringResource(R.string.broadcast_level_explain, (1..level).joinToString(", ") { io.github.alerrandrov.easytelebot.data.AdminLevels.roman(it) })
 

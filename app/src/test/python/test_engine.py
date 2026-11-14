@@ -80,7 +80,7 @@ class FakeApi:
         if method == "copyMessages":
             self.sent.append(dict(params, _method="copyMessages"))
             return [{"message_id": i} for i in params["message_ids"]]
-        if method in ("setMessageReaction", "editMessageText"):
+        if method in ("setMessageReaction", "editMessageText", "answerCallbackQuery", "editMessageReplyMarkup"):
             return True
         if method == "sendSticker":
             self.sent.append(dict(params, _files=files))

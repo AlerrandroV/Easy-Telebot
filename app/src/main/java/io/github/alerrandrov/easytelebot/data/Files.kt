@@ -83,8 +83,8 @@ object BotExporter {
                 copyAssets(context, ASSET_ROOT, "") { path, bytes -> put(path, bytes) }
                 put("config.json", ConfigRepository.load(meta.id).toJson().toString(2).toByteArray())
                 BotRepository.mediaDir(meta.id).listFiles()?.forEach { put("media/${it.name}", it.readBytes()) }
-                java.io.File(BotRepository.dir(meta.id), "admins.json").takeIf { it.exists() }?.let {
-                    put("admins.json", it.readBytes())
+                listOf("admins.json", "bans.json").forEach { name ->
+                    java.io.File(BotRepository.dir(meta.id), name).takeIf { it.exists() }?.let { put(name, it.readBytes()) }
                 }
                 put("storage.json", StorageRepository.load(meta.id).toJson().toString(2).toByteArray())
                 if (includeToken) {
