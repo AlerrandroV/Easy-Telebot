@@ -1,6 +1,7 @@
 package io.github.alerrandrov.easytelebot.engine
 
 import android.content.Context
+import com.chaquo.python.Kwarg
 import com.chaquo.python.PyObject
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
@@ -137,6 +138,26 @@ object PythonBridge {
         module(context, "admins").callAttr("remove_admin", botDir, userId)
     }
 
+    // --- banco de dados (storage/__init__.py) ---
+
+    private fun storageCall(context: Context, fn: String, vararg args: Any): Result<JSONObject> = guard {
+        val json = parse(module(context, "storage").callAttr(fn, *args))
+        if (json.optBoolean("ok")) Result.Ok(json) else Result.Failed(json.error())
+    }
+
+    /** Grava, lê e apaga um documento de teste (na AWS cria a tabela se faltar). */
+    fun storageTest(context: Context, settingsJson: String, botDir: String, botId: Long) =
+        storageCall(context, "test", settingsJson, botDir, botId.toString())
+
+    fun storageBackup(context: Context, settingsJson: String, botDir: String, botId: Long) =
+        storageCall(context, "backup", settingsJson, botDir, botId.toString())
+
+    fun storageRestore(context: Context, settingsJson: String, botDir: String, botId: Long) =
+        storageCall(context, "restore", settingsJson, botDir, botId.toString())
+
+    fun storageList(context: Context, settingsJson: String, botDir: String, botId: Long, collection: String, limit: Int = 100) =
+        storageCall(context, "list_docs", settingsJson, botDir, botId.toString(), collection, limit)
+
     /** Cria o motor de um bot. Chame `run` numa thread própria; `stop`/`wake`/`request_reload` de qualquer thread. */
     fun createEngine(
         context: Context,
@@ -144,7 +165,10 @@ object PythonBridge {
         configPath: String,
         dataDir: String,
         callbacks: EngineCallbacks,
-    ): PyObject = module(context, "engine").callAttr("Engine", token, configPath, dataDir, callbacks)
+        storageJson: String? = null,
+    ): PyObject = module(context, "engine").callAttr(
+        "Engine", token, configPath, dataDir, callbacks, Kwarg("storage", storageJson),
+    )
 }
 
 /** Chamado pelo Python (Chaquopy expõe os métodos deste objeto ao motor). */

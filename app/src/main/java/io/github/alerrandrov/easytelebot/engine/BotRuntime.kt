@@ -148,6 +148,7 @@ object BotRuntime {
             "replied" -> add(id, LogEntry.Level.OUT, s(R.string.log_replied, e.optString("command"), e.optInt("messages", 1)))
             "unknown_command" -> add(id, LogEntry.Level.WARN, s(R.string.log_unknown_command, e.optString("command")))
             "recovered" -> add(id, LogEntry.Level.INFO, s(R.string.log_recovered))
+            "storage_ok" -> add(id, LogEntry.Level.INFO, s(R.string.log_storage_ok))
             "admin_added" -> {
                 val a = e.optJSONObject("admin") ?: return
                 val name = a.optString("username").takeIf { it.isNotEmpty() }?.let { "@$it" } ?: a.optString("first_name")

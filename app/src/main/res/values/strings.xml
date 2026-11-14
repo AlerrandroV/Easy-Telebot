@@ -414,4 +414,109 @@
     <string name="log_newadmin_empty">%1$s mandou /newadmin sem código. Nada foi respondido.</string>
     <string name="log_newadmin_invalid">%1$s mandou /newadmin com um código inválido ou vencido. Nada foi respondido.</string>
     <string name="log_newadmin_group">%1$s mandou /newadmin em um grupo. Ignorado: só vale em conversa privada.</string>
+    <!-- Banco de dados -->
+    <string name="storage_title">Banco de dados</string>
+    <string name="bot_storage_sub">Onde o bot guarda usuários, histórico e backup: %1$s</string>
+    <string name="storage_intro">O bot pode guardar quem falou com ele (base para recursos futuros, como mandar avisos para todos) e o histórico de mensagens. O banco também guarda um backup dos seus comandos e administradores, para recuperar o bot em outro celular ou no computador.</string>
+    <string name="storage_users">Guardar usuários</string>
+    <string name="storage_users_sub">Nome, @usuário, ID, primeira e última vez que falou com o bot e quantas mensagens mandou</string>
+    <string name="storage_history">Guardar histórico de mensagens</string>
+    <string name="storage_history_sub">Cada mensagem recebida (texto, quem mandou, onde). Ocupa mais espaço; avise seus usuários se ligar isto.</string>
+    <string name="storage_where">Onde guardar</string>
+    <string name="storage_type_internal">Interno do app</string>
+    <string name="storage_type_internal_sub">Neste celular, numa pasta só do app. Simples e sem configuração.</string>
+    <string name="storage_type_device">Pasta do aparelho</string>
+    <string name="storage_type_device_sub">Arquivos JSON numa pasta que você vê no gerenciador de arquivos (/sdcard). Precisa de “acesso a todos os arquivos”.</string>
+    <string name="storage_type_firebase">Firebase Realtime Database</string>
+    <string name="storage_type_firebase_sub">Banco na nuvem do Google/Firebase. Bom plano grátis. Precisa da URL do banco.</string>
+    <string name="storage_type_firestore">Firestore (Firebase / Google Cloud)</string>
+    <string name="storage_type_firestore_sub">Cloud Firestore com uma conta de serviço (arquivo .json). Funciona com projetos Firebase e Google Cloud.</string>
+    <string name="storage_type_dynamodb">AWS DynamoDB</string>
+    <string name="storage_type_dynamodb_sub">Banco da Amazon. Precisa de uma chave de acesso; o app cria a tabela sozinho.</string>
+    <string name="storage_internal_info">Os dados ficam em uma pasta interna do app. Atenção: se você desinstalar o app ou limpar os dados dele, eles são apagados. Use o backup em um banco na nuvem se quiser guardar uma cópia.</string>
+    <string name="storage_device_path">Pasta</string>
+    <string name="storage_files_ok">✓ Acesso a todos os arquivos liberado.</string>
+    <string name="storage_files_needed">Para gravar fora da pasta do app, o Android exige a permissão “Acesso a todos os arquivos”.</string>
+    <string name="storage_files_grant">Permitir acesso aos arquivos</string>
+    <string name="storage_device_info">Os dados continuam lá mesmo se você desinstalar o app, e dá para copiar a pasta para o computador. Outros apps com acesso a arquivos também conseguem ler essa pasta.</string>
+    <string name="storage_firebase_url">URL do Realtime Database</string>
+    <string name="storage_firebase_secret">Segredo do banco (opcional)</string>
+    <string name="storage_sa_none">Nenhuma conta de serviço escolhida.</string>
+    <string name="storage_sa_loaded">Projeto: %1$s\nConta: %2$s</string>
+    <string name="storage_sa_pick">Escolher arquivo .json da conta de serviço</string>
+    <string name="storage_sa_change">Trocar arquivo .json</string>
+    <string name="storage_sa_invalid">O arquivo escolhido não é o JSON de uma conta de serviço do Google (precisa ter client_email, private_key e project_id).</string>
+    <string name="storage_firestore_db">ID do banco</string>
+    <string name="storage_firestore_db_hint">Deixe (default), a não ser que você tenha criado outro banco no projeto.</string>
+    <string name="storage_aws_access">ID da chave de acesso</string>
+    <string name="storage_aws_secret">Chave de acesso secreta</string>
+    <string name="storage_aws_region">Região</string>
+    <string name="storage_aws_region_hint">Ex.: sa-east-1 (São Paulo), us-east-1 (Virgínia)</string>
+    <string name="storage_aws_table">Tabela</string>
+    <string name="storage_aws_table_hint">Se não existir, o app cria ao tocar em Testar (cobrança só pelo uso).</string>
+    <string name="storage_help_title">Como conseguir esses dados</string>
+    <string name="storage_test">Testar conexão</string>
+    <string name="storage_test_ok">Conexão funcionando! O app gravou, leu e apagou um dado de teste.</string>
+    <string name="storage_test_ok_created">Conexão funcionando! A tabela não existia e foi criada.</string>
+    <string name="storage_saved">Banco de dados salvo</string>
+    <string name="storage_working">Falando com o banco…</string>
+    <string name="storage_data">Seus dados</string>
+    <string name="storage_save_first">Salve as alterações antes de usar o backup ou ver os dados.</string>
+    <string name="storage_backup_info">O backup guarda os comandos (com textos, botões e configurações) e os administradores deste bot no banco escolhido. As mídias não vão no backup.</string>
+    <string name="storage_backup">Fazer backup</string>
+    <string name="storage_backup_ok">Backup feito: %1$d comando(s) e %2$d administrador(es).</string>
+    <string name="storage_restore">Restaurar</string>
+    <string name="storage_restore_title">Restaurar o último backup?</string>
+    <string name="storage_restore_msg">Os comandos e administradores atuais deste bot serão substituídos pelos do backup. Mídias que não estiverem neste celular precisarão ser anexadas de novo.</string>
+    <string name="storage_restore_ok">Backup de %1$s restaurado: %2$d comando(s) e %3$d administrador(es).</string>
+    <string name="storage_view_users">Ver usuários salvos</string>
+    <string name="storage_users_title">Usuários (%1$d)</string>
+    <string name="storage_users_empty">Ninguém ainda. Os usuários aparecem aqui depois que mandarem mensagem para o bot ligado.</string>
+    <string name="storage_user_line">%1$sID %2$d · %3$d mensagens · última vez %4$s</string>
+    <string name="log_storage_ok">Banco de dados voltou a funcionar.</string>
+
+    <string-array name="storage_firebase_steps">
+        <item>Entre em console.firebase.google.com e crie (ou abra) um projeto.</item>
+        <item>No menu, vá em Criação › Realtime Database › Criar banco de dados.</item>
+        <item>Copie a URL que aparece no topo (termina em firebaseio.com ou firebasedatabase.app) e cole aqui.</item>
+        <item>Segredo: Configurações do projeto (engrenagem) › Contas de serviço › Chaves secretas do banco de dados › Mostrar. Cole no campo “Segredo do banco”.</item>
+        <item>Sem segredo, o banco só funciona se as regras dele permitirem acesso público — não recomendado.</item>
+    </string-array>
+    <string-array name="storage_firestore_steps">
+        <item>No console do Firebase (ou do Google Cloud), abra o projeto e crie o banco em Firestore Database › Criar banco de dados (modo nativo).</item>
+        <item>Vá em Configurações do projeto › Contas de serviço › Gerar nova chave privada. Um arquivo .json será baixado.</item>
+        <item>No Google Cloud, a conta precisa do papel “Usuário do Cloud Datastore” (ou Editor). As contas criadas pelo Firebase já têm.</item>
+        <item>Toque em “Escolher arquivo .json” e selecione o arquivo baixado. Ele fica guardado cifrado neste celular.</item>
+    </string-array>
+    <string-array name="storage_aws_steps">
+        <item>No console da AWS, abra o IAM › Usuários › Criar usuário (ex.: easytelebot).</item>
+        <item>Dê a permissão AmazonDynamoDBFullAccess (ou uma política só para a tabela do bot).</item>
+        <item>No usuário criado, vá em Credenciais de segurança › Criar chave de acesso › “Aplicação executada fora da AWS”.</item>
+        <item>Copie o ID da chave e a chave secreta para os campos acima. A chave secreta só aparece uma vez na AWS.</item>
+        <item>Escolha a região e toque em Testar: se a tabela não existir, o app cria.</item>
+    </string-array>
+
+    <string name="err_storage_config_title">Falta configurar o banco de dados</string>
+    <string name="err_storage_config_msg">Algum campo do banco está vazio ou num formato que não reconhecemos. Confira os dados na tela Banco de dados.</string>
+    <string name="err_storage_auth_title">O banco de dados recusou o acesso</string>
+    <string name="err_storage_auth_msg">A credencial (segredo, conta de serviço ou chave da AWS) está errada, foi revogada ou não tem permissão para esse banco.</string>
+    <string-array name="err_storage_auth_steps">
+        <item>Confira se copiou a credencial inteira, sem espaços.</item>
+        <item>Firebase: confira o segredo do banco ou as regras de acesso.</item>
+        <item>Firestore: confira o papel da conta de serviço e se a API do Firestore está ativada no projeto.</item>
+        <item>AWS: confira se o usuário tem permissão no DynamoDB e se a chave está ativa.</item>
+    </string-array>
+    <string name="err_storage_not_found_title">Banco de dados não encontrado</string>
+    <string name="err_storage_not_found_msg">O endereço, projeto, banco ou tabela informado não existe (ou ainda não foi criado).</string>
+    <string-array name="err_storage_not_found_steps">
+        <item>Firebase: confira a URL do Realtime Database no console.</item>
+        <item>Firestore: crie o banco em Firestore Database › Criar banco de dados.</item>
+        <item>AWS: confira a região; toque em Testar para o app criar a tabela.</item>
+    </string-array>
+    <string name="err_storage_network_title">Sem conexão com o banco de dados</string>
+    <string name="err_storage_network_msg">Não foi possível falar com o banco. Confira a internet e o endereço. O bot continua respondendo normalmente; só os dados desse período não são gravados.</string>
+    <string name="err_storage_permission_title">Sem permissão para gravar na pasta</string>
+    <string name="err_storage_permission_msg">O Android não deixou o app gravar nessa pasta. Libere o “acesso a todos os arquivos” ou escolha outra pasta.</string>
+    <string name="err_storage_unknown_title">Erro no banco de dados</string>
+    <string name="err_storage_unknown_msg">O banco respondeu com um erro que não reconhecemos. O bot continua funcionando.</string>
 </resources>

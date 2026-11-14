@@ -54,6 +54,7 @@ import io.github.alerrandrov.easytelebot.data.BotExporter
 import io.github.alerrandrov.easytelebot.data.BotRepository
 import io.github.alerrandrov.easytelebot.data.ConfigRepository
 import io.github.alerrandrov.easytelebot.data.SimpleCommand
+import io.github.alerrandrov.easytelebot.data.StorageRepository
 import io.github.alerrandrov.easytelebot.data.TokenStore
 import io.github.alerrandrov.easytelebot.engine.BotRuntime
 import io.github.alerrandrov.easytelebot.engine.BotState
@@ -76,6 +77,7 @@ fun BotScreen(
     onLog: () -> Unit,
     /** true = já abrir o fluxo de adicionar admin */
     onAdmins: (Boolean) -> Unit,
+    onStorage: () -> Unit,
     onChangeToken: () -> Unit,
     onBattery: () -> Unit,
 ) {
@@ -199,7 +201,7 @@ fun BotScreen(
                             ErrorAction.BATTERY_GUIDE -> Button(onClick = onBattery) {
                                 Text(stringResource(R.string.battery_open_guide))
                             }
-                            ErrorAction.NONE -> {}
+                            ErrorAction.NONE, ErrorAction.FILES_PERMISSION -> {}
                         }
                     }
                 }
@@ -243,6 +245,14 @@ fun BotScreen(
             }
             item {
                 SectionCard(stringResource(R.string.admins_title), stringResource(R.string.bot_admins_sub), { onAdmins(false) })
+            }
+            item {
+                val storageType = remember(meta.photoVersion) { StorageRepository.load(botId).type }
+                SectionCard(
+                    stringResource(R.string.storage_title),
+                    stringResource(R.string.bot_storage_sub, storageTypeLabel(storageType)),
+                    onStorage,
+                )
             }
             item { SectionCard(stringResource(R.string.home_log), stringResource(R.string.home_log_sub), onLog) }
             item {

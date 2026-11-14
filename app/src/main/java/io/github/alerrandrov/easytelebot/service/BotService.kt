@@ -22,6 +22,7 @@ import io.github.alerrandrov.easytelebot.R
 import io.github.alerrandrov.easytelebot.data.BotRepository
 import io.github.alerrandrov.easytelebot.data.ConfigRepository
 import io.github.alerrandrov.easytelebot.data.Prefs
+import io.github.alerrandrov.easytelebot.data.StorageRepository
 import io.github.alerrandrov.easytelebot.data.TokenStore
 import io.github.alerrandrov.easytelebot.engine.BotRuntime
 import io.github.alerrandrov.easytelebot.engine.BotState
@@ -103,10 +104,11 @@ class BotService : Service() {
         }
         val configPath = BotRepository.configFile(id).absolutePath
         val dataDir = BotRepository.dir(id).absolutePath
+        val storageJson = StorageRepository.engineJson(this, id)
         val thread = Thread({
             var engine: PyObject? = null
             try {
-                engine = PythonBridge.createEngine(this, token, configPath, dataDir, callbacks)
+                engine = PythonBridge.createEngine(this, token, configPath, dataDir, callbacks, storageJson)
                 BotRuntime.engines[id] = engine
                 // Pode ter sido desligado enquanto o Python ainda carregava.
                 if (BotRepository.get(id)?.shouldRun != false) engine.callAttr("run")

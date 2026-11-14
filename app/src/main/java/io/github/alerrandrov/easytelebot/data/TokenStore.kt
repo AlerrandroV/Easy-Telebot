@@ -54,6 +54,23 @@ object TokenStore {
         prefs(context).edit().remove("iv_$botId").remove("data_$botId").apply()
     }
 
+    /** Outros segredos (credenciais de banco de dados etc.), cifrados do mesmo jeito. */
+    fun saveSecret(context: Context, name: String, value: String) {
+        val cipher = Cipher.getInstance(TRANSFORMATION)
+        cipher.init(Cipher.ENCRYPT_MODE, key())
+        val data = cipher.doFinal(value.toByteArray(Charsets.UTF_8))
+        prefs(context).edit()
+            .putString("s_iv_$name", Base64.encodeToString(cipher.iv, Base64.NO_WRAP))
+            .putString("s_data_$name", Base64.encodeToString(data, Base64.NO_WRAP))
+            .apply()
+    }
+
+    fun loadSecret(context: Context, name: String): String? = decrypt(context, "s_iv_$name", "s_data_$name")
+
+    fun deleteSecret(context: Context, name: String) {
+        prefs(context).edit().remove("s_iv_$name").remove("s_data_$name").apply()
+    }
+
     /** Token da versão 0.1 (um bot só). Usado apenas na migração. */
     fun loadLegacy(context: Context): String? = decrypt(context, "token_iv", "token_data")
 

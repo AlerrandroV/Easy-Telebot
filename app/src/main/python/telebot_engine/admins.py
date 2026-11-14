@@ -161,6 +161,16 @@ def set_level(bot_dir, user_id, level):
     return True
 
 
+def replace_all(bot_dir, admins):
+    """Substitui a lista inteira (usado ao restaurar um backup)."""
+    clean = [a for a in admins if isinstance(a, dict) and "id" in a]
+    for a in clean:
+        a["level"] = clamp_level(a.get("level"))
+    with _lock:
+        _write(_path(bot_dir, ADMINS_FILE), clean)
+    return True
+
+
 def remove_admin(bot_dir, user_id):
     with _lock:
         path = _path(bot_dir, ADMINS_FILE)

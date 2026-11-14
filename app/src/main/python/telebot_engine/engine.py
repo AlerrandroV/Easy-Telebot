@@ -132,7 +132,7 @@ def build_keyboard(rows):
 
 
 class Engine:
-    def __init__(self, token, config_path, data_dir, callbacks, api=None):
+    def __init__(self, token, config_path, data_dir, callbacks, api=None, storage=None):
         self.token = token.strip()
         self.config_path = config_path
         self.base_dir = os.path.dirname(os.path.abspath(config_path))
@@ -152,11 +152,18 @@ class Engine:
         self._admins_mtime = None
         self._menu_scopes = set()  # chats de admins que receberam um menu próprio
         self._cache_path = os.path.join(self.base_dir, "media_cache.json")
+        # Banco de dados (usuários/histórico). ``storage`` = configuração em JSON.
+        self.storage = None
+        if storage:
+            from .storage.worker import StorageWorker
+            self.storage = StorageWorker(storage, self.base_dir, self.token.split(":")[0], self.emit)
         self._media_cache = self._load_cache()
 
     # -- controle (chamado de outras threads) ---------------------------------
 
     def stop(self):
+        if self.storage:
+            self.storage.stop()
         self._stop.set()
         self._wake.set()
         self.api.abort()
@@ -299,6 +306,8 @@ class Engine:
 
     def _run(self):
         self.set_state("starting")
+        if self.storage and self.storage.enabled:
+            self.storage.start()
         if not self._connect():
             return
         self.maybe_reload_config(force=True)
@@ -378,6 +387,8 @@ class Engine:
         return next((c for c in self.config["commands"] if name in c["triggers"]), None)
 
     def handle_message(self, message):
+        if self.storage:
+            self.storage.record(message)
         text = message.get("text") or ""
         user = message.get("from") or {}
         chat = message.get("chat") or {}

@@ -4,7 +4,7 @@ import android.content.Context
 import io.github.alerrandrov.easytelebot.R
 
 /** Ações que a tela de erro pode oferecer junto com a explicação. */
-enum class ErrorAction { NONE, NEW_TOKEN, DELETE_WEBHOOK, BATTERY_GUIDE }
+enum class ErrorAction { NONE, NEW_TOKEN, DELETE_WEBHOOK, BATTERY_GUIDE, FILES_PERMISSION }
 
 data class Explanation(
     val title: String,
@@ -45,11 +45,17 @@ object ErrorExplainer {
             "bad_button_url" -> e(R.string.err_button_url_title, R.string.err_button_url_msg, null)
             "photo_unsupported" -> e(R.string.err_photo_unsupported_title, R.string.err_photo_unsupported_msg, R.array.botfather_photo_steps)
             "wrong_bot" -> e(R.string.err_wrong_bot_title, R.string.err_wrong_bot_msg, null)
+            "storage_config" -> e(R.string.err_storage_config_title, R.string.err_storage_config_msg, null)
+            "storage_auth" -> e(R.string.err_storage_auth_title, R.string.err_storage_auth_msg, R.array.err_storage_auth_steps)
+            "storage_not_found" -> e(R.string.err_storage_not_found_title, R.string.err_storage_not_found_msg, R.array.err_storage_not_found_steps)
+            "storage_network" -> e(R.string.err_storage_network_title, R.string.err_storage_network_msg, null)
+            "storage_permission" -> e(R.string.err_storage_permission_title, R.string.err_storage_permission_msg, null, ErrorAction.FILES_PERMISSION)
+            "storage_unknown" -> e(R.string.err_storage_unknown_title, R.string.err_storage_unknown_msg, null)
             else -> e(R.string.err_unknown_title, R.string.err_unknown_msg, null)
         }
         val extra = buildList {
             error.retryIn?.let { add(r.getString(R.string.err_retry_in, it)) }
-            if (error.code == "unknown" && error.detail.isNotBlank()) {
+            if ((error.code == "unknown" || error.code.startsWith("storage_")) && error.detail.isNotBlank()) {
                 add(r.getString(R.string.err_detail, error.detail))
             }
         }

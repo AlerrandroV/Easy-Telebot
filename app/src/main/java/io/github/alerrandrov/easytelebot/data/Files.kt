@@ -85,8 +85,10 @@ object BotExporter {
                 java.io.File(BotRepository.dir(meta.id), "admins.json").takeIf { it.exists() }?.let {
                     put("admins.json", it.readBytes())
                 }
+                put("storage.json", StorageRepository.load(meta.id).toJson().toString(2).toByteArray())
                 if (includeToken) {
                     TokenStore.load(context, meta.id)?.let { put("token.txt", (it + "\n").toByteArray()) }
+                    put("storage_secrets.json", StorageRepository.loadSecrets(context, meta.id).toJson().toString(2).toByteArray())
                 }
             }
             true
