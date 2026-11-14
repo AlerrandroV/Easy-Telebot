@@ -54,8 +54,16 @@ def _db(bot_dir):
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA journal_mode=WAL")
         conn.executescript(_SCHEMA)
+        _migrate(conn)
         _conns[path] = conn
     return conn
+
+
+def _migrate(conn):
+    """Colunas novas em bancos criados por versões anteriores."""
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(chats)")}
+    if "blocked" not in cols:
+        conn.execute("ALTER TABLE chats ADD COLUMN blocked INTEGER DEFAULT 0")
 
 
 def close(bot_dir):
@@ -168,6 +176,8 @@ def record(bot_dir, msg, outgoing=False, source="user", edited=False, fallback_c
                 (chat["id"], chat.get("type"), chat.get("title"), chat.get("first_name"),
                  chat.get("last_name"), chat.get("username")),
             )
+            if not outgoing:
+                db.execute("UPDATE chats SET blocked=0 WHERE chat_id=?", (chat["id"],))
             if not edited:
                 db.execute(
                     """UPDATE chats SET last_at=?, last_kind=?, last_text=?, last_outgoing=?,
@@ -181,6 +191,27 @@ def record(bot_dir, msg, outgoing=False, source="user", edited=False, fallback_c
             db.execute("ROLLBACK")
             raise
     return chat["id"]
+
+
+def set_blocked(bot_dir, chat_id, blocked, chat=None):
+    """Marca que o bot não alcança mais esse chat (bloqueado, removido) — ou que voltou.
+
+    ``chat`` (objeto do Telegram) cria a conversa se ela ainda não existir, ex.: canal novo.
+    """
+    with _lock:
+        db = _db(bot_dir)
+        if chat:
+            db.execute(
+                """INSERT INTO chats (chat_id, type, title, first_name, last_name, username, last_at)
+                   VALUES (?,?,?,?,?,?,?)
+                   ON CONFLICT(chat_id) DO UPDATE SET type=excluded.type,
+                       title=COALESCE(excluded.title, chats.title),
+                       username=COALESCE(excluded.username, chats.username)""",
+                (chat["id"], chat.get("type"), chat.get("title"), chat.get("first_name"),
+                 chat.get("last_name"), chat.get("username"), int(time.time())),
+            )
+        db.execute("UPDATE chats SET blocked=? WHERE chat_id=?", (int(bool(blocked)), int(chat_id)))
+    return True
 
 
 # -- leitura (app) ---------------------------------------------------------------

@@ -156,6 +156,25 @@ object BotRuntime {
             "recovered" -> add(id, LogEntry.Level.INFO, s(R.string.log_recovered))
             "storage_ok" -> add(id, LogEntry.Level.INFO, s(R.string.log_storage_ok))
             "chat" -> bumpChats(id)
+            "post_started" -> add(id, LogEntry.Level.INFO, s(R.string.log_post_started, e.optString("user")))
+            "broadcast_started" -> add(id, LogEntry.Level.INFO, s(R.string.log_broadcast_started, e.optInt("total")))
+            "broadcast_done" -> add(
+                id, LogEntry.Level.INFO,
+                s(R.string.log_broadcast_done, e.optInt("sent"), e.optInt("total"), e.optInt("failed")),
+            )
+            "membership" -> {
+                val gone = e.optString("status") in setOf("left", "kicked")
+                val name = e.optString("chat")
+                add(
+                    id, if (gone) LogEntry.Level.WARN else LogEntry.Level.INFO,
+                    when {
+                        e.optString("chat_type") == "private" && gone -> s(R.string.log_user_blocked, name)
+                        e.optString("chat_type") == "private" -> s(R.string.log_user_unblocked, name)
+                        gone -> s(R.string.log_removed_from, name)
+                        else -> s(R.string.log_added_to, name)
+                    },
+                )
+            }
             "admin_added" -> {
                 val a = e.optJSONObject("admin") ?: return
                 val name = a.optString("username").takeIf { it.isNotEmpty() }?.let { "@$it" } ?: a.optString("first_name")

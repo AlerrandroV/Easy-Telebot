@@ -73,6 +73,15 @@ class FakeApi:
             self.sent.append(dict(params, _files=files))
             return self._msg(params, caption=params.get("caption"),
                              photo=[{"file_id": "small", "file_unique_id": "s"}, {"file_id": "BIG", "file_unique_id": "b"}])
+        if method == "copyMessage":
+            self.sent.append(dict(params, _method="copyMessage"))
+            FakeApi._next_id += 1
+            return {"message_id": FakeApi._next_id}
+        if method == "copyMessages":
+            self.sent.append(dict(params, _method="copyMessages"))
+            return [{"message_id": i} for i in params["message_ids"]]
+        if method in ("setMessageReaction", "editMessageText"):
+            return True
         if method == "sendSticker":
             self.sent.append(dict(params, _files=files))
             return self._msg(params, sticker={"file_id": params.get("sticker"), "file_unique_id": "st", "emoji": "😀"})
@@ -83,6 +92,9 @@ class FakeApi:
             step = self.script.pop(0)
             if isinstance(step, Exception):
                 raise step
+            if callable(step):  # passo especial: roda algo (ex.: esperar uma thread) e não traz updates
+                step()
+                return []
             return step
         raise AssertionError(method)
 

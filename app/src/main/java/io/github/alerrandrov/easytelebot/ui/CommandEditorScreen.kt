@@ -64,7 +64,7 @@ private const val TEXT_LIMIT = 4096
 private const val CAPTION_LIMIT = 1024
 
 /** Mensagem em edição, com uma chave estável para a lista. */
-private data class Draft(val key: Long, val msg: BotMessage)
+internal data class Draft(val key: Long, val msg: BotMessage)
 
 /** Botão em edição: lista "achatada" com a marca "na mesma linha do anterior". */
 internal data class ButtonDraft(val text: String, val url: String, val sameRow: Boolean)
@@ -319,7 +319,7 @@ private fun validate(
     otherTriggers: Set<String>,
 ): List<String> = buildList {
     if (triggers.isEmpty()) add(context.getString(R.string.cmd_err_no_trigger))
-    if (AdminLevels.NEWADMIN in triggers) add(context.getString(R.string.cmd_err_reserved, AdminLevels.NEWADMIN))
+    triggers.filter { it in AdminLevels.RESERVED }.forEach { add(context.getString(R.string.cmd_err_reserved, it)) }
     triggers.filter { it in otherTriggers }.forEach { add(context.getString(R.string.cmd_err_trigger_taken, it)) }
     if (messages.none { it.text.isNotBlank() || it.media != null }) add(context.getString(R.string.cmd_err_no_message))
     messages.forEachIndexed { i, m ->
@@ -416,7 +416,7 @@ internal fun quote(v: TextFieldValue): TextFieldValue {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun MessageEditor(
+internal fun MessageEditor(
     botId: Long,
     index: Int,
     count: Int,
@@ -424,6 +424,8 @@ private fun MessageEditor(
     onChange: (BotMessage) -> Unit,
     onMove: (Int) -> Unit,
     onRemove: () -> Unit,
+    /** "media" para comandos (limpa ao salvar); "outbox" para envios avulsos. */
+    mediaFolder: String = "media",
 ) {
     val context = LocalContext.current
     val msg = draft.msg
@@ -443,7 +445,7 @@ private fun MessageEditor(
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
-        val media = MediaImporter.import(context, botId, uri)
+        val media = MediaImporter.import(context, botId, uri, mediaFolder)
         if (media == null) {
             Toast.makeText(context, context.getString(R.string.media_import_failed), Toast.LENGTH_LONG).show()
         } else {

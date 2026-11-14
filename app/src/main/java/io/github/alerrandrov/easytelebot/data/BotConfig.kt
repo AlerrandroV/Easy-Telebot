@@ -34,9 +34,18 @@ data class SimpleCommand(
  * Configuração de um bot, salva em `config.json`. O motor Python só lê o arquivo
  * (veja `config.py`). O token NÃO fica aqui.
  */
+/** Publicação em massa pelo Telegram (/post, /publi). */
+data class BroadcastSettings(
+    val enabled: Boolean = true,
+    /** Classe mínima de admin para usar /post. */
+    val adminLevel: Int = 1,
+    val triggers: List<String> = listOf("post", "publi"),
+)
+
 data class BotConfig(
     val autoMenu: Boolean = true,
     val commands: List<SimpleCommand> = emptyList(),
+    val broadcast: BroadcastSettings = BroadcastSettings(),
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("version", VERSION)
@@ -55,6 +64,10 @@ data class BotConfig(
                 })
             }
         })
+        put("broadcast", JSONObject()
+            .put("enabled", broadcast.enabled)
+            .put("admin_level", broadcast.adminLevel)
+            .put("triggers", JSONArray(broadcast.triggers)))
         put("keywords", JSONArray())
         put("welcome", JSONObject().put("enabled", false).put("text", ""))
         put("schedules", JSONArray())
@@ -131,7 +144,14 @@ data class BotConfig(
                     )
                 }
             }
-            return BotConfig(json.optBoolean("auto_menu", true), list)
+            val b = json.optJSONObject("broadcast")
+            val broadcast = if (b == null) BroadcastSettings() else BroadcastSettings(
+                enabled = b.optBoolean("enabled", true),
+                adminLevel = b.optInt("admin_level", 1).coerceIn(1, AdminLevels.MAX),
+                triggers = b.optJSONArray("triggers")?.let { a -> (0 until a.length()).map { a.getString(it) } }
+                    ?.takeIf { it.isNotEmpty() } ?: listOf("post", "publi"),
+            )
+            return BotConfig(json.optBoolean("auto_menu", true), list, broadcast)
         }
     }
 }
@@ -175,6 +195,8 @@ object AdminLevels {
     const val MAX = 10
     /** Comando secreto do motor para virar admin; não pode ser usado em comandos. */
     const val NEWADMIN = "newadmin"
+    /** Comandos do próprio app que não podem virar comandos comuns. */
+    val RESERVED = setOf(NEWADMIN, "post", "publi")
     private val ROMAN = listOf("I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X")
 
     fun roman(level: Int): String = ROMAN.getOrElse(level - 1) { level.toString() }
