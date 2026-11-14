@@ -43,3 +43,12 @@ O comando mostra um código de uso único, válido por 10 minutos. A pessoa mand
 `/newadmin CÓDIGO` para o bot em conversa privada. Os admins ficam em
 `admins.json`. Um admin de classe N pode usar comandos que exigem a classe N ou
 uma classe mais baixa (ex.: classe III usa os comandos de III, IV e V).
+
+## Banco de dados
+
+`storage.json` diz onde o bot guarda usuários e histórico. Se no app era
+"interno" ou "pasta do aparelho", aqui os dados vão para a pasta `dados/`.
+Firebase, Firestore e AWS continuam funcionando no computador se você exportou
+com o token marcado (as credenciais vão em `storage_secrets.json` — guarde como
+uma senha). Sem esse arquivo, preencha as credenciais nele à mão, com os mesmos
+nomes de campo.

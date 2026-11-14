@@ -68,11 +68,34 @@ def new_admin_code(level):
     print("O código só funciona uma vez e o bot precisa estar ligado (python3 run.py).")
 
 
+def read_storage():
+    """storage.json (+ storage_secrets.json, se exportado com o token).
+
+    No computador, "interno" e "pasta do aparelho" viram a pasta ./dados ao lado do run.py.
+    """
+    def load(name):
+        path = os.path.join(HERE, name)
+        if not os.path.exists(path):
+            return {}
+        with open(path, "r", encoding="utf-8") as fh:
+            return json.load(fh)
+
+    settings = load("storage.json")
+    if not settings:
+        return None
+    settings.update({k: v for k, v in load("storage_secrets.json").items() if v})
+    if settings.get("type") in ("internal", "device", None):
+        settings["type"] = "device"
+        settings["device_path"] = os.path.join(HERE, "dados")
+    return json.dumps(settings)
+
+
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "newadmin":
         new_admin_code(sys.argv[2] if len(sys.argv) > 2 else 1)
         return
-    engine = Engine(read_token(), os.path.join(HERE, "config.json"), HERE, ConsoleCallbacks())
+    engine = Engine(read_token(), os.path.join(HERE, "config.json"), HERE, ConsoleCallbacks(),
+                    storage=read_storage())
 
     def stop(*_):
         print("Parando…")

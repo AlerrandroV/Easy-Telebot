@@ -10,7 +10,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import io.github.alerrandrov.easytelebot.data.Prefs
 
-enum class Screen { HOME, ADD_BOT, BATTERY, BOT, CHANGE_TOKEN, PROFILE, COMMAND, LOG, ADMINS }
+enum class Screen { HOME, ADD_BOT, BATTERY, BOT, CHANGE_TOKEN, PROFILE, COMMAND, LOG, ADMINS, STORAGE }
 
 /** Navegação simples por estado: poucas telas, sem biblioteca extra. */
 @Composable
@@ -31,7 +31,7 @@ fun AppRoot() {
 
     BackHandler(enabled = screen != Screen.HOME) {
         screen = when (screen) {
-            Screen.CHANGE_TOKEN, Screen.PROFILE, Screen.COMMAND, Screen.LOG, Screen.ADMINS -> Screen.BOT
+            Screen.CHANGE_TOKEN, Screen.PROFILE, Screen.COMMAND, Screen.LOG, Screen.ADMINS, Screen.STORAGE -> Screen.BOT
             else -> Screen.HOME
         }
     }
@@ -61,6 +61,7 @@ fun AppRoot() {
             onProfile = { screen = Screen.PROFILE },
             onLog = { screen = Screen.LOG },
             onAdmins = { add -> adminsAutoAdd = add; screen = Screen.ADMINS },
+            onStorage = { screen = Screen.STORAGE },
             onChangeToken = { screen = Screen.CHANGE_TOKEN },
             onBattery = { screen = Screen.BATTERY },
         )
@@ -68,6 +69,7 @@ fun AppRoot() {
         Screen.PROFILE -> ProfileScreen(botId = botId, onBack = goBot)
         Screen.COMMAND -> CommandEditorScreen(botId = botId, commandId = commandId, newAsAdmin = newCommandIsAdmin, onDone = goBot)
         Screen.LOG -> LogScreen(botId = botId, onBack = goBot)
+        Screen.STORAGE -> StorageScreen(botId = botId, onBack = goBot)
         Screen.ADMINS -> AdminsScreen(botId = botId, autoAdd = adminsAutoAdd, onBack = goBot)
     }
 }

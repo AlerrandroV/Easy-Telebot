@@ -82,6 +82,7 @@ object BotRepository {
     fun delete(context: Context, id: Long) {
         dir(id).deleteRecursively()
         TokenStore.delete(context, id)
+        TokenStore.deleteSecret(context, StorageRepository.secretName(id))
         Prefs(context).forgetBot(id)
         reload()
     }
