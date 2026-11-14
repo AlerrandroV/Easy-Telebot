@@ -17,9 +17,9 @@ android {
         versionName = "0.1.0"
 
         ndk {
-            // ABIs suportadas pelo Python do Chaquopy. Celulares reais são arm64;
-            // x86_64 fica para o emulador.
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+            // ABIs suportadas pelo Python 3.12 do Chaquopy (só 64 bits).
+            // Celulares reais são arm64; x86_64 fica para o emulador.
+            abiFilters += listOf("arm64-v8a", "x86_64")
         }
     }
 
@@ -54,11 +54,14 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
-    }
     buildFeatures {
         compose = true
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 
