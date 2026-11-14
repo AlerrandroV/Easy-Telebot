@@ -95,7 +95,6 @@ import io.github.alerrandrov.easytelebot.data.MessageMedia
 import io.github.alerrandrov.easytelebot.data.TokenStore
 import io.github.alerrandrov.easytelebot.data.StorageRepository
 import io.github.alerrandrov.easytelebot.engine.BotRuntime
-import io.github.alerrandrov.easytelebot.service.Alerts
 import io.github.alerrandrov.easytelebot.engine.SpamBan
 import io.github.alerrandrov.easytelebot.engine.AntispamBridge
 import io.github.alerrandrov.easytelebot.engine.ChatMessage
@@ -136,7 +135,7 @@ fun ChatScreen(botId: Long, chatId: Long, onBack: () -> Unit) {
     }
     val bansVersions by BotRuntime.bansVersion.collectAsStateWithLifecycle()
     val ban by produceState<SpamBan?>(null, bansVersions[botId]) {
-        value = withContext(Dispatchers.IO) { AntispamBridge.list(context, dir).firstOrNull { it.userId == chatId } }
+        value = withContext(Dispatchers.IO) { AntispamBridge.get(context, dir, chatId) }
     }
     var confirmBlock by remember { mutableStateOf(false) }
     var messages by remember { mutableStateOf<List<ChatMessage>>(emptyList()) }
@@ -333,16 +332,11 @@ fun ChatScreen(botId: Long, chatId: Long, onBack: () -> Unit) {
                 Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(stringResource(R.string.chat_blocked_title), fontWeight = FontWeight.Bold)
-                        Text(
-                            if (b.reason == "manual") stringResource(R.string.antispam_reason_manual) else b.reasonText,
-                            style = MaterialTheme.typography.bodySmall,
-                        )
+                        Text(banReason(b), style = MaterialTheme.typography.bodySmall)
                     }
                     TextButton(onClick = {
-                        scope.launch {
-                            withContext(Dispatchers.IO) { AntispamBridge.decide(context, token, dir, chatId, AntispamBridge.RELEASE) }
-                            Alerts.dismissSpam(context, botId, chatId)
-                            BotRuntime.bumpBans(botId)
+                        scope.launch(Dispatchers.IO) {
+                            AntispamBridge.decide(context, token, dir, botId, chatId, AntispamBridge.RELEASE)
                         }
                     }) { Text(stringResource(R.string.antispam_release)) }
                 }
@@ -431,11 +425,8 @@ fun ChatScreen(botId: Long, chatId: Long, onBack: () -> Unit) {
                 TextButton(onClick = {
                     confirmBlock = false
                     val c = chat
-                    scope.launch {
-                        withContext(Dispatchers.IO) {
-                            AntispamBridge.block(context, dir, chatId, c?.firstName ?: "", c?.lastName ?: "", c?.username ?: "")
-                        }
-                        BotRuntime.bumpBans(botId)
+                    scope.launch(Dispatchers.IO) {
+                        AntispamBridge.block(context, dir, botId, chatId, c?.firstName ?: "", c?.lastName ?: "", c?.username ?: "")
                     }
                 }) { Text(stringResource(R.string.chat_block), color = MaterialTheme.colorScheme.error) }
             },
@@ -507,13 +498,7 @@ private fun bubbleColors(outgoing: Boolean, transparent: Boolean): BubbleColors 
 
 /** Texto com a formatação do Telegram (entities): negrito, itálico, links, código, spoiler... */
 @Composable
-fun telegramText(
-    text: String,
-    entities: List<TgEntity>,
-    link: Color = MaterialTheme.colorScheme.primary,
-    codeBg: Color = MaterialTheme.colorScheme.surfaceVariant,
-    spoiler: Color = MaterialTheme.colorScheme.onSurface,
-): AnnotatedString {
+private fun telegramText(text: String, entities: List<TgEntity>, link: Color, codeBg: Color, spoiler: Color): AnnotatedString {
     return remember(text, entities, link, codeBg, spoiler) {
         buildAnnotatedString {
             append(text)

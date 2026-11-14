@@ -67,18 +67,13 @@ class EngineSpamTests(unittest.TestCase):
         eng.sleep = lambda s: None
         return eng, api, cb
 
-    def flood(self, uid=42, n=10, start=1):
-        out = []
-        for i in range(n):
-            u = msg("/oi", update_id=start + i, user_id=uid)
-            u["message"]["message_id"] = start + i
-            out.append(u)
-        return out
-
     def one(self, n, uid=42):
         u = msg("/oi", update_id=n, user_id=uid)
         u["message"]["message_id"] = n
         return u
+
+    def flood(self, uid=42, n=10, start=1):
+        return [self.one(start + i, uid) for i in range(n)]
 
     def callback(self, data, who, update_id=100, qid="q1"):
         return {"update_id": update_id, "callback_query": {

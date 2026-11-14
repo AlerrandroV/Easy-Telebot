@@ -640,8 +640,6 @@
     <string name="antispam_warn_user">Avisar a pessoa bloqueada</string>
     <string name="antispam_warn_user_sub">Ela recebe: "Você foi bloqueado automaticamente… Um administrador vai analisar o caso." Se for desbloqueada, também é avisada.</string>
     <string name="antispam_level">Quem recebe o aviso e pode julgar no Telegram</string>
-    <string name="antispam_level_top">Só admins de classe I.</string>
-    <string name="antispam_level_explain">Admins das classes %1$s.</string>
     <string name="antispam_footer">No Telegram, cada admin recebe o caso com o motivo, as últimas mensagens e os botões ✅ Desbloquear e 🚫 Manter bloqueado. A decisão de um admin aparece para todos e aqui no app. Em grupo, só contam os comandos mandados ao bot (conversa normal não). Um álbum de fotos conta como uma mensagem só, e repetir o mesmo comando (ex.: /start) não conta como mensagem repetida.</string>
     <string name="antispam_status_pending">Esperando análise</string>
     <string name="antispam_status_kept">Mantido</string>

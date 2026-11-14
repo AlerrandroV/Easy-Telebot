@@ -25,6 +25,8 @@ import os
 import threading
 import time
 
+from . import admins, chats
+
 BANS_FILE = "bans.json"
 CALLBACK_PREFIX = "as:"
 RELEASE = "release"
@@ -50,10 +52,7 @@ _lock = threading.RLock()
 def normalize_settings(data):
     data = data if isinstance(data, dict) else {}
     level = str(data.get("sensitivity") or DEFAULT_LEVEL).lower()
-    try:
-        admin_level = max(1, min(10, int(data.get("admin_level", 1))))
-    except (TypeError, ValueError):
-        admin_level = 1
+    admin_level = admins.clamp_level(data.get("admin_level", 1))
     return {
         "enabled": bool(data.get("enabled", True)),
         "sensitivity": level if level in LEVELS else DEFAULT_LEVEL,
@@ -64,17 +63,15 @@ def normalize_settings(data):
 
 # -- detecção (em memória, por pessoa) -----------------------------------------------
 
+_LABELS = {"photo": "[foto]", "video": "[vídeo]", "animation": "[GIF]", "document": "[documento]",
+           "audio": "[áudio]", "voice": "[mensagem de voz]", "video_note": "[vídeo redondo]",
+           "contact": "[contato]", "location": "[localização]", "poll": "[enquete]"}
+
+
 def _sample(message):
-    text = message.get("text") or message.get("caption") or ""
-    kind = next((k for k in ("photo", "video", "animation", "sticker", "document", "audio", "voice",
-                             "video_note", "contact", "location", "poll") if message.get(k)), None)
-    label = {"photo": "[foto]", "video": "[vídeo]", "animation": "[GIF]", "sticker": "[figurinha]",
-             "document": "[documento]", "audio": "[áudio]", "voice": "[mensagem de voz]",
-             "video_note": "[vídeo redondo]", "contact": "[contato]", "location": "[localização]",
-             "poll": "[enquete]"}.get(kind, "")
-    if kind == "sticker":
-        label = "[figurinha %s]" % (message["sticker"].get("emoji") or "")
-    return (label + " " + text).strip()[:200] or "[mensagem]"
+    p = chats.parse_message(message)
+    label = "[figurinha %s]" % (p["emoji"] or "") if p["kind"] == "sticker" else _LABELS.get(p["kind"], "")
+    return (label + " " + p["text"]).strip()[:200] or "[mensagem]"
 
 
 def _key(message):
@@ -182,14 +179,6 @@ def add(bot_dir, record):
         _save(bot_dir, bans)
 
 
-def set_notices(bot_dir, uid, notices):
-    with _lock:
-        bans = load(bot_dir)
-        if int(uid) in bans:
-            bans[int(uid)]["notices"] = notices
-            _save(bot_dir, bans)
-
-
 def decide(bot_dir, uid, action, by=""):
     """Aplica a decisão de um admin. Devolve o registro (como estava + decisão) ou ``None``
     se não havia bloqueio (ex.: outro admin já desbloqueou)."""
@@ -248,7 +237,7 @@ def reason_text(record):
 def notice_text(record):
     e = html.escape
     stamp = record.get("stamp") or ""
-    name = (record.get("first_name", "") + " " + record.get("last_name", "")).strip() or "Sem nome"
+    name = chats._full_name(record) or "Sem nome"
     who = '<a href="tg://user?id=%d">%s</a>' % (int(record["id"]), e(name))
     if record.get("username"):
         who += " (@%s)" % e(record["username"])
@@ -311,7 +300,26 @@ def update_notices(api, record, action):
             pass
 
 
+def finish_decision(api, record, action, send_notice):
+    """Depois de ``decide``: atualiza os avisos dos admins e, se desbloqueou alguém em conversa
+    privada, chama ``send_notice(chat_id, texto)``."""
+    update_notices(api, record, action)
+    if action == RELEASE and record.get("chat_type", "private") == "private":
+        send_notice(int(record["id"]), RELEASE_NOTICE)
+
+
 # -- funções chamadas pelo app (Kotlin) -------------------------------------------------
+
+def get_ban(bot_dir, user_id):
+    record = load(bot_dir).get(int(user_id))
+    if record is not None:
+        record["reason_text"] = reason_text(record)
+    return json.dumps(record, ensure_ascii=False)
+
+
+def count_pending(bot_dir):
+    return sum(1 for r in load(bot_dir).values() if r.get("status") == "pending")
+
 
 def list_bans(bot_dir):
     items = sorted(load(bot_dir).values(), key=lambda r: r.get("at") or 0, reverse=True)
@@ -322,22 +330,21 @@ def list_bans(bot_dir):
 
 def decide_app(token, bot_dir, user_id, action):
     """Decisão tomada no app: grava, atualiza os avisos no Telegram e, se desbloqueou, avisa a pessoa."""
-    from . import chats
     from .api import TelegramApi
 
     record = decide(bot_dir, user_id, action, "o dono do bot (pelo app)")
-    if record is None:
-        return json.dumps({"ok": True, "missing": True})
-    if not token:
+    if record is None or not token:
         return json.dumps({"ok": True})
     api = TelegramApi(token)
-    update_notices(api, record, action)
-    if action == RELEASE and record.get("chat_type", "private") == "private":
+
+    def send_notice(chat_id, text):
         try:
-            sent = api.call("sendMessage", {"chat_id": int(user_id), "text": RELEASE_NOTICE}, timeout=20)
-            chats.record(bot_dir, sent, outgoing=True, source="auto", fallback_chat_id=int(user_id))
+            sent = api.call("sendMessage", {"chat_id": chat_id, "text": text}, timeout=20)
+            chats.record(bot_dir, sent, outgoing=True, source="auto", fallback_chat_id=chat_id)
         except Exception:  # noqa: BLE001 - a pessoa pode ter bloqueado o bot
             pass
+
+    finish_decision(api, record, action, send_notice)
     return json.dumps({"ok": True})
 
 

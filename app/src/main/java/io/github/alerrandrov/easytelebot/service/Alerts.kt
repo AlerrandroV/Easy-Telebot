@@ -47,11 +47,12 @@ object Alerts {
             context, notificationId(botId, userId), intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
+        val text = context.getString(R.string.alert_spam_text, name, reason)
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(context.getString(R.string.alert_spam_title, botName))
-            .setContentText(context.getString(R.string.alert_spam_text, name, reason))
-            .setStyle(NotificationCompat.BigTextStyle().bigText(context.getString(R.string.alert_spam_text, name, reason)))
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setContentIntent(open)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)

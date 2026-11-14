@@ -19,6 +19,9 @@ class StorageWorker(threading.Thread):
         self.emit = emit
         self.queue = queue.Queue(maxsize=1000)
         self._last_error = (None, 0.0)
+        # Modo direto (envio avulso pelo app): grava na hora, sem thread nem fila.
+        self.direct = False
+        self._store = None
 
     @property
     def enabled(self):
@@ -26,16 +29,11 @@ class StorageWorker(threading.Thread):
 
     def record(self, message):
         """Chamado pelo motor a cada mensagem recebida."""
-        if not self.enabled:
-            return
         text = message.get("text") or message.get("caption") or ""
         for cmd in REDACTED_COMMANDS:  # nunca guardar códigos secretos
             if text.split(" ")[0].split("@")[0].lower() == cmd:
                 text = cmd + " ••••"
-        try:
-            self.queue.put_nowait(("message", message, text, "in", "user"))
-        except queue.Full:
-            pass  # banco lento demais: descarta em vez de travar o bot
+        self._put(("message", message, text, "in", "user"))
 
     def record_out(self, message, source):
         """Chamado pelo motor a cada mensagem que o bot enviou (resposta ou envio pelo app)."""
@@ -54,16 +52,19 @@ class StorageWorker(threading.Thread):
     def _put(self, item):
         if not self.enabled:
             return
+        if self.direct:
+            try:
+                if self._store is None:
+                    self._store = open_store(self.settings, self.bot_dir, self.namespace)
+            except StorageError as exc:
+                self._report(exc)
+                return
+            self._apply(self._store, item)
+            return
         try:
             self.queue.put_nowait(item)
         except queue.Full:
-            pass
-
-    def flush(self, timeout=20):
-        """Envio pelo app: espera a fila esvaziar (a thread termina sozinha depois)."""
-        self.stop()
-        if self.is_alive():
-            self.join(timeout)
+            pass  # banco lento demais: descarta em vez de travar o bot
 
     def stop(self):
         try:
@@ -78,6 +79,28 @@ class StorageWorker(threading.Thread):
         self._last_error = (exc.code, time.time())
         self.emit("error", context="storage", retry_in=None, fatal=False, **exc.to_dict())
 
+    def _apply(self, store, item):
+        try:
+            if item[0] == "put":
+                store.put(item[1], item[2], item[3])
+            elif item[0] == "delete":
+                store.delete(item[1], item[2])
+            else:
+                _, message, text, direction, source = item
+                if direction == "in" and self.settings.get("store_users"):
+                    record_user(store, message.get("from"), message.get("chat"))
+                if self.settings.get("store_history"):
+                    record_message(store, "%s-%s-%s" % ((message.get("chat") or {}).get("id"),
+                                                        message.get("message_id"), direction),
+                                   message, text, direction, source)
+            if self._last_error[0] is not None:
+                self._last_error = (None, 0.0)
+                self.emit("storage_ok")
+        except StorageError as exc:
+            self._report(exc)
+        except Exception as exc:  # noqa: BLE001
+            self._report(StorageError(http.UNKNOWN, "%s: %s" % (type(exc).__name__, exc)))
+
     def run(self):
         try:
             store = open_store(self.settings, self.bot_dir, self.namespace)
@@ -88,23 +111,4 @@ class StorageWorker(threading.Thread):
             item = self.queue.get()
             if item is None:
                 return
-            try:
-                if item[0] == "put":
-                    store.put(item[1], item[2], item[3])
-                elif item[0] == "delete":
-                    store.delete(item[1], item[2])
-                else:
-                    _, message, text, direction, source = item
-                    if direction == "in" and self.settings.get("store_users"):
-                        record_user(store, message.get("from"), message.get("chat"))
-                    if self.settings.get("store_history"):
-                        record_message(store, "%s-%s-%s" % ((message.get("chat") or {}).get("id"),
-                                                            message.get("message_id"), direction),
-                                       message, text, direction, source)
-                if self._last_error[0] is not None:
-                    self._last_error = (None, 0.0)
-                    self.emit("storage_ok")
-            except StorageError as exc:
-                self._report(exc)
-            except Exception as exc:  # noqa: BLE001
-                self._report(StorageError(http.UNKNOWN, "%s: %s" % (type(exc).__name__, exc)))
+            self._apply(store, item)

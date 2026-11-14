@@ -61,13 +61,15 @@ object BotRuntime {
     private val _chatVersion = MutableStateFlow<Map<Long, Long>>(emptyMap())
     val chatVersion: StateFlow<Map<Long, Long>> = _chatVersion.asStateFlow()
 
-    fun bumpChats(id: Long) = _chatVersion.update { it + (id to ((it[id] ?: 0L) + 1)) }
+    fun bumpChats(id: Long) = _chatVersion.bump(id)
 
     /** Muda a cada bloqueio/decisão do antispam, para a tela de antispam recarregar. */
     private val _bansVersion = MutableStateFlow<Map<Long, Long>>(emptyMap())
     val bansVersion: StateFlow<Map<Long, Long>> = _bansVersion.asStateFlow()
 
-    fun bumpBans(id: Long) = _bansVersion.update { it + (id to ((it[id] ?: 0L) + 1)) }
+    fun bumpBans(id: Long) = _bansVersion.bump(id)
+
+    private fun MutableStateFlow<Map<Long, Long>>.bump(id: Long) = update { it + (id to ((it[id] ?: 0L) + 1)) }
 
     /** Motores Python ativos (para pedir recarga/parada de qualquer thread). */
     val engines = ConcurrentHashMap<Long, PyObject>()

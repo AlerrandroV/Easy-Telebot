@@ -6,11 +6,9 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
@@ -41,7 +39,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.alerrandrov.easytelebot.R
-import io.github.alerrandrov.easytelebot.data.AdminLevels
 import io.github.alerrandrov.easytelebot.data.AntispamSettings
 import io.github.alerrandrov.easytelebot.data.BotRepository
 import io.github.alerrandrov.easytelebot.data.ConfigRepository
@@ -49,7 +46,6 @@ import io.github.alerrandrov.easytelebot.data.TokenStore
 import io.github.alerrandrov.easytelebot.engine.AntispamBridge
 import io.github.alerrandrov.easytelebot.engine.BotRuntime
 import io.github.alerrandrov.easytelebot.engine.SpamBan
-import io.github.alerrandrov.easytelebot.service.Alerts
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -67,8 +63,7 @@ fun AntispamScreen(botId: Long, onOpenChat: (Long) -> Unit, onBack: () -> Unit) 
     val scope = rememberCoroutineScope()
     val dir = remember { BotRepository.dir(botId).path }
     val versions by BotRuntime.bansVersion.collectAsStateWithLifecycle()
-    var localVersion by remember { mutableStateOf(0) }
-    val bans by produceState<List<SpamBan>?>(null, versions[botId], localVersion) {
+    val bans by produceState<List<SpamBan>?>(null, versions[botId]) {
         value = withContext(Dispatchers.IO) { AntispamBridge.list(context, dir) }
     }
     var config by remember { mutableStateOf(ConfigRepository.load(botId)) }
@@ -84,11 +79,9 @@ fun AntispamScreen(botId: Long, onOpenChat: (Long) -> Unit, onBack: () -> Unit) 
         busy = ban.userId
         scope.launch {
             withContext(Dispatchers.IO) {
-                AntispamBridge.decide(context, TokenStore.load(context, botId), dir, ban.userId, action)
+                AntispamBridge.decide(context, TokenStore.load(context, botId), dir, botId, ban.userId, action)
             }
-            Alerts.dismissSpam(context, botId, ban.userId)
             busy = null
-            localVersion++
         }
     }
 
@@ -148,10 +141,9 @@ fun AntispamScreen(botId: Long, onOpenChat: (Long) -> Unit, onBack: () -> Unit) 
                             HorizontalDivider()
                             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text(stringResource(R.string.antispam_level), style = MaterialTheme.typography.titleSmall)
-                                LevelPicker(config.antispam.adminLevel, explain = { l ->
-                                    if (l == 1) stringResource(R.string.antispam_level_top)
-                                    else stringResource(R.string.antispam_level_explain, (1..l).joinToString(", ") { AdminLevels.roman(it) })
-                                }) { l -> save { it.copy(adminLevel = l) } }
+                                LevelPicker(config.antispam.adminLevel, explain = { l -> adminClassExplanationShort(l) }) { l ->
+                                    save { it.copy(adminLevel = l) }
+                                }
                             }
                         }
                     }
@@ -207,6 +199,11 @@ private fun SensitivityPicker(value: String, onChange: (String) -> Unit) {
     }
 }
 
+/** Motivo do bloqueio, legível. */
+@Composable
+fun banReason(ban: SpamBan): String =
+    if (ban.reason == "manual") stringResource(R.string.antispam_reason_manual) else ban.reasonText
+
 @Composable
 private fun sensitivityLabel(level: String) = when (level) {
     "baixa" -> stringResource(R.string.antispam_sens_low)
@@ -252,7 +249,7 @@ private fun BanCard(
                 }
             }
             Text(
-                "⚠️ " + if (ban.reason == "manual") stringResource(R.string.antispam_reason_manual) else ban.reasonText,
+                "⚠️ " + banReason(ban),
                 style = MaterialTheme.typography.bodyMedium,
             )
             Text(
@@ -267,7 +264,6 @@ private fun BanCard(
                 Text(stringResource(R.string.antispam_samples), style = MaterialTheme.typography.labelLarge)
                 ban.samples.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall, maxLines = 2) }
             }
-            Spacer(Modifier.width(4.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (ban.isPrivate) {
                     OutlinedButton(onClick = { onOpenChat(ban.userId) }) { Text(stringResource(R.string.antispam_open_chat)) }

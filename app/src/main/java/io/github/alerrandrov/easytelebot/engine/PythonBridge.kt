@@ -15,7 +15,7 @@ object PythonBridge {
         return Python.getInstance()
     }
 
-    private fun module(context: Context, name: String): PyObject =
+    internal fun module(context: Context, name: String): PyObject =
         python(context).getModule("telebot_engine.$name")
 
     data class BotInfo(val id: Long, val firstName: String, val username: String, val photoPath: String?)

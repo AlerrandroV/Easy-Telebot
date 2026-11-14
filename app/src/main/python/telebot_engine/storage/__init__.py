@@ -24,6 +24,7 @@ import os
 import time
 
 from .. import admins as admins_mod
+from .. import chats
 from . import http
 from .backends import DynamoDBStore, FirebaseRealtimeStore, FirestoreStore, LocalStore
 from .http import StorageError
@@ -43,11 +44,10 @@ def parse_settings(settings):
     settings = dict(settings or {})
     settings.setdefault("type", "internal")
     settings.setdefault("store_users", True)
-    if "v" not in settings:
-        # Antes da v2 o histórico vinha desligado; agora as mensagens sempre vão para o banco
-        # (dá para desligar de novo na tela do banco).
+    if "v" not in settings or "store_history" not in settings:
+        # Antes da v2 o histórico vinha desligado; agora as mensagens vão para o banco
+        # (dá para desligar de novo na tela do banco). Mesma regra de Storage.kt.
         settings["store_history"] = True
-    settings.setdefault("store_history", True)
     return settings
 
 
@@ -103,17 +103,13 @@ def record_user(store, user, chat, now=None):
     store.put(USERS, user["id"], doc)
 
 
-MEDIA_KINDS = ("photo", "video", "animation", "sticker", "document", "audio", "voice", "video_note",
-               "contact", "location", "poll")
-
-
 def record_message(store, update_id, message, text, direction="in", source="user"):
     """Uma mensagem no histórico. ``direction``: ``in`` (recebida) ou ``out`` (enviada pelo bot);
     ``source``: ``user``, ``auto`` (resposta de comando), ``manual`` (enviada pelo app)."""
     user = message.get("from") or {}
     chat = message.get("chat") or {}
     now = int(time.time())
-    kind = next((k for k in MEDIA_KINDS if message.get(k)), "text")
+    kind = chats.parse_message(message)["kind"]
     store.put(HISTORY, "%d-%s" % (now, update_id), {
         "at": now,
         "date": message.get("date") or now,

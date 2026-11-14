@@ -100,6 +100,10 @@ fun BotScreen(
     val now = rememberNow()
 
     var config by remember { mutableStateOf(ConfigRepository.load(botId)) }
+    val bansVersions by BotRuntime.bansVersion.collectAsStateWithLifecycle()
+    val pending by produceState(0, bansVersions[botId]) {
+        value = withContext(Dispatchers.IO) { AntispamBridge.countPending(context, BotRepository.dir(botId).path) }
+    }
     var showAddSheet by remember { mutableStateOf(false) }
     var showExport by remember { mutableStateOf(false) }
     var includeToken by remember { mutableStateOf(false) }
@@ -236,12 +240,6 @@ fun BotScreen(
             }
 
             item {
-                val bansVersions by BotRuntime.bansVersion.collectAsStateWithLifecycle()
-                val pending by produceState(0, bansVersions[botId]) {
-                    value = withContext(Dispatchers.IO) {
-                        AntispamBridge.list(context, BotRepository.dir(botId).path).count { it.pending }
-                    }
-                }
                 SectionCard(
                     title = "🛡️  " + stringResource(R.string.antispam_title),
                     subtitle = when {
