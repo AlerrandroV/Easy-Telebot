@@ -1,0 +1,160 @@
+package io.github.alerrandrov.easytelebot.ui
+
+import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.Intent
+import android.graphics.BitmapFactory
+import android.net.Uri
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import io.github.alerrandrov.easytelebot.R
+import io.github.alerrandrov.easytelebot.engine.Explanation
+import java.io.File
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AppBar(title: String, onBack: (() -> Unit)? = null) {
+    TopAppBar(
+        title = { Text(title) },
+        navigationIcon = {
+            if (onBack != null) {
+                IconButton(onClick = onBack) {
+                    Icon(
+                        painterResource(R.drawable.ic_arrow_back),
+                        contentDescription = stringResource(R.string.back),
+                    )
+                }
+            }
+        },
+    )
+}
+
+@Composable
+fun BotAvatar(name: String, photoPath: String?, size: Dp = 56.dp) {
+    val bitmap = remember(photoPath) {
+        photoPath?.let { p -> File(p).takeIf { it.exists() }?.let { BitmapFactory.decodeFile(it.path) } }
+    }
+    if (bitmap != null) {
+        Image(
+            bitmap = bitmap.asImageBitmap(),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.size(size).clip(CircleShape),
+        )
+    } else {
+        Box(
+            modifier = Modifier
+                .size(size)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                name.take(1).uppercase().ifEmpty { "B" },
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
+/** Erro explicado: o que aconteceu + passo a passo + botões de ação. */
+@Composable
+fun ExplanationCard(
+    explanation: Explanation,
+    modifier: Modifier = Modifier,
+    actions: @Composable () -> Unit = {},
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer,
+            contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        ),
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(explanation.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(explanation.message, style = MaterialTheme.typography.bodyMedium)
+            StepList(explanation.steps)
+            actions()
+        }
+    }
+}
+
+@Composable
+fun StepList(steps: List<String>) {
+    if (steps.isEmpty()) return
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        steps.forEachIndexed { i, step ->
+            Row {
+                Text("${i + 1}. ", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                Text(step, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+    }
+}
+
+@Composable
+fun SectionCard(
+    title: String,
+    subtitle: String? = null,
+    onClick: (() -> Unit)? = null,
+    content: @Composable () -> Unit = {},
+) {
+    val inner: @Composable () -> Unit = {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            subtitle?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            content()
+        }
+    }
+    if (onClick != null) {
+        Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) { inner() }
+    } else {
+        Card(modifier = Modifier.fillMaxWidth()) { inner() }
+    }
+}
+
+fun openUrl(context: Context, url: String) {
+    safeStart(context, Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+}
+
+/** Abre uma tela do sistema sem derrubar o app se ela não existir neste aparelho. */
+fun safeStart(context: Context, intent: Intent): Boolean = try {
+    context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    true
+} catch (e: ActivityNotFoundException) {
+    false
+} catch (e: SecurityException) {
+    false
+}

@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Easy Telebot</string>
+
+    <!-- Geral -->
+    <string name="back">Voltar</string>
+    <string name="save">Salvar</string>
+    <string name="cancel">Cancelar</string>
+    <string name="dismiss">Dispensar</string>
+    <string name="done">Pronto</string>
+    <string name="show">Mostrar</string>
+    <string name="hide">Ocultar</string>
+
+    <!-- Token -->
+    <string name="token_title">Conectar seu bot</string>
+    <string name="token_intro">Cole aqui o token que o @BotFather te deu. Ele é a “senha” do seu bot: com ele o app consegue receber e responder mensagens.</string>
+    <string name="token_label">Token do bot</string>
+    <string name="token_check">Verificar token</string>
+    <string name="token_checking">Verificando…</string>
+    <string name="token_ok">Tudo certo! Encontramos o seu bot.</string>
+    <string name="token_save">Usar este bot</string>
+    <string name="token_change">Trocar token</string>
+    <string name="token_change_sub">Usar outro bot ou um token novo</string>
+    <string name="token_help_toggle">Não tenho um token / como pegar?</string>
+    <string name="token_help_title">Como criar um bot e pegar o token</string>
+    <string name="token_open_botfather">Abrir o @BotFather</string>
+    <string name="token_privacy">O token fica só neste celular, guardado de forma criptografada. Ninguém além de você e do Telegram tem acesso a ele.</string>
+
+    <string-array name="botfather_steps">
+        <item>Abra o Telegram e procure por @BotFather (tem o selo azul de verificado).</item>
+        <item>Toque em Iniciar e mande /newbot.</item>
+        <item>Escolha um nome para o bot (pode ter espaços, ex.: Loja da Ana).</item>
+        <item>Escolha um usuário que termine em “bot” (ex.: lojadaana_bot).</item>
+        <item>O BotFather responde com o token: uma linha parecida com 123456789:AAH… Toque nela para copiar.</item>
+        <item>Volte aqui, cole no campo acima e toque em Verificar token.</item>
+    </string-array>
+    <string-array name="botfather_token_steps">
+        <item>Abra o @BotFather no Telegram.</item>
+        <item>Mande /mybots e escolha o seu bot.</item>
+        <item>Toque em API Token para ver o token atual (ou em Revoke para gerar um novo).</item>
+        <item>Copie o token inteiro e cole aqui de novo.</item>
+    </string-array>
+
+    <!-- Início -->
+    <string name="state_stopped">Desligado</string>
+    <string name="state_starting">Ligando…</string>
+    <string name="state_running">No ar, respondendo mensagens</string>
+    <string name="state_retrying">Com problema, tentando de novo…</string>
+    <string name="state_fatal">Parado por um erro</string>
+    <string name="bot_start">Ligar o bot</string>
+    <string name="bot_stop">Desligar o bot</string>
+    <string name="home_messages_today">Mensagens recebidas hoje: %1$d</string>
+    <string name="home_commands">Comandos</string>
+    <string name="home_commands_sub">%1$d comando(s). Toque para criar ou editar respostas.</string>
+    <string name="home_log">Registro</string>
+    <string name="home_log_sub">Mensagens recebidas, respostas enviadas e erros explicados</string>
+    <string name="home_battery">Bateria e segundo plano</string>
+    <string name="home_battery_ok">Otimização de bateria liberada. Confira também o guia da fabricante.</string>
+    <string name="home_battery_bad">Atenção: o Android pode desligar o bot com a tela apagada. Toque para resolver.</string>
+    <string name="home_boot">Iniciar com o celular</string>
+    <string name="home_boot_sub">Liga o bot sozinho quando o celular é ligado ou reiniciado</string>
+    <string name="home_limitation">O bot roda neste celular: com ele desligado ou sem internet, o bot fica fora do ar. O Telegram guarda as mensagens por até 24 horas e o bot responde as pendentes quando voltar.</string>
+    <string name="webhook_remove">Remover webhook</string>
+    <string name="webhook_removed">Webhook removido. O bot vai voltar a funcionar em alguns segundos.</string>
+
+    <!-- Comandos -->
+    <string name="commands_title">Comandos</string>
+    <string name="commands_add">Novo comando</string>
+    <string name="commands_intro">Quando alguém mandar o comando para o bot, ele responde com o texto que você escreveu. Os comandos aparecem sozinhos no menu “/” do Telegram.</string>
+    <string name="commands_empty">Nenhum comando ainda. Toque em “Novo comando” para criar o primeiro.</string>
+    <string name="cmd_new">Novo comando</string>
+    <string name="cmd_edit">Editar comando</string>
+    <string name="cmd_name">Comando</string>
+    <string name="cmd_name_hint">Letras minúsculas, números e _ (ex.: horario)</string>
+    <string name="cmd_name_invalid">Use só letras minúsculas sem acento, números e _ (até 32).</string>
+    <string name="cmd_name_duplicate">Já existe um comando com esse nome.</string>
+    <string name="cmd_description">Descrição</string>
+    <string name="cmd_description_hint">Aparece no menu “/” do Telegram</string>
+    <string name="cmd_response">Resposta</string>
+    <string name="cmd_unknown_vars">Variável desconhecida: %1$s. Ela será enviada do jeito que está.</string>
+    <string name="cmd_variables">Toque para inserir uma variável:</string>
+    <string name="cmd_variables_help">{nome} primeiro nome · {sobrenome} · {usuario} @usuário · {id} · {grupo} nome do grupo · {args} texto depois do comando · {data} · {hora} · {bot} @ do bot</string>
+    <string name="cmd_delete">Excluir comando</string>
+
+    <!-- Registro -->
+    <string name="log_title">Registro</string>
+    <string name="log_intro">Últimos acontecimentos desde que o app foi aberto.</string>
+    <string name="log_clear">Limpar</string>
+    <string name="log_empty">Nada por aqui ainda. Ligue o bot e mande um comando para ele no Telegram.</string>
+    <string name="log_what_to_do">O que fazer?</string>
+    <string name="log_running">Bot no ar, esperando mensagens.</string>
+    <string name="log_stopped">Bot desligado.</string>
+    <string name="log_connected">Conectado como @%1$s.</string>
+    <string name="log_config">Configuração carregada: %1$d comando(s) no menu.</string>
+    <string name="log_received">%1$s: %2$s</string>
+    <string name="log_received_group">%1$s em %2$s: %3$s</string>
+    <string name="log_replied">Resposta enviada para /%1$s.</string>
+    <string name="log_unknown_command">/%1$s não está na sua lista de comandos; nada foi respondido.</string>
+    <string name="log_recovered">Conexão restabelecida.</string>
+    <string name="log_debug_text">Texto recusado pelo Telegram: %1$s</string>
+    <string name="log_restarted_by_system">O Android tinha fechado o bot; ele foi religado sozinho.</string>
+    <string name="log_no_token">Nenhum token salvo. Configure o bot antes de ligar.</string>
+    <string name="log_engine_crash">O motor do bot parou inesperadamente: %1$s</string>
+
+    <!-- Notificação -->
+    <string name="notif_channel">Status do bot</string>
+    <string name="notif_channel_desc">Notificação fixa que mantém o bot funcionando</string>
+    <string name="notif_running">Bot ativo — %1$d mensagens hoje</string>
+    <string name="notif_starting">Ligando o bot…</string>
+    <string name="notif_retrying">Bot com problema, tentando de novo</string>
+    <string name="notif_fatal">Bot parado por um erro</string>
+    <string name="notif_stop">Desligar</string>
+
+    <!-- Bateria -->
+    <string name="battery_title">Manter o bot ligado</string>
+    <string name="battery_intro">Para economizar bateria, o Android costuma fechar apps que ficam rodando com a tela apagada. Como o bot precisa ficar ligado o tempo todo, faça os dois passos abaixo uma vez.</string>
+    <string name="battery_step1_title">1. Liberar da otimização de bateria</string>
+    <string name="battery_step1_msg">Sem isso, o Android corta a internet do app quando a tela apaga e o bot para de responder. Toque no botão e escolha “Permitir”.</string>
+    <string name="battery_step1_ok">Pronto! O app já está liberado da otimização de bateria.</string>
+    <string name="battery_step1_button">Liberar agora</string>
+    <string name="battery_step2_title">2. Economia de energia da %1$s</string>
+    <string name="battery_step2_msg">Muitas marcas têm um economizador próprio que fecha apps mesmo depois do passo 1. Siga o passo a passo:</string>
+    <string name="battery_open_app_settings">Abrir as configurações do app</string>
+    <string name="battery_more_info">Ver guia completo (dontkillmyapp.com)</string>
+    <string name="battery_open_guide">Ver como resolver</string>
+    <string name="battery_test_tip">Dica: depois de configurar, ligue o bot, apague a tela por uns 30 minutos e mande um comando para ele. Se responder, está tudo certo.</string>
+
+    <string-array name="guide_generic">
+        <item>Toque em “Abrir as configurações do app”.</item>
+        <item>Entre em Bateria (ou Uso da bateria).</item>
+        <item>Escolha “Sem restrições” (ou “Não otimizar”).</item>
+        <item>Se houver a opção “Permitir atividade em segundo plano”, deixe ligada.</item>
+    </string-array>
+    <string-array name="guide_xiaomi">
+        <item>Toque em “Abrir as configurações do app”.</item>
+        <item>Ative “Início automático” (Autostart).</item>
+        <item>Entre em “Economia de bateria” e escolha “Sem restrições”.</item>
+        <item>Abra os apps recentes, segure o Easy Telebot e toque no cadeado para travá-lo.</item>
+    </string-array>
+    <string-array name="guide_samsung">
+        <item>Toque em “Abrir as configurações do app”.</item>
+        <item>Entre em Bateria e escolha “Sem restrições”.</item>
+        <item>Em Configurações › Bateria › Limites de uso em segundo plano, confira se o Easy Telebot NÃO está em “Apps em suspensão” nem em “Apps em suspensão profunda”.</item>
+        <item>Se puder, adicione o app em “Apps que nunca entram em suspensão”.</item>
+    </string-array>
+    <string-array name="guide_huawei">
+        <item>Vá em Configurações › Bateria › Inicialização de apps.</item>
+        <item>Encontre o Easy Telebot e desligue “Gerenciar automaticamente”.</item>
+        <item>Na janela que abrir, ative as três opções: início automático, início secundário e executar em segundo plano.</item>
+        <item>Nos apps recentes, puxe o Easy Telebot para baixo para travá-lo.</item>
+    </string-array>
+    <string-array name="guide_oneplus">
+        <item>Toque em “Abrir as configurações do app”.</item>
+        <item>Entre em Uso da bateria e escolha “Sem restrições” (ou “Não otimizar”).</item>
+        <item>Ative “Permitir atividade em segundo plano” e “Início automático”, se existirem.</item>
+        <item>Nos apps recentes, trave o Easy Telebot (ícone de cadeado).</item>
+    </string-array>
+    <string-array name="guide_oppo">
+        <item>Toque em “Abrir as configurações do app”.</item>
+        <item>Entre em Uso da bateria e ative “Permitir atividade em segundo plano” e “Permitir início automático”.</item>
+        <item>Em Configurações › Bateria, desligue a otimização para o Easy Telebot.</item>
+        <item>Nos apps recentes, trave o Easy Telebot (ícone de cadeado).</item>
+    </string-array>
+    <string-array name="guide_vivo">
+        <item>Vá em Configurações › Bateria › Consumo de energia em segundo plano.</item>
+        <item>Permita alto consumo em segundo plano para o Easy Telebot.</item>
+        <item>Em i Manager › Gerenciador de apps › Início automático, ative o Easy Telebot.</item>
+        <item>Nos apps recentes, trave o Easy Telebot.</item>
+    </string-array>
+
+    <!-- Erros explicados -->
+    <string name="err_retry_in">Vou tentar de novo sozinho em %1$d segundos.</string>
+    <string name="err_detail">Detalhe técnico: %1$s</string>
+
+    <string name="err_token_format_title">Isso não parece um token</string>
+    <string name="err_token_format_msg">O token tem o formato 123456789:AAH… (números, dois-pontos e uma sequência longa de letras). Confira se você copiou a linha inteira, sem espaços.</string>
+
+    <string name="err_invalid_token_title">Token recusado pelo Telegram</string>
+    <string name="err_invalid_token_msg">O Telegram não reconheceu esse token. Pode ter sido digitado errado ou trocado (revogado) no @BotFather. Pegue o token atual assim:</string>
+
+    <string name="err_network_title">Sem conexão com o Telegram</string>
+    <string name="err_network_msg">Não consegui falar com o Telegram. Confira se o celular está com internet (Wi-Fi ou dados móveis). Não precisa fazer nada no app: assim que a internet voltar, o bot volta sozinho.</string>
+
+    <string name="err_conflict_title">O bot está ligado em outro lugar</string>
+    <string name="err_conflict_msg">O Telegram só deixa um programa por vez receber as mensagens de um bot, e outro já está fazendo isso.</string>
+    <string-array name="err_conflict_steps">
+        <item>Veja se o mesmo bot não está ligado em outro celular ou computador e desligue-o lá.</item>
+        <item>Se você não reconhece esse outro lugar, troque o token no @BotFather (/mybots › API Token › Revoke) e cole o novo aqui.</item>
+    </string-array>
+
+    <string name="err_webhook_title">O bot está configurado com webhook</string>
+    <string name="err_webhook_msg">Esse bot foi configurado antes para mandar as mensagens para um servidor (webhook). Enquanto isso estiver ativo, o app não consegue recebê-las. Toque no botão abaixo para remover o webhook e usar o bot aqui.</string>
+
+    <string name="err_chat_not_found_title">Conversa ou grupo não encontrado</string>
+    <string name="err_chat_not_found_msg">O ID do chat está errado ou o bot não faz parte desse grupo/canal. Adicione o bot ao grupo e tente de novo.</string>
+
+    <string name="err_cant_initiate_title">O bot não pode puxar conversa</string>
+    <string name="err_cant_initiate_msg">No Telegram, um bot só pode mandar mensagem para quem falou com ele primeiro. A pessoa precisa abrir o bot e mandar /start.</string>
+
+    <string name="err_blocked_title">A pessoa bloqueou o bot</string>
+    <string name="err_blocked_msg">Essa pessoa bloqueou o bot, então ele não consegue mais mandar mensagens para ela. Nada a fazer do seu lado.</string>
+
+    <string name="err_rights_title">O bot não tem permissão nesse grupo</string>
+    <string name="err_rights_msg">O bot não tem permissão para mandar mensagens nesse grupo ou canal.</string>
+    <string-array name="err_rights_steps">
+        <item>Abra o grupo/canal no Telegram e toque no nome dele.</item>
+        <item>Vá em Administradores › Adicionar administrador e escolha o seu bot.</item>
+        <item>Ative a permissão de enviar/publicar mensagens e salve.</item>
+    </string-array>
+
+    <string name="err_429_title">Muitas mensagens em pouco tempo</string>
+    <string name="err_429_msg">O Telegram pediu para o bot esperar um pouco antes de mandar mais mensagens. O app espera o tempo pedido e continua sozinho.</string>
+
+    <string name="err_parse_title">O Telegram recusou o texto da resposta</string>
+    <string name="err_parse_msg">Isso não deveria acontecer. O texto recusado foi salvo no registro; se puder, avise o desenvolvedor mostrando essa linha.</string>
+
+    <string name="err_killed_title">O Android desligou o bot</string>
+    <string name="err_killed_msg">O bot estava ligado, mas o sistema fechou o app sem você pedir (geralmente para economizar bateria). Libere o app da economia de bateria para isso não acontecer de novo.</string>
+
+    <string name="err_unknown_title">Aconteceu um erro inesperado</string>
+    <string name="err_unknown_msg">Algo deu errado e não reconheci o problema. Tente de novo; se continuar, avise o desenvolvedor com o detalhe abaixo.</string>
+</resources>
