@@ -10,7 +10,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import io.github.alerrandrov.easytelebot.data.Prefs
 
-enum class Screen { HOME, ADD_BOT, BATTERY, BOT, CHANGE_TOKEN, PROFILE, COMMAND, LOG, ADMINS, STORAGE, CHATS, CHAT }
+enum class Screen { HOME, ADD_BOT, BATTERY, BOT, CHANGE_TOKEN, PROFILE, COMMAND, LOG, ADMINS, STORAGE, CHATS, CHAT, BROADCAST }
 
 /** Navegação simples por estado: poucas telas, sem biblioteca extra. */
 @Composable
@@ -33,7 +33,7 @@ fun AppRoot() {
     BackHandler(enabled = screen != Screen.HOME) {
         screen = when (screen) {
             Screen.CHAT -> Screen.CHATS
-            Screen.CHATS,
+            Screen.CHATS, Screen.BROADCAST,
             Screen.CHANGE_TOKEN, Screen.PROFILE, Screen.COMMAND, Screen.LOG, Screen.ADMINS, Screen.STORAGE -> Screen.BOT
             else -> Screen.HOME
         }
@@ -66,6 +66,7 @@ fun AppRoot() {
             onAdmins = { add -> adminsAutoAdd = add; screen = Screen.ADMINS },
             onStorage = { screen = Screen.STORAGE },
             onChats = { screen = Screen.CHATS },
+            onBroadcast = { screen = Screen.BROADCAST },
             onChangeToken = { screen = Screen.CHANGE_TOKEN },
             onBattery = { screen = Screen.BATTERY },
         )
@@ -74,6 +75,7 @@ fun AppRoot() {
         Screen.COMMAND -> CommandEditorScreen(botId = botId, commandId = commandId, newAsAdmin = newCommandIsAdmin, onDone = goBot)
         Screen.LOG -> LogScreen(botId = botId, onBack = goBot)
         Screen.STORAGE -> StorageScreen(botId = botId, onBack = goBot)
+        Screen.BROADCAST -> BroadcastScreen(botId = botId, onBack = goBot)
         Screen.CHATS -> ChatsScreen(botId = botId, onOpenChat = { chatId = it; screen = Screen.CHAT }, onBack = goBot)
         Screen.CHAT -> ChatScreen(botId = botId, chatId = chatId, onBack = { screen = Screen.CHATS })
         Screen.ADMINS -> AdminsScreen(botId = botId, autoAdd = adminsAutoAdd, onBack = goBot)

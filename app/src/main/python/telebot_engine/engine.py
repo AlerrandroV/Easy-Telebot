@@ -19,7 +19,9 @@ import threading
 import time
 
 from . import admins as admins_mod
+from . import broadcast as broadcast_mod
 from . import chats
+from .publish import PostFlow
 from . import config as config_mod
 from . import errors, template
 from .api import Aborted, NetworkError, TelegramApi, TelegramError
@@ -156,6 +158,7 @@ class Engine:
         self._menu_scopes = set()  # chats de admins que receberam um menu próprio
         self._cache_path = os.path.join(self.base_dir, "media_cache.json")
         # Banco de dados (usuários/histórico). ``storage`` = configuração em JSON.
+        self.post = PostFlow(self)
         self.send_source = "auto"  # "auto" = resposta de comando; "manual" = enviada pelo app
         self.storage = None
         if storage:
@@ -168,6 +171,9 @@ class Engine:
     def stop(self):
         if self.storage:
             self.storage.stop()
+        job = broadcast_mod.running(self.base_dir)
+        if job and job.state.get("source") == "telegram":
+            job.cancelled.set()
         self._stop.set()
         self._wake.set()
         self.api.abort()
@@ -261,6 +267,9 @@ class Engine:
             name = next((t for t in c["triggers"] if COMMAND_RE.match(t)), None)
             if name:
                 items.append({"command": name, "description": (c["description"] or name)[:256]})
+        b = self.config.get("broadcast") or {}
+        if admin_level is not None and b.get("enabled") and admins_mod.can_use(admin_level, b.get("admin_level", 1)):
+            items.append({"command": b["triggers"][0], "description": "Publicação em massa"})
         return items[:100]
 
     def publish_commands(self):
@@ -276,7 +285,8 @@ class Engine:
             else:
                 self.api.call("deleteMyCommands", {})
             wanted = set(self.admins) if auto else set()
-            has_admin_cmds = any(c.get("admin_level") is not None for c in self.config["commands"])
+            has_admin_cmds = any(c.get("admin_level") is not None for c in self.config["commands"]) \
+                or bool((self.config.get("broadcast") or {}).get("enabled"))
             for admin_id in wanted:
                 if has_admin_cmds:
                     self.api.call("setMyCommands", {
@@ -320,7 +330,7 @@ class Engine:
         while not self.stopping:
             self.maybe_reload_config()
             try:
-                params = {"timeout": POLL_TIMEOUT, "allowed_updates": ["message", "edited_message"]}
+                params = {"timeout": POLL_TIMEOUT, "allowed_updates": ["message", "edited_message", "channel_post", "my_chat_member"]}
                 if self.offset is not None:
                     params["offset"] = self.offset
                 updates = self.api.call("getUpdates", params, timeout=POLL_TIMEOUT + 15)
@@ -350,6 +360,23 @@ class Engine:
                     self.handle_message(message)
                 elif update.get("edited_message"):
                     self.record_chat(update["edited_message"], edited=True)
+                elif update.get("channel_post"):
+                    self.record_chat(update["channel_post"])
+                elif update.get("my_chat_member"):
+                    self.handle_membership(update["my_chat_member"])
+
+    def handle_membership(self, change):
+        """Bot adicionado/removido de grupo ou canal, ou bloqueado/desbloqueado por um usuário."""
+        chat = change.get("chat") or {}
+        status = (change.get("new_chat_member") or {}).get("status")
+        gone = status in ("left", "kicked")
+        try:
+            chats.set_blocked(self.base_dir, chat.get("id"), gone, chat=chat)
+            self.emit("membership", chat=chat.get("title") or chat.get("first_name") or "",
+                      chat_type=chat.get("type"), status=status)
+            self.emit("chat", chat_id=chat.get("id"), incoming=False)
+        except Exception:  # noqa: BLE001
+            pass
 
     def record_chat(self, message, edited=False):
         """Guarda a mensagem recebida nas conversas do app (sem nunca derrubar o bot)."""
@@ -366,6 +393,8 @@ class Engine:
     def record_sent(self, result, chat_id):
         if not isinstance(result, dict) or "message_id" not in result:
             return
+        if self.send_source == "broadcast":
+            return  # publicação em massa não lota o mensageiro de cada pessoa
         try:
             cid = chats.record(self.base_dir, result, outgoing=True, source=self.send_source,
                                fallback_chat_id=chat_id)
@@ -424,6 +453,8 @@ class Engine:
         chat = message.get("chat") or {}
         bot_username = (self.bot or {}).get("username", "")
         parsed = parse_command(text, bot_username)
+        if self.post.handle(message, parsed):
+            return
         if parsed is None:
             return
         name, args = parsed

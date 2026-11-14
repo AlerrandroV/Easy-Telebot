@@ -52,3 +52,10 @@ Firebase, Firestore e AWS continuam funcionando no computador se você exportou
 com o token marcado (as credenciais vão em `storage_secrets.json` — guarde como
 uma senha). Sem esse arquivo, preencha as credenciais nele à mão, com os mesmos
 nomes de campo.
+
+## Publicação em massa (/post)
+
+Admins (com a classe configurada no app) mandam `/post` em conversa privada,
+enviam as mensagens, `/pronto` para ver a prévia e `/confirmar CÓDIGO` para
+enviar a todos (ou `/confirmar CÓDIGO usuarios grupos canais`). Botões:
+linhas `[Texto | link]` no fim do texto ou da legenda.

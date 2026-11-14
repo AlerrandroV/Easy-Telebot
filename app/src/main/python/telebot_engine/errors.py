@@ -22,6 +22,7 @@ MEDIA_MISSING = "media_missing"
 TOO_LONG = "too_long"
 BAD_BUTTON_URL = "bad_button_url"
 PHOTO_UNSUPPORTED = "photo_unsupported"
+UNREACHABLE = "unreachable"  # bot removido do grupo/canal ou conta apagada
 UNKNOWN = "unknown"
 
 
@@ -46,6 +47,9 @@ def classify(exc):
             code = CANT_INITIATE
         elif "bot was blocked by the user" in desc:
             code = BLOCKED_BY_USER
+        elif "bot was kicked" in desc or "user is deactivated" in desc or "bot is not a member" in desc \
+                or "chat_write_forbidden" in desc or "need administrator rights in the channel" in desc:
+            code = UNREACHABLE
         elif "not enough rights" in desc or "have no rights" in desc \
                 or "need administrator rights" in desc:
             code = NOT_ENOUGH_RIGHTS

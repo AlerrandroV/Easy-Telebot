@@ -560,4 +560,64 @@
     <string name="media_sticker">Figurinha</string>
     <string name="media_location">Localização</string>
     <string name="media_video_note">Vídeo redondo</string>
+    <!-- Publicação em massa -->
+    <string name="broadcast_title">Publicação em massa</string>
+    <string name="bot_broadcast_sub">Mande a mesma mensagem para todos os usuários, grupos e canais do bot</string>
+    <string name="broadcast_intro">Monte as mensagens e escolha para quem enviar. Os textos aceitam formatação e variáveis: {nome} vira o nome de cada pessoa.</string>
+    <string name="broadcast_targets">Para quem</string>
+    <string name="broadcast_users">Usuários (%1$d)</string>
+    <string name="broadcast_groups">Grupos (%1$d)</string>
+    <string name="broadcast_channels">Canais (%1$d)</string>
+    <string name="broadcast_targets_help">O bot só conhece quem já mandou mensagem para ele e os grupos e canais onde ele foi adicionado (a partir desta versão). Canais: adicione o bot como administrador com permissão de publicar. Se ele já estava no canal, remova e adicione de novo para o app descobrir. Quem bloqueou o bot sai da lista sozinho.</string>
+    <string name="broadcast_messages">Mensagens</string>
+    <string name="broadcast_send">Enviar para %1$d chat(s)</string>
+    <string name="broadcast_bad_buttons">Algum botão está sem texto ou com link inválido.</string>
+    <string name="broadcast_confirm_title">Confirmar publicação</string>
+    <string name="broadcast_confirm_msg">%1$d mensagem(ns) serão enviadas para %2$d chat(s). Depois de enviadas, não dá para desfazer.</string>
+    <string name="broadcast_confirm_code">Para confirmar, digite o código:</string>
+    <string name="broadcast_confirm_type">Código</string>
+    <string name="broadcast_confirm_send">Enviar agora</string>
+    <string name="broadcast_job_running">📤 Enviando publicação…</string>
+    <string name="broadcast_job_done">✅ Última publicação concluída</string>
+    <string name="broadcast_job_cancelled">⏹️ Última publicação interrompida</string>
+    <string name="broadcast_job_interrupted">⚠️ Última publicação parou no meio (o app foi fechado)</string>
+    <string name="broadcast_job_counts">Entregues: %1$d de %2$d · Falharam: %3$d</string>
+    <string name="broadcast_job_unreachable">%1$d bloquearam o bot ou o removeram; não receberão as próximas.</string>
+    <string name="broadcast_job_from_app">Enviada pelo app em %1$s</string>
+    <string name="broadcast_job_from_telegram">Enviada pelo Telegram (/post) em %1$s</string>
+    <string name="broadcast_keep_open">O envio respeita os limites do Telegram (cerca de 20 por segundo). Deixe o app aberto ou o bot ligado até terminar.</string>
+    <string name="broadcast_stop">Interromper envio</string>
+    <string name="broadcast_telegram">Pelo Telegram</string>
+    <string name="broadcast_telegram_enable">Permitir %1$s</string>
+    <string name="broadcast_telegram_enable_sub">Admins podem montar e enviar publicações direto do Telegram, sem abrir o app</string>
+    <string name="broadcast_level">Quem pode usar</string>
+    <string name="broadcast_level_top">Só admins de classe I.</string>
+    <string name="broadcast_level_explain">Admins das classes %1$s.</string>
+    <string name="broadcast_how_title">Como funciona</string>
+    <string-array name="broadcast_how_steps">
+        <item>Na conversa privada com o bot, o admin manda /post (ou /publi).</item>
+        <item>Manda as mensagens da publicação como quiser: texto formatado, fotos, vídeos, documentos, álbuns, figurinhas… O bot reage com 👍 a cada uma.</item>
+        <item>Manda /pronto: o bot mostra a prévia exatamente como vai chegar, quantos destinos existem e um código.</item>
+        <item>Manda /confirmar CÓDIGO para todos, ou /confirmar CÓDIGO usuarios (ou grupos, canais; pode combinar).</item>
+        <item>O bot envia sem mostrar quem escreveu e, no fim, manda um resumo. /cancelar desiste ou interrompe o envio.</item>
+    </string-array>
+    <string name="broadcast_buttons_title">Botões pelo Telegram</string>
+    <string name="broadcast_buttons_help">No Telegram comum não dá para mandar botões, então escreva linhas assim no fim do texto ou da legenda: cada linha vira uma fileira de botões e some do texto. Uma mensagem só com essas linhas coloca os botões na mensagem anterior (útil para foto sem legenda). Álbuns não aceitam botões.</string>
+
+    <string name="log_post_started">%1$s começou a montar uma publicação (/post).</string>
+    <string name="log_broadcast_started">Publicação em massa começou: %1$d chat(s).</string>
+    <string name="log_broadcast_done">Publicação em massa terminou: %1$d de %2$d entregues, %3$d falha(s).</string>
+    <string name="log_user_blocked">%1$s bloqueou o bot.</string>
+    <string name="log_user_unblocked">%1$s desbloqueou o bot.</string>
+    <string name="log_added_to">O bot foi adicionado a “%1$s”.</string>
+    <string name="log_removed_from">O bot foi removido de “%1$s”.</string>
+
+    <string name="err_unreachable_title">O bot não alcança mais esse chat</string>
+    <string name="err_unreachable_msg">O bot foi removido do grupo/canal, não tem permissão para publicar nele, ou a conta da pessoa foi apagada.</string>
+    <string name="err_broadcast_empty_title">A publicação está vazia</string>
+    <string name="err_broadcast_empty_msg">Escreva um texto ou anexe uma mídia em pelo menos uma mensagem.</string>
+    <string name="err_broadcast_no_audience_title">Ninguém para receber</string>
+    <string name="err_broadcast_no_audience_msg">Não há usuários, grupos ou canais do tipo escolhido. Eles aparecem quando falam com o bot ou quando o bot é adicionado a um grupo ou canal.</string>
+    <string name="err_broadcast_busy_title">Já tem uma publicação sendo enviada</string>
+    <string name="err_broadcast_busy_msg">Espere a publicação atual terminar (ou interrompa) antes de começar outra.</string>
 </resources>

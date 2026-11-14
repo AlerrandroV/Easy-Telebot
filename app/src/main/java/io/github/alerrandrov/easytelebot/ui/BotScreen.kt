@@ -81,6 +81,7 @@ fun BotScreen(
     onAdmins: (Boolean) -> Unit,
     onStorage: () -> Unit,
     onChats: () -> Unit,
+    onBroadcast: () -> Unit,
     onChangeToken: () -> Unit,
     onBattery: () -> Unit,
 ) {
@@ -224,6 +225,14 @@ fun BotScreen(
                 )
             }
 
+            item {
+                SectionCard(
+                    title = "📢  " + stringResource(R.string.broadcast_title),
+                    subtitle = stringResource(R.string.bot_broadcast_sub),
+                    onClick = onBroadcast,
+                )
+            }
+
             item { SectionTitle(stringResource(R.string.bot_section_commands)) }
             if (config.commands.isEmpty()) {
                 item {
@@ -308,6 +317,14 @@ fun BotScreen(
                     onClick = {
                         showAddSheet = false
                         onEditCommand(null, true)
+                    },
+                )
+                SectionCard(
+                    title = stringResource(R.string.broadcast_title),
+                    subtitle = stringResource(R.string.bot_broadcast_sub),
+                    onClick = {
+                        showAddSheet = false
+                        onBroadcast()
                     },
                 )
                 SectionCard(

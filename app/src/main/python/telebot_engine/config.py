@@ -97,10 +97,21 @@ def normalize(data):
             "show_in_menu": bool(item.get("show_in_menu", True)),
             "messages": messages,
         })
+    b = data.get("broadcast") if isinstance(data.get("broadcast"), dict) else {}
+    try:
+        b_level = max(1, min(10, int(b.get("admin_level", 1))))
+    except (TypeError, ValueError):
+        b_level = 1
+    b_triggers = [_clean_trigger(t) for t in b.get("triggers") or ["post", "publi"]]
     return {
         "version": 2,
         "auto_menu": bool(data.get("auto_menu", True)),
         "commands": commands,
+        "broadcast": {
+            "enabled": bool(b.get("enabled", True)),
+            "admin_level": b_level,
+            "triggers": [t for t in b_triggers if t] or ["post", "publi"],
+        },
     }
 
 
