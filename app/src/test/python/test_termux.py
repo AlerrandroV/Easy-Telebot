@@ -148,11 +148,18 @@ class LocalApiTests(unittest.TestCase):
     def post(self, method, data=None, key=None, timeout=5):
         req = urllib.request.Request(self.url(method, key), data=json.dumps(data or {}).encode("utf-8"),
                                      headers={"Content-Type": "application/json"})
-        try:
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
-                return resp.status, json.loads(resp.read())
-        except urllib.error.HTTPError as exc:
-            return exc.code, json.loads(exc.read())
+        deadline = time.time() + 10
+        while True:
+            try:
+                with urllib.request.urlopen(req, timeout=timeout) as resp:
+                    return resp.status, json.loads(resp.read())
+            except urllib.error.HTTPError as exc:
+                return exc.code, json.loads(exc.read())
+            except urllib.error.URLError:
+                # O motor ainda está ligando a API local: tenta de novo, como um cliente de verdade.
+                if time.time() > deadline:
+                    raise
+                time.sleep(0.05)
 
     def test_forwarding_unhandled_updates_and_proxy(self):
         path = os.path.join(self.dir, "config.json")
