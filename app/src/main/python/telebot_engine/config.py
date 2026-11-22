@@ -30,6 +30,7 @@ A versão 1 (``command`` + ``response``) é convertida automaticamente.
 import json
 
 from . import antispam
+from .shop import catalog as shop_catalog
 
 MEDIA_TYPES = ("photo", "video", "animation", "audio", "voice", "document", "sticker")
 
@@ -108,6 +109,7 @@ def normalize(data):
     return {
         "version": 2,
         "antispam": antispam.normalize_settings(data.get("antispam")),
+        "shop": shop_catalog.normalize(data.get("shop"), _message),
         "auto_menu": bool(data.get("auto_menu", True)),
         "commands": commands,
         "broadcast": {

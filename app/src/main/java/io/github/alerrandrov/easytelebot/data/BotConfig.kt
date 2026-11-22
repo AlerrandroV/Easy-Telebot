@@ -62,6 +62,7 @@ data class BotConfig(
     val commands: List<SimpleCommand> = emptyList(),
     val broadcast: BroadcastSettings = BroadcastSettings(),
     val antispam: AntispamSettings = AntispamSettings(),
+    val shop: ShopSettings = ShopSettings(),
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("version", VERSION)
@@ -89,6 +90,7 @@ data class BotConfig(
             .put("sensitivity", antispam.sensitivity)
             .put("admin_level", antispam.adminLevel)
             .put("warn_user", antispam.warnUser))
+        put("shop", shop.toJson())
         put("keywords", JSONArray())
         put("welcome", JSONObject().put("enabled", false).put("text", ""))
         put("schedules", JSONArray())
@@ -97,7 +99,7 @@ data class BotConfig(
 
     /** Arquivos de mídia usados (caminhos relativos à pasta do bot). */
     fun mediaFiles(): Set<String> =
-        commands.flatMap { c -> c.messages.mapNotNull { it.media?.file } }.toSet()
+        commands.flatMap { c -> c.messages.mapNotNull { it.media?.file } }.toSet() + shop.mediaFiles()
 
     companion object {
         const val VERSION = 2
@@ -112,7 +114,7 @@ data class BotConfig(
             )
         )
 
-        private fun messageJson(m: BotMessage) = JSONObject().apply {
+        internal fun messageJson(m: BotMessage) = JSONObject().apply {
             put("text", m.text)
             put("media", m.media?.let {
                 JSONObject().put("type", it.type).put("file", it.file).put("name", it.name)
@@ -127,7 +129,7 @@ data class BotConfig(
             put("link_preview", m.linkPreview)
         }
 
-        private fun parseMessage(o: JSONObject): BotMessage {
+        internal fun parseMessage(o: JSONObject): BotMessage {
             val media = o.optJSONObject("media")?.let {
                 MessageMedia(it.optString("type"), it.optString("file"), it.optString("name"))
             }
@@ -179,7 +181,8 @@ data class BotConfig(
                 adminLevel = a.optInt("admin_level", 1).coerceIn(1, AdminLevels.MAX),
                 warnUser = a.optBoolean("warn_user", true),
             )
-            return BotConfig(json.optBoolean("auto_menu", true), list, broadcast, antispam)
+            return BotConfig(json.optBoolean("auto_menu", true), list, broadcast, antispam,
+                ShopSettings.fromJson(json.optJSONObject("shop")))
         }
     }
 }
@@ -224,7 +227,7 @@ object AdminLevels {
     /** Comando secreto do motor para virar admin; não pode ser usado em comandos. */
     const val NEWADMIN = "newadmin"
     /** Comandos do próprio app que não podem virar comandos comuns. */
-    val RESERVED = setOf(NEWADMIN, "post", "publi")
+    val RESERVED = setOf(NEWADMIN, "post", "publi", ShopSettings.SUBSCRIPTIONS_TRIGGER) + ShopSettings.TRIGGERS
     private val ROMAN = listOf("I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X")
 
     fun roman(level: Int): String = ROMAN.getOrElse(level - 1) { level.toString() }

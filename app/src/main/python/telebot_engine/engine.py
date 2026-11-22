@@ -23,6 +23,7 @@ from . import antispam
 from . import broadcast as broadcast_mod
 from . import chats
 from .publish import PostFlow
+from .shop.flow import ShopFlow
 from . import config as config_mod
 from . import errors, template
 from .api import Aborted, NetworkError, TelegramApi, TelegramError
@@ -144,7 +145,7 @@ def build_keyboard(rows):
 
 
 class Engine:
-    def __init__(self, token, config_path, data_dir, callbacks, api=None, storage=None):
+    def __init__(self, token, config_path, data_dir, callbacks, api=None, storage=None, payments=None):
         self.token = token.strip()
         self.config_path = config_path
         self.base_dir = os.path.dirname(os.path.abspath(config_path))
@@ -169,6 +170,7 @@ class Engine:
         self._bans_mtime = None
         # Banco de dados (usuários/histórico). ``storage`` = configuração em JSON.
         self.post = PostFlow(self)
+        self.shop = ShopFlow(self, payments)
         self.send_source = "auto"  # "auto" = resposta de comando; "manual" = enviada pelo app
         self.storage = None
         if storage:
@@ -296,6 +298,11 @@ class Engine:
             name = next((t for t in c["triggers"] if COMMAND_RE.match(t)), None)
             if name:
                 items.append({"command": name, "description": (c["description"] or name)[:256]})
+        shop = self.config.get("shop") or {}
+        if shop.get("enabled") and shop.get("products"):
+            items.append({"command": shop["triggers"][0], "description": "Loja"})
+            if any(p["type"] == "subscription" for p in shop["products"]):
+                items.append({"command": "assinaturas", "description": "Minhas assinaturas"})
         b = self.config.get("broadcast") or {}
         if admin_level is not None and b.get("enabled") and admins_mod.can_use(admin_level, b.get("admin_level", 1)):
             items.append({"command": b["triggers"][0], "description": "Publicação em massa"})
@@ -353,6 +360,7 @@ class Engine:
             self.storage.start()
         if not self._connect():
             return
+        self.shop.start_worker()
         self.maybe_reload_config(force=True)
         self.set_state("running")
         backoff = 2
@@ -361,7 +369,7 @@ class Engine:
             self.maybe_reload_bans()
             try:
                 params = {"timeout": POLL_TIMEOUT, "allowed_updates": ["message", "edited_message", "channel_post", "my_chat_member",
-                                                                  "callback_query"]}
+                                                                  "callback_query", "pre_checkout_query"]}
                 if self.offset is not None:
                     params["offset"] = self.offset
                 updates = self.api.call("getUpdates", params, timeout=POLL_TIMEOUT + 15)
@@ -397,6 +405,8 @@ class Engine:
                     self.handle_membership(update["my_chat_member"])
                 elif update.get("callback_query") and not self.stopping:
                     self.handle_callback(update["callback_query"])
+                elif update.get("pre_checkout_query") and not self.stopping:
+                    self.shop.on_pre_checkout(update["pre_checkout_query"])
 
     def handle_membership(self, change):
         """Bot adicionado/removido de grupo ou canal, ou bloqueado/desbloqueado por um usuário."""
@@ -489,6 +499,8 @@ class Engine:
         bot_username = (self.bot or {}).get("username", "")
         parsed = parse_command(text, bot_username)
         if self.check_spam(message, parsed):
+            return
+        if self.shop.handle_message(message, parsed):
             return
         if self.post.handle(message, parsed):
             return
@@ -594,7 +606,9 @@ class Engine:
             pass
 
     def handle_callback(self, query):
-        """Botões do aviso de antispam (✅ Desbloquear / 🚫 Manter bloqueado)."""
+        """Botões da loja e do aviso de antispam (✅ Desbloquear / 🚫 Manter bloqueado)."""
+        if self.shop.handle_callback(query):
+            return
         parsed = antispam.parse_callback(query.get("data"))
         if parsed is None:
             self._try_call("answerCallbackQuery", {"callback_query_id": query.get("id")})

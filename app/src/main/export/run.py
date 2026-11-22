@@ -90,12 +90,21 @@ def read_storage():
     return json.dumps(settings)
 
 
+def read_payments():
+    """payments.json: token do Mercado Pago e chave do Blink (só se exportado com o token)."""
+    path = os.path.join(HERE, "payments.json")
+    if not os.path.exists(path):
+        return None
+    with open(path, "r", encoding="utf-8") as fh:
+        return fh.read()
+
+
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "newadmin":
         new_admin_code(sys.argv[2] if len(sys.argv) > 2 else 1)
         return
     engine = Engine(read_token(), os.path.join(HERE, "config.json"), HERE, ConsoleCallbacks(),
-                    storage=read_storage())
+                    storage=read_storage(), payments=read_payments())
 
     def stop(*_):
         print("Parando…")

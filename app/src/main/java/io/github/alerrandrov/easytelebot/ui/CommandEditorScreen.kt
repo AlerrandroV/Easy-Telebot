@@ -32,6 +32,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.IconButton
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -272,7 +274,7 @@ fun CommandEditorScreen(botId: Long, commandId: String?, newAsAdmin: Boolean = f
                         nextKey++
                     },
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text("+  " + stringResource(R.string.cmd_add_message)) }
+                ) { ButtonLabel(R.drawable.ic_add, stringResource(R.string.cmd_add_message)) }
             }
             item {
                 Text(
@@ -372,7 +374,7 @@ private fun TriggersEditor(
                             selected = t in taken,
                             onClick = { onRemove(t) },
                             label = { Text("/$t") },
-                            trailingIcon = { Text("✕") },
+                            trailingIcon = { AppIcon(R.drawable.ic_close, Modifier.size(16.dp)) },
                         )
                     }
                 }
@@ -461,10 +463,16 @@ internal fun MessageEditor(
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f),
                 )
-                TextButton(onClick = { onMove(-1) }, enabled = index > 0) { Text("↑") }
-                TextButton(onClick = { onMove(1) }, enabled = index < count - 1) { Text("↓") }
-                TextButton(onClick = onRemove, enabled = count > 1) {
-                    Text("✕", color = if (count > 1) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+                if (count > 1) {
+                    IconButton(onClick = { onMove(-1) }, enabled = index > 0) {
+                        AppIcon(R.drawable.ic_arrow_upward, description = stringResource(R.string.cmd_move_up))
+                    }
+                    IconButton(onClick = { onMove(1) }, enabled = index < count - 1) {
+                        AppIcon(R.drawable.ic_arrow_downward, description = stringResource(R.string.cmd_move_down))
+                    }
+                    IconButton(onClick = onRemove) {
+                        AppIcon(R.drawable.ic_delete, tint = MaterialTheme.colorScheme.error, description = stringResource(R.string.delete))
+                    }
                 }
             }
 
@@ -546,7 +554,7 @@ internal fun MessageEditor(
                 )
             }
             TextButton(onClick = { setButtons(buttons + ButtonDraft("", "", false)) }) {
-                Text("+  " + stringResource(R.string.btn_add))
+                ButtonLabel(R.drawable.ic_add, stringResource(R.string.btn_add))
             }
 
             if (media == null) {

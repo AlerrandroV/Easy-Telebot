@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -70,17 +71,17 @@ fun LogScreen(botId: Long, onBack: () -> Unit) {
                     else -> MaterialTheme.colorScheme.onSurface
                 }
                 val icon = when (e.level) {
-                    LogEntry.Level.IN -> "⬇"
-                    LogEntry.Level.OUT -> "⬆"
-                    LogEntry.Level.ERROR -> "✖"
-                    LogEntry.Level.WARN -> "!"
-                    LogEntry.Level.INFO -> "•"
+                    LogEntry.Level.IN -> R.drawable.ic_south
+                    LogEntry.Level.OUT -> R.drawable.ic_north
+                    LogEntry.Level.ERROR -> R.drawable.ic_error
+                    LogEntry.Level.WARN -> R.drawable.ic_warning
+                    LogEntry.Level.INFO -> R.drawable.ic_info
                 }
                 Column(Modifier.padding(vertical = 6.dp)) {
                     Row {
                         Text(fmt.format(Date(e.time)), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
                         Spacer(Modifier.width(8.dp))
-                        Text(icon, color = color)
+                        AppIcon(icon, Modifier.size(18.dp), tint = color)
                         Spacer(Modifier.width(8.dp))
                         Text(e.text, color = color, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                     }

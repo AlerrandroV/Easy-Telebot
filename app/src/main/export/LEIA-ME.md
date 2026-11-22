@@ -67,3 +67,13 @@ bloqueado sozinho: o bot passa a ignorar a pessoa e avisa os admins da classe
 configurada, com os botões ✅ Desbloquear e 🚫 Manter bloqueado. Os bloqueios
 ficam em `bans.json` (apague uma entrada para desbloquear à mão). A
 sensibilidade fica em `config.json`, no campo `antispam`.
+
+## Loja e assinaturas
+
+Com a loja ligada no app, o bot vende pelo `/loja`: produtos digitais (entrega
+automática) e assinaturas de canais/grupos (convite pessoal, lembrete e remoção
+ao vencer). Pagamentos: Mercado Pago (link ou Pix), Bitcoin pela Lightning
+(Blink) e Telegram Stars. O bot confere os pagamentos sozinho; não precisa de
+servidor nem de webhook. Os pedidos e assinaturas ficam em `shop.db`. O token
+do Mercado Pago e a chave do Blink vão em `payments.json` (só se exportado com
+o token; guarde como uma senha).

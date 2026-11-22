@@ -90,6 +90,7 @@ object BotExporter {
                 if (includeToken) {
                     TokenStore.load(context, meta.id)?.let { put("token.txt", (it + "\n").toByteArray()) }
                     put("storage_secrets.json", StorageRepository.loadSecrets(context, meta.id).toJson().toString(2).toByteArray())
+                    put("payments.json", PaymentRepository.load(context, meta.id).toJson().toString(2).toByteArray())
                 }
             }
             true

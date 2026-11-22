@@ -156,7 +156,7 @@ fun AdminsScreen(botId: Long, autoAdd: Boolean = false, onBack: () -> Unit) {
             } else {
                 item {
                     Button(onClick = { startAdd() }, modifier = Modifier.fillMaxWidth()) {
-                        Text("+  " + stringResource(R.string.admins_add))
+                        ButtonLabel(R.drawable.ic_add, stringResource(R.string.admins_add))
                     }
                 }
             }

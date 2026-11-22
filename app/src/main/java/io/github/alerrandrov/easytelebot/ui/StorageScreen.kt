@@ -465,7 +465,9 @@ private fun SecretField(value: String, label: String, onChange: (String) -> Unit
 @Composable
 private fun HelpSteps(title: String, steps: List<String>) {
     var open by remember { mutableStateOf(false) }
-    TextButton(onClick = { open = !open }) { Text((if (open) "▾ " else "▸ ") + title) }
+    TextButton(onClick = { open = !open }) {
+        ButtonLabel(if (open) R.drawable.ic_expand_more else R.drawable.ic_chevron_right, title)
+    }
     if (open) StepList(steps)
 }
 

@@ -69,6 +69,12 @@ object BotRuntime {
 
     fun bumpBans(id: Long) = _bansVersion.bump(id)
 
+    /** Muda a cada venda/assinatura, para as telas da loja recarregarem. */
+    private val _shopVersion = MutableStateFlow<Map<Long, Long>>(emptyMap())
+    val shopVersion: StateFlow<Map<Long, Long>> = _shopVersion.asStateFlow()
+
+    fun bumpShop(id: Long) = _shopVersion.bump(id)
+
     private fun MutableStateFlow<Map<Long, Long>>.bump(id: Long) = update { it + (id to ((it[id] ?: 0L) + 1)) }
 
     /** Motores Python ativos (para pedir recarga/parada de qualquer thread). */
@@ -172,6 +178,24 @@ object BotRuntime {
                 bumpBans(id)
                 val botName = BotRepository.bots.value.firstOrNull { it.id == id }?.name ?: ""
                 Alerts.spamBlocked(app, id, botName, e.optLong("user_id"), name, reason)
+            }
+            "order_created" -> add(id, LogEntry.Level.INFO, s(R.string.log_order_created, e.optString("order"), e.optString("buyer"), e.optString("total")))
+            "sale" -> {
+                val problems = e.optInt("problems") > 0
+                add(
+                    id, if (problems) LogEntry.Level.WARN else LogEntry.Level.INFO,
+                    s(if (problems) R.string.log_sale_problem else R.string.log_sale, e.optString("order"), e.optString("buyer"), e.optString("total")),
+                )
+                bumpShop(id)
+                val botName = BotRepository.bots.value.firstOrNull { it.id == id }?.name ?: ""
+                Alerts.sale(app, id, botName, e.optString("order"), e.optString("buyer"), e.optString("total"), problems)
+            }
+            "subscription_expired" -> {
+                add(
+                    id, LogEntry.Level.INFO,
+                    s(if (e.optBoolean("removed")) R.string.log_sub_expired else R.string.log_sub_expired_not_removed, e.optString("user"), e.optString("chat")),
+                )
+                bumpShop(id)
             }
             "spam_decided" -> {
                 val released = e.optString("action") == "release"

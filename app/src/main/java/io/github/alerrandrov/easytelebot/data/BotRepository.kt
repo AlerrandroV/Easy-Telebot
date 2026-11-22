@@ -83,6 +83,7 @@ object BotRepository {
         dir(id).deleteRecursively()
         TokenStore.delete(context, id)
         TokenStore.deleteSecret(context, StorageRepository.secretName(id))
+        PaymentRepository.delete(context, id)
         Prefs(context).forgetBot(id)
         reload()
     }

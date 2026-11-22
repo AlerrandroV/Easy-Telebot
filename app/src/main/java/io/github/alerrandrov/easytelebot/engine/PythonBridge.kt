@@ -166,8 +166,9 @@ object PythonBridge {
         dataDir: String,
         callbacks: EngineCallbacks,
         storageJson: String? = null,
+        paymentsJson: String? = null,
     ): PyObject = module(context, "engine").callAttr(
-        "Engine", token, configPath, dataDir, callbacks, Kwarg("storage", storageJson),
+        "Engine", token, configPath, dataDir, callbacks, Kwarg("storage", storageJson), Kwarg("payments", paymentsJson),
     )
 }
 

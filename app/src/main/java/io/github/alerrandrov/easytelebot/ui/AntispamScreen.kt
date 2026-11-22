@@ -248,12 +248,10 @@ private fun BanCard(
                     )
                 }
             }
-            Text(
-                "⚠️ " + banReason(ban),
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Text(
-                "🕒 " + DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(ban.at)) +
+            IconLabel(R.drawable.ic_warning, banReason(ban))
+            IconLabel(
+                R.drawable.ic_schedule,
+                DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(ban.at)) +
                     if (!ban.isPrivate && ban.chatTitle.isNotEmpty()) " · " + stringResource(R.string.antispam_in_group, ban.chatTitle) else "",
                 style = MaterialTheme.typography.bodySmall,
             )
@@ -268,9 +266,9 @@ private fun BanCard(
                 if (ban.isPrivate) {
                     OutlinedButton(onClick = { onOpenChat(ban.userId) }) { Text(stringResource(R.string.antispam_open_chat)) }
                 }
-                Button(onClick = onRelease, enabled = !busy) { Text("✅ " + stringResource(R.string.antispam_release)) }
+                Button(onClick = onRelease, enabled = !busy) { ButtonLabel(R.drawable.ic_check_circle, stringResource(R.string.antispam_release)) }
                 if (onKeep != null) {
-                    OutlinedButton(onClick = onKeep, enabled = !busy) { Text("🚫 " + stringResource(R.string.antispam_keep)) }
+                    OutlinedButton(onClick = onKeep, enabled = !busy) { ButtonLabel(R.drawable.ic_block, stringResource(R.string.antispam_keep)) }
                 }
             }
         }
