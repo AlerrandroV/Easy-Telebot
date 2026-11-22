@@ -86,6 +86,8 @@ fun BotScreen(
     onBroadcast: () -> Unit,
     onAntispam: () -> Unit,
     onShop: () -> Unit,
+    onTermux: () -> Unit,
+    onNewScriptCommand: () -> Unit,
     /** Novo produto (true = assinatura de canal). */
     onNewProduct: (Boolean) -> Unit,
     onChangeToken: () -> Unit,
@@ -259,6 +261,20 @@ fun BotScreen(
 
             item {
                 SectionCard(
+                    icon = R.drawable.ic_terminal,
+                    title = stringResource(R.string.termux_title),
+                    subtitle = when {
+                        config.termux.apiEnabled -> stringResource(R.string.bot_termux_api_on, config.termux.port)
+                        config.commands.any { it.script != null } ->
+                            stringResource(R.string.bot_termux_scripts, config.commands.count { it.script != null })
+                        else -> stringResource(R.string.bot_termux_sub)
+                    },
+                    onClick = onTermux,
+                )
+            }
+
+            item {
+                SectionCard(
                     icon = R.drawable.ic_shield,
                     title = stringResource(R.string.antispam_title),
                     subtitle = when {
@@ -357,6 +373,15 @@ fun BotScreen(
                     onClick = {
                         showAddSheet = false
                         onEditCommand(null, true)
+                    },
+                )
+                SectionCard(
+                    icon = R.drawable.ic_terminal,
+                    title = stringResource(R.string.add_script_command),
+                    subtitle = stringResource(R.string.add_script_command_sub),
+                    onClick = {
+                        showAddSheet = false
+                        onNewScriptCommand()
                     },
                 )
                 SectionCard(
@@ -484,7 +509,11 @@ private fun CommandCard(cmd: SimpleCommand, onClick: () -> Unit) {
             if (cmd.description.isNotBlank()) Text(cmd.description, style = MaterialTheme.typography.bodyMedium)
             val media = cmd.messages.count { it.media != null }
             val buttons = cmd.messages.sumOf { m -> m.buttons.sumOf { it.size } }
-            Text(
+            val script = cmd.script
+            if (script != null) IconLabel(
+                R.drawable.ic_terminal, script.command,
+                style = MaterialTheme.typography.bodySmall, tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            ) else Text(
                 listOfNotNull(
                     pluralStringResourceSafe(R.plurals.cmd_messages_count, cmd.messages.size),
                     media.takeIf { it > 0 }?.let { pluralStringResourceSafe(R.plurals.cmd_media_count, it) },

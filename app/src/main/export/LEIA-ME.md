@@ -77,3 +77,17 @@ ao vencer). Pagamentos: Mercado Pago (link ou Pix), Bitcoin pela Lightning
 servidor nem de webhook. Os pedidos e assinaturas ficam em `shop.db`. O token
 do Mercado Pago e a chave do Blink vão em `payments.json` (só se exportado com
 o token; guarde como uma senha).
+
+## Comandos de script e Termux
+
+Comandos configurados como "Script do Termux" rodam a linha de comando
+cadastrada (aqui no computador, direto no `bash`) e respondem com o que o
+programa imprimir: texto ou JSON (`text`, `photo`, `buttons`...). O programa
+recebe os dados em variáveis de ambiente: `TELEBOT_ARGS`, `TELEBOT_UPDATE`,
+`TELEBOT_USER_ID`, `TELEBOT_CHAT_ID`, `TELEBOT_DATA`...
+
+Este pacote também roda **dentro do próprio Termux** no celular:
+`pkg install python`, descompacte e rode `python run.py`.
+
+A API local (`termux` no `config.json`) abre em `127.0.0.1` uma cópia da API
+do Telegram para bibliotecas de bot, com a chave `termux.key` no lugar do token.

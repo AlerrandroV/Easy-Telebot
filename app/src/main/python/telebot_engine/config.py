@@ -29,7 +29,7 @@ A versão 1 (``command`` + ``response``) é convertida automaticamente.
 
 import json
 
-from . import antispam
+from . import antispam, termux
 from .shop import catalog as shop_catalog
 
 MEDIA_TYPES = ("photo", "video", "animation", "audio", "voice", "document", "sticker")
@@ -99,6 +99,7 @@ def normalize(data):
             "description": str(item.get("description") or "").strip(),
             "show_in_menu": bool(item.get("show_in_menu", True)),
             "messages": messages,
+            "script": termux.normalize_script(item.get("script")),
         })
     b = data.get("broadcast") if isinstance(data.get("broadcast"), dict) else {}
     try:
@@ -109,6 +110,7 @@ def normalize(data):
     return {
         "version": 2,
         "antispam": antispam.normalize_settings(data.get("antispam")),
+        "termux": termux.normalize_settings(data.get("termux")),
         "shop": shop_catalog.normalize(data.get("shop"), _message),
         "auto_menu": bool(data.get("auto_menu", True)),
         "commands": commands,

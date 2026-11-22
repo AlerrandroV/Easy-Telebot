@@ -75,6 +75,10 @@ object BotRuntime {
 
     fun bumpShop(id: Long) = _shopVersion.bump(id)
 
+    /** Porta em que a API local do Termux está no ar, por bot (ausente = desligada). */
+    private val _localApi = MutableStateFlow<Map<Long, Int>>(emptyMap())
+    val localApi: StateFlow<Map<Long, Int>> = _localApi.asStateFlow()
+
     private fun MutableStateFlow<Map<Long, Long>>.bump(id: Long) = update { it + (id to ((it[id] ?: 0L) + 1)) }
 
     /** Motores Python ativos (para pedir recarga/parada de qualquer thread). */
@@ -109,7 +113,12 @@ object BotRuntime {
         it.copy(state = BotState.STARTING, running = true, startedAt = System.currentTimeMillis(), lastError = null)
     }
 
-    fun markStopped(id: Long) = updateStatus(id) {
+    fun markStopped(id: Long) {
+        _localApi.update { it - id }
+        markStoppedStatus(id)
+    }
+
+    private fun markStoppedStatus(id: Long) = updateStatus(id) {
         it.copy(running = false, state = if (it.state == BotState.FATAL) BotState.FATAL else BotState.STOPPED)
     }
 
@@ -197,6 +206,18 @@ object BotRuntime {
                 )
                 bumpShop(id)
             }
+            "local_api" -> {
+                if (e.optString("state") == "listening") {
+                    _localApi.update { it + (id to e.optInt("port")) }
+                    add(id, LogEntry.Level.INFO, s(R.string.log_local_api_on, e.optInt("port")))
+                } else {
+                    _localApi.update { it - id }
+                }
+            }
+            "script_done" -> add(
+                id, LogEntry.Level.OUT,
+                s(R.string.log_script_done, e.optString("command"), e.optDouble("seconds").toString().replace('.', ','), e.optInt("messages")),
+            )
             "spam_decided" -> {
                 val released = e.optString("action") == "release"
                 add(

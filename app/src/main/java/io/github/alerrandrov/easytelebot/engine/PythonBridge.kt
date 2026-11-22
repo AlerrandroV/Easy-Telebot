@@ -176,6 +176,8 @@ object PythonBridge {
 interface EngineCallbacks {
     fun onEvent(json: String)
     fun nowLocal(): String
+    /** Comando de script: roda no Termux e devolve o resultado em JSON (veja `TermuxRunner`). */
+    fun runTermux(command: String, envJson: String, timeoutSec: Int): String
 }
 
 /** Erro já classificado pelo motor (veja `errors.py`). */

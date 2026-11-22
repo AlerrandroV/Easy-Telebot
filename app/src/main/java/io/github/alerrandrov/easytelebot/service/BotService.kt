@@ -28,6 +28,7 @@ import io.github.alerrandrov.easytelebot.data.TokenStore
 import io.github.alerrandrov.easytelebot.engine.BotRuntime
 import io.github.alerrandrov.easytelebot.engine.BotState
 import io.github.alerrandrov.easytelebot.engine.EngineCallbacks
+import io.github.alerrandrov.easytelebot.termux.TermuxRunner
 import io.github.alerrandrov.easytelebot.engine.ErrorExplainer
 import io.github.alerrandrov.easytelebot.engine.LogEntry
 import io.github.alerrandrov.easytelebot.engine.PythonBridge
@@ -102,6 +103,8 @@ class BotService : Service() {
             override fun onEvent(json: String) = BotRuntime.handleEvent(id, json)
             override fun nowLocal(): String =
                 SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())
+            override fun runTermux(command: String, envJson: String, timeoutSec: Int): String =
+                TermuxRunner.run(this@BotService, command, envJson, timeoutSec)
         }
         val configPath = BotRepository.configFile(id).absolutePath
         val dataDir = BotRepository.dir(id).absolutePath

@@ -34,6 +34,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.IconButton
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.FilterChip
+import androidx.compose.runtime.mutableIntStateOf
+import io.github.alerrandrov.easytelebot.data.CommandScript
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -84,11 +87,23 @@ internal fun toRows(buttons: List<ButtonDraft>): List<List<LinkButton>> {
 }
 
 @Composable
-fun CommandEditorScreen(botId: Long, commandId: String?, newAsAdmin: Boolean = false, onDone: () -> Unit) {
+fun CommandEditorScreen(
+    botId: Long,
+    commandId: String?,
+    newAsAdmin: Boolean = false,
+    newAsScript: Boolean = false,
+    onDone: () -> Unit,
+) {
     val context = LocalContext.current
     val config = remember { ConfigRepository.load(botId) }
     val original = remember { config.commands.firstOrNull { it.id == commandId } }
-    val start = remember { original ?: SimpleCommand(adminLevel = if (newAsAdmin) 1 else null, showInMenu = true) }
+    val start = remember {
+        original ?: SimpleCommand(
+            adminLevel = if (newAsAdmin) 1 else null,
+            showInMenu = true,
+            script = if (newAsScript) CommandScript() else null,
+        )
+    }
 
     var triggers by remember { mutableStateOf(start.triggers) }
     var triggerInput by remember { mutableStateOf("") }
@@ -101,6 +116,9 @@ fun CommandEditorScreen(botId: Long, commandId: String?, newAsAdmin: Boolean = f
         mutableStateOf(start.messages.ifEmpty { listOf(BotMessage()) }.mapIndexed { i, m -> Draft(i.toLong(), m) })
     }
     var showErrors by remember { mutableStateOf(false) }
+    var scriptMode by remember { mutableStateOf(start.script != null) }
+    var scriptCommand by remember { mutableStateOf(start.script?.command ?: "") }
+    var scriptTimeout by remember { mutableIntStateOf(start.script?.timeout ?: 30) }
     var confirmDiscard by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
 
@@ -112,10 +130,11 @@ fun CommandEditorScreen(botId: Long, commandId: String?, newAsAdmin: Boolean = f
         showInMenu = showInMenu,
         adminLevel = adminLevel,
         messages = drafts.map { it.msg },
+        script = if (scriptMode) CommandScript(scriptCommand.trim(), scriptTimeout) else null,
     )
     val changed = current() != start
 
-    val errors = validate(context, triggers, drafts.map { it.msg }, otherTriggers)
+    val errors = validate(context, triggers, drafts.map { it.msg }, otherTriggers, if (scriptMode) scriptCommand else null)
 
     fun addTrigger() {
         val parts = triggerInput.split(' ', ',', ';').map { it.trim().removePrefix("/").lowercase() }.filter { it.isNotEmpty() }
@@ -127,7 +146,7 @@ fun CommandEditorScreen(botId: Long, commandId: String?, newAsAdmin: Boolean = f
 
     fun save() {
         if (triggerInput.isNotBlank()) addTrigger()
-        if (validate(context, triggers, drafts.map { it.msg }, otherTriggers).isNotEmpty()) {
+        if (validate(context, triggers, drafts.map { it.msg }, otherTriggers, if (scriptMode) scriptCommand else null).isNotEmpty()) {
             showErrors = true
             return
         }
@@ -248,8 +267,25 @@ fun CommandEditorScreen(botId: Long, commandId: String?, newAsAdmin: Boolean = f
                 }
             }
 
-            item { SectionTitle(stringResource(R.string.cmd_messages_title)) }
-            itemsIndexed(drafts, key = { _, d -> d.key }) { index, draft ->
+            item { SectionTitle(stringResource(R.string.cmd_response_title)) }
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = !scriptMode, onClick = { scriptMode = false },
+                        label = { Text(stringResource(R.string.cmd_response_messages)) },
+                        leadingIcon = { AppIcon(R.drawable.ic_send, Modifier.size(18.dp)) },
+                    )
+                    FilterChip(
+                        selected = scriptMode, onClick = { scriptMode = true },
+                        label = { Text(stringResource(R.string.cmd_response_script)) },
+                        leadingIcon = { AppIcon(R.drawable.ic_terminal, Modifier.size(18.dp)) },
+                    )
+                }
+            }
+            if (scriptMode) {
+                item { ScriptEditor(scriptCommand, { scriptCommand = it }, scriptTimeout, { scriptTimeout = it }) }
+            }
+            if (!scriptMode) itemsIndexed(drafts, key = { _, d -> d.key }) { index, draft ->
                 MessageEditor(
                     botId = botId,
                     index = index,
@@ -267,7 +303,7 @@ fun CommandEditorScreen(botId: Long, commandId: String?, newAsAdmin: Boolean = f
                     onRemove = { drafts = drafts.filter { it.key != draft.key } },
                 )
             }
-            item {
+            if (!scriptMode) item {
                 OutlinedButton(
                     onClick = {
                         drafts = drafts + Draft(nextKey, BotMessage())
@@ -276,7 +312,7 @@ fun CommandEditorScreen(botId: Long, commandId: String?, newAsAdmin: Boolean = f
                     modifier = Modifier.fillMaxWidth(),
                 ) { ButtonLabel(R.drawable.ic_add, stringResource(R.string.cmd_add_message)) }
             }
-            item {
+            if (!scriptMode) item {
                 Text(
                     stringResource(R.string.cmd_messages_help),
                     style = MaterialTheme.typography.bodySmall,
@@ -319,15 +355,50 @@ private fun validate(
     triggers: List<String>,
     messages: List<BotMessage>,
     otherTriggers: Set<String>,
+    /** Linha de comando do script (`null` = comando de mensagens prontas). */
+    script: String?,
 ): List<String> = buildList {
     if (triggers.isEmpty()) add(context.getString(R.string.cmd_err_no_trigger))
     triggers.filter { it in AdminLevels.RESERVED }.forEach { add(context.getString(R.string.cmd_err_reserved, it)) }
     triggers.filter { it in otherTriggers }.forEach { add(context.getString(R.string.cmd_err_trigger_taken, it)) }
+    if (script != null) {
+        if (script.isBlank()) add(context.getString(R.string.cmd_err_no_script))
+        return@buildList
+    }
     if (messages.none { it.text.isNotBlank() || it.media != null }) add(context.getString(R.string.cmd_err_no_message))
     messages.forEachIndexed { i, m ->
         if (m.text.length > TEXT_LIMIT) add(context.getString(R.string.cmd_err_too_long, i + 1))
         if (m.buttons.flatten().any { b -> b.text.isBlank() || Variables.normalizeUrl(b.url) == null }) {
             add(context.getString(R.string.cmd_err_button, i + 1))
+        }
+    }
+}
+
+/** Linha de comando do Termux + tempo máximo, com a explicação da saída. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ScriptEditor(command: String, onCommand: (String) -> Unit, timeout: Int, onTimeout: (Int) -> Unit) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+                value = command,
+                onValueChange = { onCommand(it.take(2000)) },
+                label = { Text(stringResource(R.string.cmd_script_command)) },
+                placeholder = { Text("python ~/bot/clima.py") },
+                textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Text(stringResource(R.string.cmd_script_timeout), style = MaterialTheme.typography.titleSmall)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf(10, 30, 60, 120).forEach { t ->
+                    FilterChip(selected = timeout == t, onClick = { onTimeout(t) }, label = { Text(stringResource(R.string.cmd_script_seconds, t)) })
+                }
+            }
+            Text(
+                stringResource(R.string.cmd_script_help),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

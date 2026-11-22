@@ -838,4 +838,103 @@
     <string name="chat_attach">Anexar</string>
     <string name="cmd_move_up">Mover para cima</string>
     <string name="cmd_move_down">Mover para baixo</string>
+
+    <!-- Termux e scripts -->
+    <string name="termux_title">Termux e scripts</string>
+    <string name="bot_termux_sub">Comandos em qualquer linguagem de programação e API local para bibliotecas de bot</string>
+    <string name="bot_termux_scripts">%1$d comando(s) de script</string>
+    <string name="bot_termux_api_on">API local ligada na porta %1$d</string>
+    <string name="add_script_command">Comando de script</string>
+    <string name="add_script_command_sub">O comando roda um programa seu no Termux (Python, Node, Bash, Ruby…) e responde com o que ele imprimir.</string>
+    <string name="termux_intro">O Termux é um terminal Linux para Android. Com ele, o bot faz o que você programar: consultar sites e APIs, usar banco de dados, gerar imagens, automatizar o celular… Em qualquer linguagem.</string>
+    <string name="termux_setup">1. Preparar o Termux</string>
+    <string name="termux_installed">Termux instalado</string>
+    <string name="termux_not_installed">Termux não encontrado</string>
+    <string-array name="termux_install_steps">
+        <item>Instale o Termux pelo F-Droid ou pelo GitHub oficial (termux/termux-app). A versão antiga da Play Store não serve.</item>
+        <item>Abra o Termux uma vez e espere a instalação terminar.</item>
+        <item>Instale a linguagem que quiser, por exemplo: pkg install python nodejs</item>
+    </string-array>
+    <string name="termux_check_again">Verificar de novo</string>
+    <string name="termux_external_title">Liberar o Termux para outros apps</string>
+    <string name="termux_external_msg">Por segurança, o Termux só aceita comandos de outros apps depois que você permite. Cole este comando no Termux uma vez:</string>
+    <string-array name="termux_external_steps">
+        <item>Abra o Termux e cole: echo \"allow-external-apps = true\" >> ~/.termux/termux.properties</item>
+        <item>Depois rode: termux-reload-settings (ou feche e abra o Termux).</item>
+        <item>Confira em Termux e scripts se a permissão \"Executar comandos no Termux\" está concedida e toque em Testar.</item>
+        <item>Se o Android estiver economizando bateria do Termux, libere: Configurações, Apps, Termux, Bateria, Sem restrições.</item>
+    </string-array>
+    <string name="termux_permitted">Permissão para executar comandos no Termux concedida</string>
+    <string name="termux_not_permitted">Falta a permissão para executar comandos no Termux</string>
+    <string name="termux_allow">Permitir</string>
+    <string name="termux_allow_hint">Se o Android não mostrar o pedido: Configurações, Apps, Easy Telebot, Permissões, Permissões adicionais, Executar comandos no Termux.</string>
+    <string name="termux_test">Testar o Termux</string>
+    <string name="termux_testing">Testando…</string>
+    <string name="termux_scripts">2. Comandos de script</string>
+    <string name="termux_scripts_msg">Crie um comando e escolha Responder com: Script do Termux. Quando alguém usar o comando, o app roda a sua linha de comando no Termux e manda o que o programa imprimir.</string>
+    <string name="termux_scripts_existing">Comandos de script: %1$s</string>
+    <string name="termux_env_title">O que o script recebe (variáveis de ambiente)</string>
+    <string-array name="termux_env_vars">
+        <item>TELEBOT_ARGS: texto depois do comando (/clima São Paulo -> São Paulo)</item>
+        <item>TELEBOT_UPDATE: a mensagem inteira do Telegram, em JSON</item>
+        <item>TELEBOT_USER_ID, TELEBOT_USER_NAME, TELEBOT_CHAT_ID: quem mandou e onde</item>
+        <item>TELEBOT_ADMIN_LEVEL: classe de admin da pessoa (vazio se não for admin)</item>
+        <item>TELEBOT_DATA: o dado do botão apertado (botões com \"data\")</item>
+        <item>TELEBOT_API: endereço da API local, se estiver ligada (para mandar fotos, arquivos etc.)</item>
+    </string-array>
+    <string name="termux_output_title">O que o script responde</string>
+    <string-array name="termux_output_rules">
+        <item>Texto simples: vira uma mensagem, com a mesma formatação dos comandos (*negrito*, _itálico_, [link](site.com)).</item>
+        <item>JSON: {\"text\": \"...\", \"photo\": \"https://...\", \"buttons\": [[{\"text\": \"Site\", \"url\": \"...\"}, {\"text\": \"Mais\", \"data\": \"pagina2\"}]]}. Também aceita video, document, audio, animation e sticker, e uma lista de objetos para várias mensagens.</item>
+        <item>Botão com \"data\" roda o mesmo script de novo com TELEBOT_DATA. Com \"edit\": true, a resposta edita a mensagem do botão.</item>
+        <item>\"html\": true manda o texto como HTML do Telegram, sem conversão.</item>
+        <item>Nada impresso: nenhuma resposta. Erro (código diferente de 0) aparece no registro do bot com o final do stderr.</item>
+    </string-array>
+    <string name="termux_examples">Exemplos</string>
+    <string name="termux_api">3. API local do bot (avançado)</string>
+    <string name="termux_api_enable">Ligar a API local</string>
+    <string name="termux_api_enable_sub">Para bots inteiros feitos com bibliotecas (python-telegram-bot, aiogram, Telegraf…) rodando no Termux. Elas conversam com o app em vez de com o Telegram, e o app repassa.</string>
+    <string name="termux_api_listening">No ar em 127.0.0.1:%1$d</string>
+    <string name="termux_api_starting">Ligando…</string>
+    <string name="termux_api_bot_off">Liga junto com o bot (o bot está desligado)</string>
+    <string name="termux_port">Porta</string>
+    <string name="termux_port_invalid">Use uma porta de 1024 a 65535.</string>
+    <string name="termux_port_taken">Outro bot já usa essa porta.</string>
+    <string name="termux_forward">O que os scripts recebem</string>
+    <string name="termux_forward_unhandled">O que o app não respondeu</string>
+    <string name="termux_forward_all">Tudo</string>
+    <string name="termux_forward_unhandled_sub">Comandos, loja, antispam e publicação continuam no app. Mensagens livres, comandos que o app não conhece, botões dos seus scripts, pesquisas inline e o resto vão para o script.</string>
+    <string name="termux_forward_all_sub">O script recebe tudo, inclusive o que o app já respondeu (bom para registros e estatísticas). Cuidado para não responder duas vezes.</string>
+    <string name="termux_key">Chave (use no lugar do token)</string>
+    <string name="termux_key_new">Gerar outra chave</string>
+    <string name="termux_key_hint">O token de verdade nunca sai do app. A chave só funciona dentro deste celular (127.0.0.1). Gerar outra desliga os scripts que usam a antiga.</string>
+    <string name="termux_libs">Como usar nas bibliotecas</string>
+    <string name="termux_api_notes">Funciona como a API oficial: getUpdates, sendMessage, sendPhoto com arquivo, download de arquivos… O app não deixa os scripts trocarem o webhook (setWebhook) nem desconectar o bot; deleteWebhook é aceito sem efeito. Quem foi bloqueado pelo antispam não chega aos scripts. As mensagens que os scripts mandam aparecem no mensageiro do app.</string>
+    <string name="termux_keep_alive">Comandos de script não precisam do Termux aberto: o app aciona o Termux na hora. Já um bot feito com biblioteca precisa ficar rodando no Termux: use termux-wake-lock e libere o Termux da economia de bateria.</string>
+    <string name="cmd_response_title">Responder com</string>
+    <string name="cmd_response_messages">Mensagens prontas</string>
+    <string name="cmd_response_script">Script do Termux</string>
+    <string name="cmd_script_command">Linha de comando no Termux</string>
+    <string name="cmd_script_timeout">Tempo máximo</string>
+    <string name="cmd_script_seconds">%1$d s</string>
+    <string name="cmd_script_help">Roda na pasta inicial do Termux. O que o programa imprimir vira a resposta: texto simples ou JSON (veja Termux e scripts, na tela do bot). Os dados da mensagem chegam em variáveis como TELEBOT_ARGS e TELEBOT_UPDATE.</string>
+    <string name="cmd_err_no_script">Escreva a linha de comando que o Termux deve rodar.</string>
+    <string name="copy">Copiar</string>
+    <string name="copied">Copiado</string>
+    <string name="log_local_api_on">API local do Termux no ar na porta %1$d.</string>
+    <string name="log_script_done">/%1$s: script respondeu em %2$s s (%3$d mensagem(ns)).</string>
+    <string name="err_termux_missing_title">Termux não instalado</string>
+    <string name="err_termux_missing_msg">Este comando roda um script no Termux, mas o Termux não está instalado neste celular.</string>
+    <string name="err_termux_permission_title">Sem permissão para usar o Termux</string>
+    <string name="err_termux_permission_msg">O Easy Telebot precisa da permissão \"Executar comandos no Termux\". Conceda em Termux e scripts, na tela do bot.</string>
+    <string name="err_termux_no_answer_title">O Termux não respondeu</string>
+    <string name="err_termux_no_answer_msg">O app pediu para o Termux rodar o script, mas não teve resposta. Normalmente falta liberar o Termux para outros apps (allow-external-apps) ou o Android fechou o Termux para economizar bateria.</string>
+    <string name="err_termux_failed_title">O Termux recusou o comando</string>
+    <string name="err_termux_failed_msg">O Termux não conseguiu rodar o script. Veja o motivo abaixo.</string>
+    <string name="err_termux_exit_title">O script deu erro</string>
+    <string name="err_termux_exit_msg">O programa terminou com erro e o bot não respondeu. O final da saída de erro (stderr) está abaixo; teste o comando direto no Termux para ver tudo.</string>
+    <string name="err_termux_timeout_title">O script demorou demais</string>
+    <string name="err_termux_timeout_msg">O script passou do tempo máximo e foi interrompido. Aumente o tempo no comando ou deixe o script mais rápido.</string>
+    <string name="err_termux_port_title">Porta da API local ocupada</string>
+    <string name="err_termux_port_msg">Outro programa (ou outro bot) já usa essa porta neste celular. Escolha outra em Termux e scripts.</string>
 </resources>

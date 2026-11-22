@@ -64,11 +64,18 @@ object ErrorExplainer {
             "pay_not_found" -> e(R.string.err_pay_not_found_title, R.string.err_pay_not_found_msg, null)
             "pay_invite" -> e(R.string.err_pay_invite_title, R.string.err_pay_invite_msg, R.array.err_pay_invite_steps)
             "pay_unknown" -> e(R.string.err_pay_unknown_title, R.string.err_pay_unknown_msg, null)
+            "termux_missing" -> e(R.string.err_termux_missing_title, R.string.err_termux_missing_msg, R.array.termux_install_steps)
+            "termux_permission" -> e(R.string.err_termux_permission_title, R.string.err_termux_permission_msg, null)
+            "termux_no_answer" -> e(R.string.err_termux_no_answer_title, R.string.err_termux_no_answer_msg, R.array.termux_external_steps)
+            "termux_failed" -> e(R.string.err_termux_failed_title, R.string.err_termux_failed_msg, R.array.termux_external_steps)
+            "termux_exit" -> e(R.string.err_termux_exit_title, R.string.err_termux_exit_msg, null)
+            "termux_timeout" -> e(R.string.err_termux_timeout_title, R.string.err_termux_timeout_msg, null)
+            "termux_port_busy" -> e(R.string.err_termux_port_title, R.string.err_termux_port_msg, null)
             else -> e(R.string.err_unknown_title, R.string.err_unknown_msg, null)
         }
         val extra = buildList {
             error.retryIn?.let { add(r.getString(R.string.err_retry_in, it)) }
-            if ((error.code == "unknown" || error.code.startsWith("storage_") || error.code.startsWith("pay_")) &&
+            if ((error.code == "unknown" || error.code.startsWith("storage_") || error.code.startsWith("pay_") || error.code.startsWith("termux_")) &&
                 error.detail.isNotBlank()
             ) {
                 add(r.getString(R.string.err_detail, error.detail))

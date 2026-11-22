@@ -13,7 +13,7 @@ import io.github.alerrandrov.easytelebot.data.BotRepository
 import io.github.alerrandrov.easytelebot.data.Prefs
 import io.github.alerrandrov.easytelebot.service.Alerts
 
-enum class Screen { HOME, ADD_BOT, BATTERY, BOT, CHANGE_TOKEN, PROFILE, COMMAND, LOG, ADMINS, STORAGE, CHATS, CHAT, BROADCAST, ANTISPAM, SHOP, PRODUCT }
+enum class Screen { HOME, ADD_BOT, BATTERY, BOT, CHANGE_TOKEN, PROFILE, COMMAND, LOG, ADMINS, STORAGE, CHATS, CHAT, BROADCAST, ANTISPAM, SHOP, PRODUCT, TERMUX }
 
 /** Pedido vindo de fora (notificação) para abrir uma tela de um bot. */
 data class OpenRequest(val botId: Long, val screen: String)
@@ -29,6 +29,9 @@ fun AppRoot(openRequest: OpenRequest? = null, onOpenHandled: () -> Unit = {}) {
     var commandId by rememberSaveable { mutableStateOf<String?>(null) }
     /** Novo comando já marcado como "de admin". */
     var newCommandIsAdmin by rememberSaveable { mutableStateOf(false) }
+    /** Novo comando já como "comando de script" (Termux); para onde voltar do editor. */
+    var newCommandIsScript by rememberSaveable { mutableStateOf(false) }
+    var commandReturn by rememberSaveable { mutableStateOf(Screen.BOT) }
     /** Abrir a tela de admins já no fluxo de "adicionar". */
     var adminsAutoAdd by rememberSaveable { mutableStateOf(false) }
     var chatId by rememberSaveable { mutableLongStateOf(0L) }
@@ -60,8 +63,9 @@ fun AppRoot(openRequest: OpenRequest? = null, onOpenHandled: () -> Unit = {}) {
         screen = when (screen) {
             Screen.CHAT -> chatReturn
             Screen.PRODUCT -> productReturn
-            Screen.CHATS, Screen.BROADCAST, Screen.ANTISPAM, Screen.SHOP,
-            Screen.CHANGE_TOKEN, Screen.PROFILE, Screen.COMMAND, Screen.LOG, Screen.ADMINS, Screen.STORAGE -> Screen.BOT
+            Screen.COMMAND -> commandReturn
+            Screen.CHATS, Screen.BROADCAST, Screen.ANTISPAM, Screen.SHOP, Screen.TERMUX,
+            Screen.CHANGE_TOKEN, Screen.PROFILE, Screen.LOG, Screen.ADMINS, Screen.STORAGE -> Screen.BOT
             else -> Screen.HOME
         }
     }
@@ -87,7 +91,21 @@ fun AppRoot(openRequest: OpenRequest? = null, onOpenHandled: () -> Unit = {}) {
         Screen.BOT -> BotScreen(
             botId = botId,
             onBack = goHome,
-            onEditCommand = { id, admin -> commandId = id; newCommandIsAdmin = admin; screen = Screen.COMMAND },
+            onEditCommand = { id, admin ->
+                commandId = id
+                newCommandIsAdmin = admin
+                newCommandIsScript = false
+                commandReturn = Screen.BOT
+                screen = Screen.COMMAND
+            },
+            onNewScriptCommand = {
+                commandId = null
+                newCommandIsAdmin = false
+                newCommandIsScript = true
+                commandReturn = Screen.BOT
+                screen = Screen.COMMAND
+            },
+            onTermux = { screen = Screen.TERMUX },
             onProfile = { screen = Screen.PROFILE },
             onLog = { screen = Screen.LOG },
             onAdmins = { add -> adminsAutoAdd = add; screen = Screen.ADMINS },
@@ -107,7 +125,24 @@ fun AppRoot(openRequest: OpenRequest? = null, onOpenHandled: () -> Unit = {}) {
         )
         Screen.CHANGE_TOKEN -> TokenScreen(expectedBotId = botId, onBack = goBot, onSaved = { goBot() })
         Screen.PROFILE -> ProfileScreen(botId = botId, onBack = goBot)
-        Screen.COMMAND -> CommandEditorScreen(botId = botId, commandId = commandId, newAsAdmin = newCommandIsAdmin, onDone = goBot)
+        Screen.COMMAND -> CommandEditorScreen(
+            botId = botId,
+            commandId = commandId,
+            newAsAdmin = newCommandIsAdmin,
+            newAsScript = newCommandIsScript,
+            onDone = { screen = commandReturn },
+        )
+        Screen.TERMUX -> TermuxScreen(
+            botId = botId,
+            onNewScriptCommand = {
+                commandId = null
+                newCommandIsAdmin = false
+                newCommandIsScript = true
+                commandReturn = Screen.TERMUX
+                screen = Screen.COMMAND
+            },
+            onBack = goBot,
+        )
         Screen.LOG -> LogScreen(botId = botId, onBack = goBot)
         Screen.STORAGE -> StorageScreen(botId = botId, onBack = goBot)
         Screen.BROADCAST -> BroadcastScreen(botId = botId, onBack = goBot)

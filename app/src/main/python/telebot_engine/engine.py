@@ -24,6 +24,8 @@ from . import broadcast as broadcast_mod
 from . import chats
 from .publish import PostFlow
 from .shop.flow import ShopFlow
+from .termux import TermuxBridge
+from . import termux as termux_mod
 from . import config as config_mod
 from . import errors, template
 from .api import Aborted, NetworkError, TelegramApi, TelegramError
@@ -36,6 +38,7 @@ TEXT_LIMIT = 4096
 CAPTION_LIMIT = 1024
 NEWADMIN_COMMAND = "newadmin"  # comando secreto: só responde com um código válido
 NEWADMIN_REPLY = "Parabéns! Agora você é um administrador!"
+BLOCKED = "blocked"  # update de alguém bloqueado pelo antispam: nem o app nem os scripts respondem
 
 MEDIA_METHODS = {
     "photo": "sendPhoto",
@@ -171,6 +174,7 @@ class Engine:
         # Banco de dados (usuários/histórico). ``storage`` = configuração em JSON.
         self.post = PostFlow(self)
         self.shop = ShopFlow(self, payments)
+        self.termux = TermuxBridge(self)
         self.send_source = "auto"  # "auto" = resposta de comando; "manual" = enviada pelo app
         self.storage = None
         if storage:
@@ -188,6 +192,7 @@ class Engine:
             job.cancelled.set()
         self._stop.set()
         self._wake.set()
+        self.termux.stop()
         self.api.abort()
 
     def wake(self):
@@ -254,6 +259,8 @@ class Engine:
         self.config = config_mod.load(self.config_path)
         self.emit("config", commands=len(self.config["commands"]), admins=len(self.admins))
         self.publish_commands()
+        if self.bot is not None:
+            self.termux.sync()
         return True
 
     def maybe_reload_admins(self, force=False):
@@ -362,14 +369,16 @@ class Engine:
             return
         self.shop.start_worker()
         self.maybe_reload_config(force=True)
+        self.termux.sync()
         self.set_state("running")
         backoff = 2
         while not self.stopping:
             self.maybe_reload_config()
             self.maybe_reload_bans()
             try:
-                params = {"timeout": POLL_TIMEOUT, "allowed_updates": ["message", "edited_message", "channel_post", "my_chat_member",
-                                                                  "callback_query", "pre_checkout_query"]}
+                params = {"timeout": POLL_TIMEOUT, "allowed_updates": self.termux.allowed_updates(
+                    ["message", "edited_message", "channel_post", "my_chat_member", "callback_query",
+                     "pre_checkout_query"])}
                 if self.offset is not None:
                     params["offset"] = self.offset
                 updates = self.api.call("getUpdates", params, timeout=POLL_TIMEOUT + 15)
@@ -394,19 +403,30 @@ class Engine:
             self.set_state("running")
             for update in updates or []:
                 self.offset = update["update_id"] + 1
-                message = update.get("message")
-                if message and not self.stopping:
-                    self.handle_message(message)
-                elif update.get("edited_message"):
-                    self.record_chat(update["edited_message"], edited=True)
-                elif update.get("channel_post"):
-                    self.record_chat(update["channel_post"])
-                elif update.get("my_chat_member"):
-                    self.handle_membership(update["my_chat_member"])
-                elif update.get("callback_query") and not self.stopping:
-                    self.handle_callback(update["callback_query"])
-                elif update.get("pre_checkout_query") and not self.stopping:
-                    self.shop.on_pre_checkout(update["pre_checkout_query"])
+                if self.stopping:
+                    break
+                handled = self.dispatch(update)
+                if handled != BLOCKED:
+                    self.termux.forward(update, bool(handled))
+
+    def dispatch(self, update):
+        """Trata um update. ``True`` = o app respondeu; ``False`` = sobra para os scripts
+        (API local do Termux); ``BLOCKED`` = pessoa bloqueada pelo antispam (ninguém recebe)."""
+        message = update.get("message")
+        if message:
+            return self.handle_message(message)
+        if update.get("edited_message"):
+            self.record_chat(update["edited_message"], edited=True)
+        elif update.get("channel_post"):
+            self.record_chat(update["channel_post"])
+        elif update.get("my_chat_member"):
+            self.handle_membership(update["my_chat_member"])
+        elif update.get("callback_query"):
+            return self.handle_callback(update["callback_query"])
+        elif update.get("pre_checkout_query"):
+            self.shop.on_pre_checkout(update["pre_checkout_query"])
+            return True
+        return False
 
     def handle_membership(self, change):
         """Bot adicionado/removido de grupo ou canal, ou bloqueado/desbloqueado por um usuário."""
@@ -499,23 +519,24 @@ class Engine:
         bot_username = (self.bot or {}).get("username", "")
         parsed = parse_command(text, bot_username)
         if self.check_spam(message, parsed):
-            return
+            return BLOCKED
         if self.shop.handle_message(message, parsed):
-            return
+            return True
         if self.post.handle(message, parsed):
-            return
+            return True
         if parsed is None:
-            return
+            return False
         name, args = parsed
         sender = _display_name(user)
         if name == NEWADMIN_COMMAND:
             self.handle_newadmin(message, args, sender)
-            return
+            return True
         self.emit("received", user=sender, chat=chat.get("title") or "", text=text[:200])
         command = self.find_command(name)
         if command is None:
-            self.emit("unknown_command", command=name)
-            return
+            if self.termux.api is None:
+                self.emit("unknown_command", command=name)
+            return False
         required = command.get("admin_level")
         if required is not None:
             self.maybe_reload_admins()
@@ -524,24 +545,29 @@ class Engine:
                 # Para quem não pode, o comando "não existe": nenhuma resposta.
                 self.emit("denied", user=sender, user_id=user.get("id"), command=name,
                           required=required, level=admin and admin.get("level"))
-                return
+                return True
+
+        reply_to = None
+        if chat.get("type") != "private":
+            reply_to = {"message_id": message.get("message_id"), "allow_sending_without_reply": True}
+        if command.get("script"):
+            self.termux.run_command(command, name, {"message": message}, chat.get("id"), user, args,
+                                    reply_to=reply_to)
+            return True
 
         stamp = self._now()
         date, _, hour = stamp.partition(" ")
         context = template.build_context(message, args, bot_username, date, hour)
-        reply_to = None
-        if chat.get("type") != "private":
-            reply_to = {"message_id": message.get("message_id"), "allow_sending_without_reply": True}
-
         sent = 0
         for msg in command["messages"]:
             if self.stopping:
-                return
+                return True
             if self.send_message(chat.get("id"), msg, context, name, reply_to):
                 sent += 1
                 reply_to = None  # só a primeira mensagem responde à do usuário
         if sent:
             self.emit("replied", command=name, chat=chat.get("id"), messages=sent)
+        return True
 
     # -- antispam ----------------------------------------------------------------
 
@@ -608,11 +634,15 @@ class Engine:
     def handle_callback(self, query):
         """Botões da loja e do aviso de antispam (✅ Desbloquear / 🚫 Manter bloqueado)."""
         if self.shop.handle_callback(query):
-            return
+            return True
+        if self.handle_script_callback(query):
+            return True
         parsed = antispam.parse_callback(query.get("data"))
         if parsed is None:
+            if self.termux.api is not None:
+                return False  # botão de um script da API local: ele mesmo responde
             self._try_call("answerCallbackQuery", {"callback_query_id": query.get("id")})
-            return
+            return True
         action, target = parsed
         user = query.get("from") or {}
         self.maybe_reload_admins()
@@ -639,6 +669,28 @@ class Engine:
         antispam.finish_decision(self.api, record, action, lambda chat_id, text: self._call_send(
             "sendMessage", {"chat_id": chat_id, "text": text}, "antispam"))
         self.emit("spam_decided", user_id=target, action=action, by=by, name=_display_name(record))
+
+    def handle_script_callback(self, query):
+        """Botão ``data`` de um comando de script: roda o mesmo script com ``TELEBOT_DATA``."""
+        parsed = termux_mod.parse_callback(query.get("data"))
+        if parsed is None:
+            return False
+        trigger, value = parsed
+        self._try_call("answerCallbackQuery", {"callback_query_id": query.get("id")})
+        command = self.find_command(trigger)
+        user = query.get("from") or {}
+        msg = query.get("message") or {}
+        if command is None or not command.get("script"):
+            return True
+        self.maybe_reload_admins()
+        admin = self.admins.get(user.get("id"))
+        if command.get("admin_level") is not None and not admins_mod.can_use(admin and admin.get("level"),
+                                                                             command["admin_level"]):
+            return True
+        self.termux.run_command(command, trigger, {"callback_query": query},
+                                (msg.get("chat") or {}).get("id") or user.get("id"), user, data=value,
+                                message_id=msg.get("message_id"))
+        return True
 
     def handle_newadmin(self, message, args, sender):
         """``/newadmin CÓDIGO``: comando secreto. Sem código válido, não responde nada."""
