@@ -7,8 +7,11 @@
 <!--
   Vitrine (mini app do Telegram) do Easy Telebot.
 
-  Página estática: não fala com nenhum servidor. O bot abre esta página com o
-  catálogo no próprio endereço (#z= JSON comprimido com deflate, em base64url).
+  Página estática: o bot abre esta página com o catálogo de uma destas formas:
+  - #u=<link>: o catalogo.json publicado pelo app num Gist do GitHub (com fotos,
+    em links do imgbb ou miniaturas embutidas em base64);
+  - #z=<dados>: o catálogo no próprio endereço (JSON comprimido com deflate, em
+    base64url), sem as fotos do celular.
   Ao finalizar, o carrinho volta ao bot por Telegram.WebApp.sendData e o bot
   recalcula os preços pelo catálogo dele (o que vem daqui nunca é confiado).
 -->
@@ -87,7 +90,22 @@
     return d.s + " " + whole + (noCents ? "" : "," + String(cents % 100).padStart(2, "0"));
   }
 
+  // Catálogo publicado pelo app (Gist): só https (ou localhost, para testes).
+  function remoteUrl() {
+    var m = /[#&]u=([^&]+)/.exec(location.hash);
+    if (!m) return null;
+    var url = decodeURIComponent(m[1]);
+    return /^https:\/\//.test(url) || /^http:\/\/(127\.0\.0\.1|localhost)[:/]/.test(url) ? url : null;
+  }
+
   function decode() {
+    var url = remoteUrl();
+    if (url) {
+      return fetch(url, { cache: "no-store" }).then(function (r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      });
+    }
     var m = /[#&]z=([A-Za-z0-9_-]+)/.exec(location.hash);
     if (!m) return Promise.reject(new Error("sem catálogo"));
     var b64 = m[1].replace(/-/g, "+").replace(/_/g, "/");

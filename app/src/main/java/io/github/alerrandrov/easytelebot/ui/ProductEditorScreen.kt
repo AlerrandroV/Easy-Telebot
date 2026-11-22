@@ -55,6 +55,7 @@ import io.github.alerrandrov.easytelebot.data.Product
 import io.github.alerrandrov.easytelebot.data.ShopSettings
 import io.github.alerrandrov.easytelebot.engine.ChatSummary
 import io.github.alerrandrov.easytelebot.engine.ChatsBridge
+import io.github.alerrandrov.easytelebot.engine.ShopPublisher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -147,6 +148,7 @@ fun ProductEditorScreen(botId: Long, productId: String?, subscription: Boolean, 
         val list = current.shop.products
         val updated = if (list.any { it.id == product.id }) list.map { if (it.id == product.id) product else it } else list + product
         ConfigRepository.save(botId, current.copy(shop = current.shop.copy(products = updated)))
+        ShopPublisher.publishInBackground(context, botId) // vitrine com fotos: republica sozinha
         onDone()
     }
 
@@ -370,6 +372,7 @@ fun ProductEditorScreen(botId: Long, productId: String?, subscription: Boolean, 
                 TextButton(onClick = {
                     val current = ConfigRepository.load(botId)
                     ConfigRepository.save(botId, current.copy(shop = current.shop.copy(products = current.shop.products.filter { it.id != original.id })))
+                    ShopPublisher.publishInBackground(context, botId)
                     confirmDelete = false
                     onDone()
                 }) { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) }

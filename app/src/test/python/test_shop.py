@@ -318,3 +318,53 @@ class GatewayTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HostingTests(unittest.TestCase):
+    def fake(self, responses):
+        calls = []
+
+        def request(method, url, body=None, headers=None, timeout=60):
+            calls.append((method, url, body, headers))
+            return responses.pop(0)
+        return request, calls
+
+    def test_imgbb_upload(self):
+        from telebot_engine.shop import hosting
+        req, calls = self.fake([(200, {"data": {"url": "https://i.ibb.co/x/a.jpg"}}, b""),
+                                (400, {"error": {"message": "Invalid API v1 key."}}, b"")])
+        self.assertEqual(hosting.upload_image("K", "QUJD", request=req), "https://i.ibb.co/x/a.jpg")
+        self.assertIn("key=K", calls[0][2])
+        self.assertIn("image=QUJD", calls[0][2])
+        with self.assertRaises(hosting.HostingError) as ctx:
+            hosting.upload_image("K", "QUJD", request=req)
+        self.assertEqual(ctx.exception.code, hosting.AUTH)
+
+    def test_gist_create_update_and_recreate(self):
+        from telebot_engine.shop import hosting
+        raw = "https://gist.githubusercontent.com/u/G1/raw/abc123/catalogo.json"
+        ok = (201, {"id": "G1", "files": {"catalogo.json": {"raw_url": raw}}}, b"")
+        req, calls = self.fake([ok, (200, {"id": "G1", "files": {"catalogo.json": {"raw_url": raw}}}, b""),
+                                (404, {"message": "Not Found"}, b""), ok, (401, {"message": "Bad credentials"}, b"")])
+        self.assertEqual(hosting.publish_gist("T", "", "{}", request=req), {"gist_id": "G1", "raw_url": raw})
+        self.assertEqual((calls[0][0], calls[0][2]["public"]), ("POST", False))
+        self.assertEqual(calls[0][3]["Authorization"], "Bearer T")
+        self.assertIn("User-Agent", calls[0][3])
+        hosting.publish_gist("T", "G1", "{}", request=req)
+        self.assertEqual((calls[1][0], calls[1][1]), ("PATCH", "https://api.github.com/gists/G1"))
+        hosting.publish_gist("T", "G1", "{}", request=req)  # apagado no GitHub: cria outro
+        self.assertEqual([c[0] for c in calls[2:4]], ["PATCH", "POST"])
+        with self.assertRaises(hosting.HostingError) as ctx:
+            hosting.publish_gist("T", "G1", "{}", request=req)
+        self.assertEqual(ctx.exception.code, hosting.AUTH)
+
+    def test_storefront_and_link(self):
+        shop = catalog.normalize({"products": [product("a", stock=3), product("b"), product("c", active=False)]},
+                                 lambda m: m)
+        data = catalog.storefront_data(shop, "Loja", {"a": "data:image/jpeg;base64,AAAA"}, sold={"a": 1})
+        self.assertEqual([(p["i"], p["q"]) for p in data["p"]], [("a", 2), ("b", -1)])
+        self.assertEqual(data["p"][0]["m"], "data:image/jpeg;base64,AAAA")
+        self.assertIn("#z=", catalog.miniapp_url(shop, "Loja"))
+        shop["catalog_url"] = "https://gist.githubusercontent.com/u/G1/raw/abc/catalogo.json"
+        self.assertEqual(catalog.miniapp_url(shop, "Loja"), catalog.DEFAULT_STORE_URL + "#u=" +
+                         "https%3A%2F%2Fgist.githubusercontent.com%2Fu%2FG1%2Fraw%2Fabc%2Fcatalogo.json")

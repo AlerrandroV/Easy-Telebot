@@ -57,6 +57,10 @@ Em **Vendas**, na tela do bot:
   recebe o catálogo pelo próprio link. Para usar o endereço padrão, ative o
   GitHub Pages do repositório (Settings → Pages → branch `main`, pasta `/docs`)
   ou hospede a página em qualquer endereço https e informe no app.
+  Para a vitrine mostrar as **fotos**, informe um token do GitHub (só com a
+  permissão `gist`): o app publica o catálogo num Gist secreto e a vitrine lê
+  de lá. As fotos vão como miniaturas no próprio catálogo ou, com uma chave grátis
+  do [imgbb](https://api.imgbb.com), hospedadas lá.
 
 ## Termux e scripts
 

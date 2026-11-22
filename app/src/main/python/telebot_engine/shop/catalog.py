@@ -13,6 +13,7 @@ Produto::
 
 import base64
 import json
+import urllib.parse
 import zlib
 
 CURRENCIES = {
@@ -80,6 +81,8 @@ def normalize(data, message_normalizer):
         "intro": str(data.get("intro") or "Confira nossos produtos:")[:1000],
         "miniapp": bool(data.get("miniapp", True)),
         "store_url": str(data.get("store_url") or DEFAULT_STORE_URL).strip(),
+        "catalog_url": _catalog_url(data.get("catalog_url")),
+        "gist_id": str(data.get("gist_id") or "").strip(),
         "notify_level": _int(data.get("notify_level"), 1, lo=1, hi=10),
         "remind_days": _int(data.get("remind_days"), 3, lo=0, hi=30),
         "products": products,
@@ -90,6 +93,11 @@ def normalize(data, message_normalizer):
             "stars": {"enabled": bool(stars.get("enabled"))},
         },
     }
+
+
+def _catalog_url(value):
+    value = str(value or "").strip()
+    return value if value.startswith("https://") else ""
 
 
 def format_price(cents, currency):
@@ -110,22 +118,38 @@ def available(shop):
     return [p for p in shop["products"] if p["active"] and p["stock"] != 0]
 
 
-def miniapp_url(shop, title):
-    """Endereço da vitrine com o catálogo embutido (``#z=`` = JSON comprimido em base64url).
-
-    A página é estática e não fala com nenhum servidor: mostra os produtos e devolve o
-    carrinho ao bot com ``Telegram.WebApp.sendData``. O bot recalcula os preços.
-    """
-    data = {
-        "t": title[:64],
-        "c": shop["currency"],
-        "s": CURRENCIES.get(shop["currency"], shop["currency"]),
-        "p": [{
+def storefront_data(shop, title, images=None, sold=None):
+    """Dados da vitrine: os produtos à venda agora. ``images`` = ``{id: link ou data:image/...}``
+    (sobrescreve o ``image_url`` do produto); ``sold`` = vendidos por produto (para o estoque)."""
+    images, sold = images or {}, sold or {}
+    items = []
+    for p in available(shop):
+        left = -1 if p["stock"] < 0 else max(0, p["stock"] - sold.get(p["id"], 0))
+        if left == 0:
+            continue
+        items.append({
             "i": p["id"], "n": p["name"], "d": p["description"][:300], "v": p["price"],
             "f": format_price(p["price"], shop["currency"]), "k": p["type"],
             "y": p["days"] if p["type"] == "subscription" else 0,
-            "m": p["image_url"], "q": p["stock"],
-        } for p in available(shop)],
-    }
+            "m": images.get(p["id"]) or p["image_url"], "q": left,
+        })
+    return {"t": title[:64], "c": shop["currency"], "s": CURRENCIES.get(shop["currency"], shop["currency"]),
+            "p": items}
+
+
+def miniapp_url(shop, title, sold=None):
+    """Endereço da vitrine.
+
+    - Com o catálogo publicado (Gist): ``#u=<link do catalogo.json>``, curto, com fotos.
+    - Sem publicar: ``#z=`` com o catálogo no próprio link (JSON comprimido em base64url),
+      sem as fotos do celular (só ``image_url``).
+
+    A página é estática e não fala com nenhum servidor nosso: mostra os produtos e devolve o
+    carrinho ao bot com ``Telegram.WebApp.sendData``. O bot recalcula os preços.
+    """
+    base = shop["store_url"].split("#")[0]
+    if shop.get("catalog_url"):
+        return base + "#u=" + urllib.parse.quote(shop["catalog_url"], safe="")
+    data = storefront_data(shop, title, sold=sold)
     raw = zlib.compress(json.dumps(data, ensure_ascii=False, separators=(",", ":")).encode("utf-8"), 9)
-    return shop["store_url"].split("#")[0] + "#z=" + base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+    return base + "#z=" + base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")

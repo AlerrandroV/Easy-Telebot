@@ -56,7 +56,20 @@ data class ShopSettings(
     val remindDays: Int = 3,
     val products: List<Product> = emptyList(),
     val gateways: ShopGateways = ShopGateways(),
+    /** Link do catalogo.json publicado (Gist, revisão exata). Vazio = catálogo vai no próprio link. */
+    val catalogUrl: String = "",
+    val gistId: String = "",
+    /** Assinatura do que foi publicado, para saber se a vitrine está desatualizada. */
+    val publishedHash: String = "",
 ) {
+    /** Assinatura do conteúdo que aparece na vitrine (produtos, moeda). */
+    fun storefrontHash(title: String): String =
+        (title + currency + JSONArray().apply {
+            products.forEach { p ->
+                put(JSONArray(listOf(p.id, p.name, p.description, p.price, p.type, p.days, p.active, p.stock, p.photo ?: "", p.imageUrl)))
+            }
+        }.toString()).hashCode().toString(16)
+
     fun mediaFiles(): Set<String> =
         products.flatMap { listOfNotNull(it.photo, it.delivery?.media?.file) }.toSet()
 
@@ -67,6 +80,9 @@ data class ShopSettings(
         .put("intro", intro)
         .put("miniapp", miniapp)
         .put("store_url", storeUrl)
+        .put("catalog_url", catalogUrl)
+        .put("gist_id", gistId)
+        .put("published_hash", publishedHash)
         .put("notify_level", notifyLevel)
         .put("remind_days", remindDays)
         .put("products", JSONArray().apply {
@@ -155,6 +171,9 @@ data class ShopSettings(
                 intro = o.optString("intro", "Confira nossos produtos:"),
                 miniapp = o.optBoolean("miniapp", true),
                 storeUrl = o.optString("store_url", DEFAULT_STORE_URL).ifBlank { DEFAULT_STORE_URL },
+                catalogUrl = o.optString("catalog_url"),
+                gistId = o.optString("gist_id"),
+                publishedHash = o.optString("published_hash"),
                 notifyLevel = o.optInt("notify_level", 1).coerceIn(1, AdminLevels.MAX),
                 remindDays = o.optInt("remind_days", 3).coerceIn(0, 30),
                 products = products,
@@ -171,8 +190,15 @@ data class ShopSettings(
 }
 
 /** Credenciais dos gateways: cifradas no Keystore, nunca no `config.json`. */
-data class PaymentSecrets(val mercadoPagoToken: String = "", val blinkKey: String = "") {
+data class PaymentSecrets(
+    val mercadoPagoToken: String = "",
+    val blinkKey: String = "",
+    /** Vitrine: chave do imgbb (fotos) e token do GitHub só com permissão de Gists (catálogo). */
+    val imgbbKey: String = "",
+    val githubToken: String = "",
+) {
     fun toJson(): JSONObject = JSONObject().put("mp_token", mercadoPagoToken).put("blink_key", blinkKey)
+        .put("imgbb_key", imgbbKey).put("github_token", githubToken)
 }
 
 object PaymentRepository {
@@ -182,7 +208,7 @@ object PaymentRepository {
         TokenStore.loadSecret(context, name(botId))?.let {
             try {
                 val o = JSONObject(it)
-                PaymentSecrets(o.optString("mp_token"), o.optString("blink_key"))
+                PaymentSecrets(o.optString("mp_token"), o.optString("blink_key"), o.optString("imgbb_key"), o.optString("github_token"))
             } catch (e: Exception) {
                 null
             }

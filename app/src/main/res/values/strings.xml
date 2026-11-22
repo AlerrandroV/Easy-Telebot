@@ -937,4 +937,35 @@
     <string name="err_termux_timeout_msg">O script passou do tempo máximo e foi interrompido. Aumente o tempo no comando ou deixe o script mais rápido.</string>
     <string name="err_termux_port_title">Porta da API local ocupada</string>
     <string name="err_termux_port_msg">Outro programa (ou outro bot) já usa essa porta neste celular. Escolha outra em Termux e scripts.</string>
+
+    <!-- Vitrine na nuvem -->
+    <string name="storefront_cloud">Fotos na vitrine (catálogo na nuvem)</string>
+    <string name="storefront_cloud_msg">A vitrine não enxerga os arquivos do celular. Para mostrar as fotos, o app publica o catálogo (um arquivo catalogo.json) num Gist secreto do seu GitHub, e a vitrine lê de lá. Só você pode alterar; quem recebe o link da loja pode ler. Ao salvar ou excluir um produto, o app publica de novo sozinho.</string>
+    <string name="storefront_github_token">Token do GitHub (só permissão de Gists)</string>
+    <string-array name="storefront_github_steps">
+        <item>No GitHub: Settings, Developer settings, Personal access tokens, Tokens (classic), Generate new token (classic).</item>
+        <item>Marque só a permissão gist (nenhuma outra) e escolha a validade.</item>
+        <item>Copie o token (começa com ghp_) e cole aqui.</item>
+    </string-array>
+    <string name="storefront_imgbb_key">Chave do imgbb (opcional)</string>
+    <string name="storefront_imgbb_hint">Sem a chave, as fotos vão como miniaturas dentro do próprio catálogo (cerca de 30 KB cada; bom para até umas 30 fotos). Com uma chave grátis do imgbb (api.imgbb.com, Get API key), as fotos ficam hospedadas lá e o catálogo leva só os links: mais leve e sem limite de fotos.</string>
+    <string name="storefront_not_published">Ainda não publicada: a vitrine abre sem as fotos do celular.</string>
+    <string name="storefront_outdated">Desatualizada: os produtos mudaram depois da última publicação.</string>
+    <string name="storefront_published">Publicada: a vitrine mostra os produtos atuais, com fotos.</string>
+    <string name="storefront_result">Publicado: %1$d produto(s), %2$d KB.</string>
+    <string name="storefront_publish">Publicar vitrine agora</string>
+    <string name="storefront_publishing">Publicando…</string>
+    <string name="storefront_unpublish">Parar de usar o catálogo na nuvem</string>
+    <string name="log_storefront_published">Vitrine publicada: %1$d produto(s).</string>
+    <string name="log_storefront_failed">A vitrine não foi publicada</string>
+    <string name="err_host_config_title">Falta configurar a vitrine</string>
+    <string name="err_host_config_msg">Para publicar a vitrine com fotos, cole o token do GitHub em Vendas, Configurar.</string>
+    <string name="err_host_auth_title">Credencial recusada</string>
+    <string name="err_host_auth_msg">O GitHub ou o imgbb recusou o token ou a chave. Ele pode estar errado, vencido, ou sem a permissão gist.</string>
+    <string name="err_host_network_title">Sem conexão para publicar</string>
+    <string name="err_host_network_msg">Não foi possível falar com o GitHub ou o imgbb. Confira a internet e tente de novo.</string>
+    <string name="err_host_rejected_title">Publicação recusada</string>
+    <string name="err_host_rejected_msg">O serviço não aceitou o arquivo (pode ser grande demais). Com muitas fotos, use a chave do imgbb.</string>
+    <string name="err_host_unknown_title">Problema ao publicar a vitrine</string>
+    <string name="err_host_unknown_msg">Algo inesperado aconteceu. Os detalhes estão abaixo.</string>
 </resources>

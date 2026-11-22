@@ -64,6 +64,11 @@ object ErrorExplainer {
             "pay_not_found" -> e(R.string.err_pay_not_found_title, R.string.err_pay_not_found_msg, null)
             "pay_invite" -> e(R.string.err_pay_invite_title, R.string.err_pay_invite_msg, R.array.err_pay_invite_steps)
             "pay_unknown" -> e(R.string.err_pay_unknown_title, R.string.err_pay_unknown_msg, null)
+            "host_config" -> e(R.string.err_host_config_title, R.string.err_host_config_msg, null)
+            "host_auth" -> e(R.string.err_host_auth_title, R.string.err_host_auth_msg, R.array.storefront_github_steps)
+            "host_network" -> e(R.string.err_host_network_title, R.string.err_host_network_msg, null)
+            "host_rejected" -> e(R.string.err_host_rejected_title, R.string.err_host_rejected_msg, null)
+            "host_unknown" -> e(R.string.err_host_unknown_title, R.string.err_host_unknown_msg, null)
             "termux_missing" -> e(R.string.err_termux_missing_title, R.string.err_termux_missing_msg, R.array.termux_install_steps)
             "termux_permission" -> e(R.string.err_termux_permission_title, R.string.err_termux_permission_msg, null)
             "termux_no_answer" -> e(R.string.err_termux_no_answer_title, R.string.err_termux_no_answer_msg, R.array.termux_external_steps)
@@ -75,7 +80,7 @@ object ErrorExplainer {
         }
         val extra = buildList {
             error.retryIn?.let { add(r.getString(R.string.err_retry_in, it)) }
-            if ((error.code == "unknown" || error.code.startsWith("storage_") || error.code.startsWith("pay_") || error.code.startsWith("termux_")) &&
+            if ((error.code == "unknown" || error.code.startsWith("storage_") || error.code.startsWith("pay_") || error.code.startsWith("termux_") || error.code.startsWith("host_")) &&
                 error.detail.isNotBlank()
             ) {
                 add(r.getString(R.string.err_detail, error.detail))

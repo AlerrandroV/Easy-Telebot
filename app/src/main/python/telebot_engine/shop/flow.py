@@ -243,7 +243,7 @@ class ShopFlow:
                 "chat_id": chat["id"],
                 "text": "Prefere a vitrine completa, com carrinho? Toque em Abrir loja, aqui embaixo.",
                 "reply_markup": {"keyboard": [[{"text": "Abrir loja", "web_app": {
-                    "url": catalog.miniapp_url(self.shop, self.title())}}]], "resize_keyboard": True},
+                    "url": catalog.miniapp_url(self.shop, self.title(), self.sold())}}]], "resize_keyboard": True},
             }, "loja")
 
     def show_product(self, chat_id, product_id):

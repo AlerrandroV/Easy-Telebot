@@ -49,6 +49,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -69,6 +70,7 @@ import io.github.alerrandrov.easytelebot.engine.ErrorExplainer
 import io.github.alerrandrov.easytelebot.engine.PythonBridge
 import io.github.alerrandrov.easytelebot.engine.ShopBridge
 import io.github.alerrandrov.easytelebot.engine.ShopOrder
+import io.github.alerrandrov.easytelebot.engine.ShopPublisher
 import io.github.alerrandrov.easytelebot.engine.ShopStats
 import io.github.alerrandrov.easytelebot.engine.Subscriber
 import io.github.alerrandrov.easytelebot.service.BotService
@@ -100,6 +102,8 @@ fun ShopScreen(
     var localVersion by remember { mutableIntStateOf(0) }
     val version = (versions[botId] ?: 0L) + localVersion
     var config by remember { mutableStateOf(ConfigRepository.load(botId)) }
+    // Publicar a vitrine grava o link do catálogo na config: recarrega quando a loja muda.
+    androidx.compose.runtime.LaunchedEffect(version) { config = ConfigRepository.load(botId) }
 
     fun saveShop(change: (ShopSettings) -> ShopSettings) {
         val current = ConfigRepository.load(botId)
@@ -434,6 +438,74 @@ private fun SubscribersTab(botId: Long, dir: String, version: Long, onChanged: (
     }
 }
 
+// -- Vitrine na nuvem (fotos + catálogo) ----------------------------------------------------
+
+@Composable
+private fun StorefrontCloud(
+    botId: Long,
+    shop: ShopSettings,
+    secrets: PaymentSecrets,
+    onSecrets: (PaymentSecrets) -> Unit,
+    saved: PaymentSecrets,
+    saveSecrets: (PaymentSecrets) -> Unit,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var publishing by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<EngineError?>(null) }
+    var result by remember { mutableStateOf<ShopPublisher.Published?>(null) }
+    val outdated = remember(shop) { ShopPublisher.isOutdated(botId) }
+
+    Text(stringResource(R.string.storefront_cloud), style = MaterialTheme.typography.titleSmall)
+    Text(stringResource(R.string.storefront_cloud_msg), style = MaterialTheme.typography.bodySmall)
+    SecretField(stringResource(R.string.storefront_github_token), secrets.githubToken) { onSecrets(secrets.copy(githubToken = it.trim())) }
+    StepList(stringArrayResource(R.array.storefront_github_steps).toList())
+    SecretField(stringResource(R.string.storefront_imgbb_key), secrets.imgbbKey) { onSecrets(secrets.copy(imgbbKey = it.trim())) }
+    Text(stringResource(R.string.storefront_imgbb_hint), style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant)
+    IconLabel(
+        when {
+            shop.catalogUrl.isBlank() -> R.drawable.ic_info
+            outdated -> R.drawable.ic_warning
+            else -> R.drawable.ic_check_circle
+        },
+        when {
+            shop.catalogUrl.isBlank() -> stringResource(R.string.storefront_not_published)
+            outdated -> stringResource(R.string.storefront_outdated)
+            else -> stringResource(R.string.storefront_published)
+        },
+        style = MaterialTheme.typography.bodySmall,
+        tint = if (outdated) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+    )
+    result?.let {
+        Text(stringResource(R.string.storefront_result, it.products, (it.bytes + 1023) / 1024), style = MaterialTheme.typography.bodySmall)
+    }
+    error?.let { ExplanationCard(ErrorExplainer.explain(context, it)) }
+    Button(
+        enabled = !publishing && secrets.githubToken.isNotBlank(),
+        onClick = {
+            if (secrets != saved) saveSecrets(secrets)
+            publishing = true
+            error = null
+            result = null
+            scope.launch {
+                val r = withContext(Dispatchers.IO) { ShopPublisher.publish(context, botId) }
+                publishing = false
+                when (r) {
+                    is PythonBridge.Result.Ok -> result = r.value
+                    is PythonBridge.Result.Failed -> error = r.error
+                }
+                BotRuntime.bumpShop(botId)
+            }
+        },
+    ) { ButtonLabel(R.drawable.ic_storefront, stringResource(if (publishing) R.string.storefront_publishing else R.string.storefront_publish)) }
+    if (shop.catalogUrl.isNotBlank()) {
+        TextButton(onClick = { ShopPublisher.unpublish(botId); BotRuntime.bumpShop(botId) }) {
+            Text(stringResource(R.string.storefront_unpublish))
+        }
+    }
+}
+
 // -- Configuração ---------------------------------------------------------------------------
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -592,6 +664,8 @@ private fun ShopSettingsTab(botId: Long, shop: ShopSettings, save: ((ShopSetting
                         }
                         Text(stringResource(R.string.shop_store_url_hint), style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        HorizontalDivider()
+                        StorefrontCloud(botId, shop, secrets, { secrets = it }, saved.value, ::saveSecrets)
                     }
                 }
             }
