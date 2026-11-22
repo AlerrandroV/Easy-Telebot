@@ -13,7 +13,7 @@ enquanto o celular estiver ligado e com internet.
 ## Instalar
 
 1. Abra a aba **Actions** deste repositório, entre no build mais recente que
-   passou (✔) e baixe o artefato **easy-telebot-debug** (precisa estar logado
+   passou e baixe o artefato **easy-telebot-debug** (precisa estar logado
    no GitHub). Quando houver versões publicadas, elas ficam em **Releases**.
 2. Descompacte o `.zip` e abra o arquivo `.apk` no celular.
 3. Se o Android pedir, permita “instalar apps desta fonte”.
@@ -41,6 +41,35 @@ enquanto o celular estiver ligado e com internet.
 | `{data}` | Data atual (dd/mm/aaaa) |
 | `{hora}` | Hora atual (hh:mm) |
 | `{bot}` | @usuário do bot |
+
+## Vendas e assinaturas
+
+Em **Vendas**, na tela do bot:
+
+- **Catálogo**: produtos digitais (a entrega — texto, link, arquivo — sai sozinha
+  depois do pagamento) e **assinaturas de canais/grupos** (convite pessoal,
+  lembrete antes de vencer e remoção automática de quem não renovou).
+- **Pagamentos**: Mercado Pago (link com Pix, cartão e boleto, ou Pix com QR
+  code no chat), Bitcoin pela Lightning (Blink) e Telegram Stars. O bot confere
+  os pagamentos sozinho, sem servidor nem webhook.
+- **Vitrine (mini app)**: o botão *Abrir loja* abre uma vitrine com carrinho
+  dentro do Telegram. A página fica em [`docs/loja`](docs/loja/index.html) e
+  recebe o catálogo pelo próprio link. Para usar o endereço padrão, ative o
+  GitHub Pages do repositório (Settings → Pages → branch `main`, pasta `/docs`)
+  ou hospede a página em qualquer endereço https e informe no app.
+
+## Termux e scripts
+
+Em **Termux e scripts**, na tela do bot:
+
+- **Comando de script**: um comando roda um programa seu no
+  [Termux](https://termux.dev) (Python, Node, Bash, Ruby...) e responde com o que
+  ele imprimir — texto ou JSON com foto, botões e edição de mensagem. Os dados da
+  mensagem chegam em variáveis de ambiente (`TELEBOT_ARGS`, `TELEBOT_UPDATE`...).
+- **API local do bot**: um servidor em `127.0.0.1` que imita a Bot API oficial.
+  Bibliotecas como python-telegram-bot, aiogram e Telegraf rodam no Termux
+  apontando para ele, com uma chave local no lugar do token. Recebem o que o app
+  não respondeu (ou tudo) e mandam mensagens como o bot.
 
 ## Limitações
 

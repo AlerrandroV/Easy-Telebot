@@ -435,7 +435,7 @@
     <string name="storage_type_dynamodb_sub">Banco da Amazon. Precisa de uma chave de acesso; o app cria a tabela sozinho.</string>
     <string name="storage_internal_info">Os dados ficam em uma pasta interna do app. Atenção: se você desinstalar o app ou limpar os dados dele, eles são apagados. Use o backup em um banco na nuvem se quiser guardar uma cópia.</string>
     <string name="storage_device_path">Pasta</string>
-    <string name="storage_files_ok">✓ Acesso a todos os arquivos liberado.</string>
+    <string name="storage_files_ok">Acesso a todos os arquivos liberado.</string>
     <string name="storage_files_needed">Para gravar fora da pasta do app, o Android exige a permissão “Acesso a todos os arquivos”.</string>
     <string name="storage_files_grant">Permitir acesso aos arquivos</string>
     <string name="storage_device_info">Os dados continuam lá mesmo se você desinstalar o app, e dá para copiar a pasta para o computador. Outros apps com acesso a arquivos também conseguem ler essa pasta.</string>
@@ -577,10 +577,10 @@
     <string name="broadcast_confirm_code">Para confirmar, digite o código:</string>
     <string name="broadcast_confirm_type">Código</string>
     <string name="broadcast_confirm_send">Enviar agora</string>
-    <string name="broadcast_job_running">📤 Enviando publicação…</string>
-    <string name="broadcast_job_done">✅ Última publicação concluída</string>
-    <string name="broadcast_job_cancelled">⏹️ Última publicação interrompida</string>
-    <string name="broadcast_job_interrupted">⚠️ Última publicação parou no meio (o app foi fechado)</string>
+    <string name="broadcast_job_running">Enviando publicação…</string>
+    <string name="broadcast_job_done">Última publicação concluída</string>
+    <string name="broadcast_job_cancelled">Última publicação interrompida</string>
+    <string name="broadcast_job_interrupted">Última publicação parou no meio (o app foi fechado)</string>
     <string name="broadcast_job_counts">Entregues: %1$d de %2$d · Falharam: %3$d</string>
     <string name="broadcast_job_unreachable">%1$d bloquearam o bot ou o removeram; não receberão as próximas.</string>
     <string name="broadcast_job_from_app">Enviada pelo app em %1$s</string>
@@ -596,7 +596,7 @@
     <string name="broadcast_how_title">Como funciona</string>
     <string-array name="broadcast_how_steps">
         <item>Na conversa privada com o bot, o admin manda /post (ou /publi).</item>
-        <item>Manda as mensagens da publicação como quiser: texto formatado, fotos, vídeos, documentos, álbuns, figurinhas… O bot reage com 👍 a cada uma.</item>
+        <item>Manda as mensagens da publicação como quiser: texto formatado, fotos, vídeos, documentos, álbuns, figurinhas… O bot reage com um \"joinha\" a cada uma.</item>
         <item>Manda /pronto: o bot mostra a prévia exatamente como vai chegar, quantos destinos existem e um código.</item>
         <item>Manda /confirmar CÓDIGO para todos, ou /confirmar CÓDIGO usuarios (ou grupos, canais; pode combinar).</item>
         <item>O bot envia sem mostrar quem escreveu e, no fim, manda um resumo. /cancelar desiste ou interrompe o envio.</item>
@@ -625,7 +625,7 @@
     <string name="antispam_title">Antispam</string>
     <string name="antispam_intro">Quem mandar mensagens demais em pouco tempo, ou repetir a mesma mensagem várias vezes, é bloqueado na hora: o bot passa a ignorar a pessoa. Você e os admins são avisados e decidem se desbloqueiam ou mantêm o bloqueio. Admins nunca são bloqueados.</string>
     <string name="antispam_pending_title">Esperando análise (%1$d)</string>
-    <string name="antispam_pending_empty">Nenhum caso esperando análise. 🎉</string>
+    <string name="antispam_pending_empty">Nenhum caso esperando análise.</string>
     <string name="antispam_kept_title">Mantidos bloqueados (%1$d)</string>
     <string name="antispam_settings">Configuração</string>
     <string name="antispam_enable">Bloqueio automático</string>
@@ -640,7 +640,7 @@
     <string name="antispam_warn_user">Avisar a pessoa bloqueada</string>
     <string name="antispam_warn_user_sub">Ela recebe: "Você foi bloqueado automaticamente… Um administrador vai analisar o caso." Se for desbloqueada, também é avisada.</string>
     <string name="antispam_level">Quem recebe o aviso e pode julgar no Telegram</string>
-    <string name="antispam_footer">No Telegram, cada admin recebe o caso com o motivo, as últimas mensagens e os botões ✅ Desbloquear e 🚫 Manter bloqueado. A decisão de um admin aparece para todos e aqui no app. Em grupo, só contam os comandos mandados ao bot (conversa normal não). Um álbum de fotos conta como uma mensagem só, e repetir o mesmo comando (ex.: /start) não conta como mensagem repetida.</string>
+    <string name="antispam_footer">No Telegram, cada admin recebe o caso com o motivo, as últimas mensagens e os botões Desbloquear e Manter bloqueado. A decisão de um admin aparece para todos e aqui no app. Em grupo, só contam os comandos mandados ao bot (conversa normal não). Um álbum de fotos conta como uma mensagem só, e repetir o mesmo comando (ex.: /start) não conta como mensagem repetida.</string>
     <string name="antispam_status_pending">Esperando análise</string>
     <string name="antispam_status_kept">Mantido</string>
     <string name="antispam_reason_manual">Bloqueado manualmente pelo app</string>
@@ -655,16 +655,286 @@
     <string name="antispam_release_msg_group">O bot volta a responder a pessoa. Os avisos dos admins no Telegram são atualizados.</string>
     <string name="bot_antispam_on">Ligado: bloqueia quem inunda o bot</string>
     <string name="bot_antispam_off">Desligado</string>
-    <string name="bot_antispam_pending">⚠️ %1$d bloqueio(s) esperando sua análise</string>
+    <string name="bot_antispam_pending">%1$d bloqueio(s) esperando sua análise</string>
     <string name="chat_block">Bloquear</string>
     <string name="chat_block_title">Bloquear %1$s?</string>
     <string name="chat_block_msg">O bot passa a ignorar tudo o que essa pessoa mandar (nenhum comando responde). As mensagens dela continuam aparecendo aqui. Dá para desbloquear quando quiser, aqui ou na tela Antispam.</string>
-    <string name="chat_blocked_title">🚫 Bloqueado: o bot está ignorando esta pessoa</string>
+    <string name="chat_blocked_title">Bloqueado: o bot está ignorando esta pessoa</string>
     <string name="alerts_channel">Avisos importantes</string>
     <string name="alerts_channel_desc">Bloqueios do antispam esperando a sua análise.</string>
-    <string name="alert_spam_title">🚨 Spam bloqueado em %1$s</string>
+    <string name="alert_spam_title">Spam bloqueado em %1$s</string>
     <string name="alert_spam_text">%1$s foi bloqueado automaticamente (%2$s). Toque para analisar e decidir.</string>
-    <string name="log_spam_blocked">🚨 %1$s bloqueado pelo antispam: %2$s. Admins avisados: %3$d.</string>
-    <string name="log_spam_released">✅ %1$s desbloqueado por %2$s.</string>
-    <string name="log_spam_kept">🚫 %1$s mantido bloqueado por %2$s.</string>
+    <string name="log_spam_blocked">%1$s bloqueado pelo antispam: %2$s. Admins avisados: %3$d.</string>
+    <string name="log_spam_released">%1$s desbloqueado por %2$s.</string>
+    <string name="log_spam_kept">%1$s mantido bloqueado por %2$s.</string>
+
+    <!-- Vendas e assinaturas -->
+    <string name="shop_title">Vendas</string>
+    <string name="bot_shop_off">Catálogo, pagamentos e assinaturas de canais (desligado)</string>
+    <plurals name="bot_shop_products">
+        <item quantity="one">Loja ligada: %d produto</item>
+        <item quantity="other">Loja ligada: %d produtos</item>
+    </plurals>
+    <string name="add_product">Produto</string>
+    <string name="add_product_sub">Algo para vender: arquivo, curso, link, código… A entrega é automática depois do pagamento.</string>
+    <string name="add_subscription">Assinatura de canal</string>
+    <string name="add_subscription_sub">Acesso pago a um canal ou grupo por um período. O bot convida, lembra de renovar e remove quem não renovou.</string>
+    <string name="shop_tab_products">Produtos</string>
+    <string name="shop_tab_orders">Pedidos</string>
+    <string name="shop_tab_subscribers">Assinantes</string>
+    <string name="shop_tab_settings">Configurar</string>
+    <string name="shop_off_banner">A loja está desligada: o bot não mostra os produtos. Toque para ligar e configurar os pagamentos.</string>
+    <string name="shop_products_empty">Nenhum produto ainda. Crie o primeiro abaixo.</string>
+    <string name="shop_new_product">Produto</string>
+    <string name="shop_new_subscription">Assinatura</string>
+    <string name="shop_stars_n">%1$d estrelas</string>
+    <string name="shop_sub_detail">%1$d dias em %2$s</string>
+    <string name="shop_stock_n">%1$d no estoque</string>
+    <string name="shop_inactive">Pausado</string>
+    <string name="shop_stats_title">Vendas dos últimos 30 dias</string>
+    <string name="shop_stats_count">%1$d pedido(s) pago(s)</string>
+    <string name="shop_orders_empty">Nenhum pedido ainda. Eles aparecem aqui assim que alguém comprar pelo bot.</string>
+    <string name="shop_order_n">Pedido %1$s</string>
+    <string name="shop_delivery_problem">A entrega teve problema: %1$s</string>
+    <string name="shop_confirm_manual">Confirmar pagamento</string>
+    <string name="shop_status_paid">Pago</string>
+    <string name="shop_status_pending">Aguardando</string>
+    <string name="shop_status_expired">Expirado</string>
+    <string name="shop_status_cancelled">Cancelado</string>
+    <string name="shop_status_problem">Entrega pendente</string>
+    <string name="shop_gw_mp">Mercado Pago (link)</string>
+    <string name="shop_gw_pix">Pix (Mercado Pago)</string>
+    <string name="shop_gw_btc">Bitcoin Lightning (Blink)</string>
+    <string name="shop_gw_stars">Telegram Stars</string>
+    <string name="shop_gw_manual">Confirmado manualmente</string>
+    <string name="shop_gw_none">Forma de pagamento ainda não escolhida</string>
+    <string name="shop_subs_summary">%1$d ativa(s) · %2$d encerrada(s)</string>
+    <string name="shop_subs_empty">Ninguém assinou ainda.</string>
+    <string name="shop_sub_active">Ativa</string>
+    <string name="shop_sub_ended">Encerrada</string>
+    <string name="shop_sub_until">Até %1$s</string>
+    <string name="shop_sub_ended_on">Terminou em %1$s</string>
+    <string name="shop_sub_extend">30 dias</string>
+    <string name="shop_sub_remove">Remover</string>
+    <string name="shop_sub_remove_title">Remover %1$s?</string>
+    <string name="shop_sub_remove_msg">A pessoa sai de %1$s agora e é avisada. Ela pode voltar se assinar de novo.</string>
+    <string name="shop_enable">Loja ligada</string>
+    <string name="shop_enable_sub">O bot responde a /loja com o catálogo e vende pelos pagamentos configurados abaixo.</string>
+    <string name="shop_currency">Moeda</string>
+    <string name="shop_currency_hint">Use a moeda da sua conta do Mercado Pago (Brasil = BRL). O Bitcoin é convertido na hora pela cotação do Blink.</string>
+    <string name="shop_intro">Texto de abertura da loja</string>
+    <string name="shop_payments">Pagamentos</string>
+    <string name="shop_gw_mp_title">Mercado Pago</string>
+    <string name="shop_gw_mp_sub">Link de pagamento com Pix, cartão e boleto, ou Pix com QR code no chat.</string>
+    <string name="shop_mp_token">Token de acesso de produção (APP_USR-…)</string>
+    <string name="shop_mp_how">No site do Mercado Pago: Seu negócio, Configurações, Suas integrações (ou mercadopago.com.br/developers), crie uma aplicação e copie o Access Token de produção.</string>
+    <string name="shop_pix">Pix com QR code no chat</string>
+    <string name="shop_pix_sub">O bot manda o QR code e o copia e cola direto na conversa. O Mercado Pago exige um e-mail de pagador: use um e-mail seu.</string>
+    <string name="shop_payer_email">E-mail do pagador para o Pix</string>
+    <string name="shop_gw_blink_title">Bitcoin (Lightning) pelo Blink</string>
+    <string name="shop_gw_blink_sub">O bot gera uma fatura Lightning no valor do pedido, convertido pela cotação do momento, e confere sozinho quando é paga.</string>
+    <string name="shop_blink_key">Chave de API do Blink</string>
+    <string name="shop_blink_how">Em dashboard.blink.sv, entre com a sua conta Blink, abra API Keys e crie uma chave com permissão de leitura e recebimento (Read e Receive). Não marque a de envio (Write).</string>
+    <string name="shop_gw_stars_title">Telegram Stars</string>
+    <string name="shop_gw_stars_sub">Pagamento nativo do Telegram, sem cadastro. Só aparece para produtos com preço em estrelas. Para produtos digitais vendidos dentro do Telegram, as regras do Telegram pedem Stars.</string>
+    <string name="shop_test">Testar</string>
+    <string name="shop_testing">Testando…</string>
+    <string name="shop_test_ok">Conectado: %1$s</string>
+    <string name="shop_show_key">Mostrar</string>
+    <string name="shop_save_keys">Salvar credenciais</string>
+    <string name="shop_keys_note">As credenciais ficam cifradas no celular e só são usadas para falar com o Mercado Pago e o Blink. Ao salvar, o bot é reiniciado se estiver ligado.</string>
+    <string name="shop_miniapp">Vitrine (mini app)</string>
+    <string name="shop_miniapp_enable">Botão Abrir loja</string>
+    <string name="shop_miniapp_enable_sub">Além da lista no chat, o bot mostra um botão que abre a vitrine com fotos, carrinho e quantidades, dentro do próprio Telegram.</string>
+    <string name="shop_store_url">Endereço da vitrine</string>
+    <string name="shop_store_url_hint">A vitrine é uma página fixa (docs/loja no repositório do app) que recebe o catálogo pelo próprio link: não precisa de servidor. Use o endereço padrão ou hospede a página onde quiser (precisa ser https).</string>
+    <string name="shop_notifications">Avisos</string>
+    <string name="shop_notify_level">Quem recebe o aviso de cada venda no Telegram</string>
+    <string name="shop_remind">Lembrar o assinante antes de vencer</string>
+    <string name="shop_remind_off">Não lembrar</string>
+    <string name="shop_how_title">Como as pessoas compram</string>
+    <string-array name="shop_how_steps">
+        <item>A pessoa manda /loja para o bot (ou toca em Loja no menu).</item>
+        <item>Escolhe um produto na lista ou monta o carrinho na vitrine.</item>
+        <item>Escolhe como pagar e paga. O bot confere o pagamento sozinho a cada poucos segundos.</item>
+        <item>Pago: a entrega chega na hora. Na assinatura, chega um convite pessoal para o canal, válido por 24 horas.</item>
+        <item>Você recebe uma notificação no celular e os admins recebem o aviso da venda no Telegram.</item>
+    </string-array>
+    <string name="product_edit_title">Editar produto</string>
+    <string name="product_intro_digital">O que você vende e o que a pessoa recebe assim que o pagamento for confirmado.</string>
+    <string name="product_intro_subscription">Acesso pago a um canal ou grupo. O bot precisa ser administrador lá, com permissão para convidar e remover membros.</string>
+    <string name="product_name">Nome</string>
+    <string name="product_description">Descrição</string>
+    <string name="product_price">Preço (%1$s)</string>
+    <string name="product_stars">Preço em estrelas (opcional)</string>
+    <string name="product_stars_hint">Com preço em estrelas, o produto também pode ser pago com Telegram Stars.</string>
+    <string name="product_channel">Canal ou grupo</string>
+    <string name="product_channel_empty">Nenhum canal ou grupo encontrado. Adicione o bot como administrador no canal ou grupo (com permissão para convidar e banir) e volte aqui.</string>
+    <string name="product_channel_current">Atual: %1$s</string>
+    <string name="product_channel_hint">A lista mostra os canais e grupos em que o bot está. Se o bot já estava num canal antes desta versão, remova e adicione de novo para ele aparecer.</string>
+    <string name="product_days">Duração</string>
+    <string name="product_days_n">%1$d dias</string>
+    <string name="product_days_custom">Dias de acesso</string>
+    <string name="product_photo">Imagem</string>
+    <string name="product_photo_pick">Escolher foto</string>
+    <string name="product_photo_change">Trocar foto</string>
+    <string name="product_photo_invalid">Escolha uma imagem JPG ou PNG.</string>
+    <string name="product_image_url">Link da imagem na vitrine (opcional)</string>
+    <string name="product_image_url_hint">A foto acima aparece no chat. A vitrine não tem acesso aos arquivos do celular: para mostrar imagem lá, cole o link público de uma imagem (https).</string>
+    <string name="product_sale">Venda</string>
+    <string name="product_active">À venda</string>
+    <string name="product_active_sub">Desligado, o produto some da loja (os pedidos antigos continuam).</string>
+    <string name="product_limited">Estoque limitado</string>
+    <string name="product_limited_sub">Ao esgotar, o produto sai da loja sozinho.</string>
+    <string name="product_stock">Unidades à venda</string>
+    <string name="product_delivery">Entrega</string>
+    <string name="product_delivery_hint">Mensagem enviada depois do pagamento: texto, link, arquivo, foto, vídeo, botões. Aceita as variáveis, como {nome}.</string>
+    <string name="product_err_name">Dê um nome ao produto.</string>
+    <string name="product_err_price">Informe o preço (ou o preço em estrelas).</string>
+    <string name="product_err_chat">Escolha o canal ou grupo da assinatura.</string>
+    <string name="product_err_days">A duração precisa ser de 1 a 3650 dias.</string>
+    <string name="product_err_stock">Informe quantas unidades estão à venda.</string>
+    <string name="product_err_delivery">Escreva a mensagem de entrega ou anexe o arquivo que a pessoa vai receber.</string>
+    <string name="product_delete_title">Excluir %1$s?</string>
+    <string name="product_delete_msg">O produto sai da loja. Pedidos e assinaturas que já existem não são apagados.</string>
+    <string name="alert_sale_title">Nova venda em %1$s</string>
+    <string name="alert_sale_text">%1$s de %2$s (pedido %3$s).</string>
+    <string name="alert_sale_text_problem">%1$s de %2$s (pedido %3$s). A entrega teve problema: toque para ver.</string>
+    <string name="log_order_created">Pedido %1$s criado por %2$s: %3$s.</string>
+    <string name="log_sale">Venda: pedido %1$s de %2$s, %3$s.</string>
+    <string name="log_sale_problem">Venda com entrega pendente: pedido %1$s de %2$s, %3$s.</string>
+    <string name="log_sub_expired">Assinatura de %1$s em %2$s terminou; a pessoa foi removida.</string>
+    <string name="log_sub_expired_not_removed">Assinatura de %1$s em %2$s terminou, mas o bot não conseguiu remover a pessoa (falta permissão de banir).</string>
+    <string name="err_pay_config_title">Pagamento sem configuração</string>
+    <string name="err_pay_config_msg">Falta alguma informação do gateway de pagamento (token, chave ou e-mail do Pix). Confira em Vendas, Configurar.</string>
+    <string name="err_pay_auth_title">Credencial de pagamento recusada</string>
+    <string name="err_pay_auth_msg">O Mercado Pago ou o Blink recusou o token ou a chave. Ele pode estar errado, ser de teste, ou ter sido apagado.</string>
+    <string-array name="err_pay_auth_steps">
+        <item>Mercado Pago: use o Access Token de produção (começa com APP_USR-), não o de teste.</item>
+        <item>Blink: a chave precisa ter as permissões Read e Receive.</item>
+        <item>Cole de novo em Vendas, Configurar, e toque em Testar.</item>
+    </string-array>
+    <string name="err_pay_network_title">Sem conexão com o pagamento</string>
+    <string name="err_pay_network_msg">Não foi possível falar com o Mercado Pago ou o Blink. Confira a internet; o bot tenta de novo sozinho.</string>
+    <string name="err_pay_rejected_title">Cobrança recusada pelo gateway</string>
+    <string name="err_pay_rejected_msg">O gateway não aceitou criar a cobrança. Confira se a moeda da loja é a da sua conta e se o valor está dentro dos limites.</string>
+    <string name="err_pay_no_gateway_title">Nenhuma forma de pagamento ativa</string>
+    <string name="err_pay_no_gateway_msg">Alguém tentou comprar, mas nenhum pagamento está ligado e configurado. Ligue o Mercado Pago, o Blink ou o Telegram Stars em Vendas, Configurar.</string>
+    <string name="err_pay_already_title">Pedido já resolvido</string>
+    <string name="err_pay_already_msg">Este pedido já está pago (ou não existe mais).</string>
+    <string name="err_pay_not_found_title">Assinatura não encontrada</string>
+    <string name="err_pay_not_found_msg">Essa assinatura não existe mais. Atualize a lista.</string>
+    <string name="err_pay_invite_title">O bot não conseguiu criar o convite</string>
+    <string name="err_pay_invite_msg">Para vender assinaturas, o bot precisa ser administrador do canal ou grupo com permissão para convidar e banir.</string>
+    <string-array name="err_pay_invite_steps">
+        <item>Abra o canal ou grupo no Telegram e vá em Administradores.</item>
+        <item>Adicione o bot (ou edite) e ligue Convidar usuários via link e Banir usuários.</item>
+        <item>Volte aqui e tente de novo.</item>
+    </string-array>
+    <string name="err_pay_unknown_title">Problema no pagamento</string>
+    <string name="err_pay_unknown_msg">Algo inesperado aconteceu na loja. Os detalhes estão abaixo.</string>
+    <string name="close">Fechar</string>
+    <string name="more">Mais opções</string>
+    <string name="chat_attach">Anexar</string>
+    <string name="cmd_move_up">Mover para cima</string>
+    <string name="cmd_move_down">Mover para baixo</string>
+
+    <!-- Termux e scripts -->
+    <string name="termux_title">Termux e scripts</string>
+    <string name="bot_termux_sub">Comandos em qualquer linguagem de programação e API local para bibliotecas de bot</string>
+    <string name="bot_termux_scripts">%1$d comando(s) de script</string>
+    <string name="bot_termux_api_on">API local ligada na porta %1$d</string>
+    <string name="add_script_command">Comando de script</string>
+    <string name="add_script_command_sub">O comando roda um programa seu no Termux (Python, Node, Bash, Ruby…) e responde com o que ele imprimir.</string>
+    <string name="termux_intro">O Termux é um terminal Linux para Android. Com ele, o bot faz o que você programar: consultar sites e APIs, usar banco de dados, gerar imagens, automatizar o celular… Em qualquer linguagem.</string>
+    <string name="termux_setup">1. Preparar o Termux</string>
+    <string name="termux_installed">Termux instalado</string>
+    <string name="termux_not_installed">Termux não encontrado</string>
+    <string-array name="termux_install_steps">
+        <item>Instale o Termux pelo F-Droid ou pelo GitHub oficial (termux/termux-app). A versão antiga da Play Store não serve.</item>
+        <item>Abra o Termux uma vez e espere a instalação terminar.</item>
+        <item>Instale a linguagem que quiser, por exemplo: pkg install python nodejs</item>
+    </string-array>
+    <string name="termux_check_again">Verificar de novo</string>
+    <string name="termux_external_title">Liberar o Termux para outros apps</string>
+    <string name="termux_external_msg">Por segurança, o Termux só aceita comandos de outros apps depois que você permite. Cole este comando no Termux uma vez:</string>
+    <string-array name="termux_external_steps">
+        <item>Abra o Termux e cole: echo \"allow-external-apps = true\" >> ~/.termux/termux.properties</item>
+        <item>Depois rode: termux-reload-settings (ou feche e abra o Termux).</item>
+        <item>Confira em Termux e scripts se a permissão \"Executar comandos no Termux\" está concedida e toque em Testar.</item>
+        <item>Se o Android estiver economizando bateria do Termux, libere: Configurações, Apps, Termux, Bateria, Sem restrições.</item>
+    </string-array>
+    <string name="termux_permitted">Permissão para executar comandos no Termux concedida</string>
+    <string name="termux_not_permitted">Falta a permissão para executar comandos no Termux</string>
+    <string name="termux_allow">Permitir</string>
+    <string name="termux_allow_hint">Se o Android não mostrar o pedido: Configurações, Apps, Easy Telebot, Permissões, Permissões adicionais, Executar comandos no Termux.</string>
+    <string name="termux_test">Testar o Termux</string>
+    <string name="termux_testing">Testando…</string>
+    <string name="termux_scripts">2. Comandos de script</string>
+    <string name="termux_scripts_msg">Crie um comando e escolha Responder com: Script do Termux. Quando alguém usar o comando, o app roda a sua linha de comando no Termux e manda o que o programa imprimir.</string>
+    <string name="termux_scripts_existing">Comandos de script: %1$s</string>
+    <string name="termux_env_title">O que o script recebe (variáveis de ambiente)</string>
+    <string-array name="termux_env_vars">
+        <item>TELEBOT_ARGS: texto depois do comando (/clima São Paulo -> São Paulo)</item>
+        <item>TELEBOT_UPDATE: a mensagem inteira do Telegram, em JSON</item>
+        <item>TELEBOT_USER_ID, TELEBOT_USER_NAME, TELEBOT_CHAT_ID: quem mandou e onde</item>
+        <item>TELEBOT_ADMIN_LEVEL: classe de admin da pessoa (vazio se não for admin)</item>
+        <item>TELEBOT_DATA: o dado do botão apertado (botões com \"data\")</item>
+        <item>TELEBOT_API: endereço da API local, se estiver ligada (para mandar fotos, arquivos etc.)</item>
+    </string-array>
+    <string name="termux_output_title">O que o script responde</string>
+    <string-array name="termux_output_rules">
+        <item>Texto simples: vira uma mensagem, com a mesma formatação dos comandos (*negrito*, _itálico_, [link](site.com)).</item>
+        <item>JSON: {\"text\": \"...\", \"photo\": \"https://...\", \"buttons\": [[{\"text\": \"Site\", \"url\": \"...\"}, {\"text\": \"Mais\", \"data\": \"pagina2\"}]]}. Também aceita video, document, audio, animation e sticker, e uma lista de objetos para várias mensagens.</item>
+        <item>Botão com \"data\" roda o mesmo script de novo com TELEBOT_DATA. Com \"edit\": true, a resposta edita a mensagem do botão.</item>
+        <item>\"html\": true manda o texto como HTML do Telegram, sem conversão.</item>
+        <item>Nada impresso: nenhuma resposta. Erro (código diferente de 0) aparece no registro do bot com o final do stderr.</item>
+    </string-array>
+    <string name="termux_examples">Exemplos</string>
+    <string name="termux_api">3. API local do bot (avançado)</string>
+    <string name="termux_api_enable">Ligar a API local</string>
+    <string name="termux_api_enable_sub">Para bots inteiros feitos com bibliotecas (python-telegram-bot, aiogram, Telegraf…) rodando no Termux. Elas conversam com o app em vez de com o Telegram, e o app repassa.</string>
+    <string name="termux_api_listening">No ar em 127.0.0.1:%1$d</string>
+    <string name="termux_api_starting">Ligando…</string>
+    <string name="termux_api_bot_off">Liga junto com o bot (o bot está desligado)</string>
+    <string name="termux_port">Porta</string>
+    <string name="termux_port_invalid">Use uma porta de 1024 a 65535.</string>
+    <string name="termux_port_taken">Outro bot já usa essa porta.</string>
+    <string name="termux_forward">O que os scripts recebem</string>
+    <string name="termux_forward_unhandled">O que o app não respondeu</string>
+    <string name="termux_forward_all">Tudo</string>
+    <string name="termux_forward_unhandled_sub">Comandos, loja, antispam e publicação continuam no app. Mensagens livres, comandos que o app não conhece, botões dos seus scripts, pesquisas inline e o resto vão para o script.</string>
+    <string name="termux_forward_all_sub">O script recebe tudo, inclusive o que o app já respondeu (bom para registros e estatísticas). Cuidado para não responder duas vezes.</string>
+    <string name="termux_key">Chave (use no lugar do token)</string>
+    <string name="termux_key_new">Gerar outra chave</string>
+    <string name="termux_key_hint">O token de verdade nunca sai do app. A chave só funciona dentro deste celular (127.0.0.1). Gerar outra desliga os scripts que usam a antiga.</string>
+    <string name="termux_libs">Como usar nas bibliotecas</string>
+    <string name="termux_api_notes">Funciona como a API oficial: getUpdates, sendMessage, sendPhoto com arquivo, download de arquivos… O app não deixa os scripts trocarem o webhook (setWebhook) nem desconectar o bot; deleteWebhook é aceito sem efeito. Quem foi bloqueado pelo antispam não chega aos scripts. As mensagens que os scripts mandam aparecem no mensageiro do app.</string>
+    <string name="termux_keep_alive">Comandos de script não precisam do Termux aberto: o app aciona o Termux na hora. Já um bot feito com biblioteca precisa ficar rodando no Termux: use termux-wake-lock e libere o Termux da economia de bateria.</string>
+    <string name="cmd_response_title">Responder com</string>
+    <string name="cmd_response_messages">Mensagens prontas</string>
+    <string name="cmd_response_script">Script do Termux</string>
+    <string name="cmd_script_command">Linha de comando no Termux</string>
+    <string name="cmd_script_timeout">Tempo máximo</string>
+    <string name="cmd_script_seconds">%1$d s</string>
+    <string name="cmd_script_help">Roda na pasta inicial do Termux. O que o programa imprimir vira a resposta: texto simples ou JSON (veja Termux e scripts, na tela do bot). Os dados da mensagem chegam em variáveis como TELEBOT_ARGS e TELEBOT_UPDATE.</string>
+    <string name="cmd_err_no_script">Escreva a linha de comando que o Termux deve rodar.</string>
+    <string name="copy">Copiar</string>
+    <string name="copied">Copiado</string>
+    <string name="log_local_api_on">API local do Termux no ar na porta %1$d.</string>
+    <string name="log_script_done">/%1$s: script respondeu em %2$s s (%3$d mensagem(ns)).</string>
+    <string name="err_termux_missing_title">Termux não instalado</string>
+    <string name="err_termux_missing_msg">Este comando roda um script no Termux, mas o Termux não está instalado neste celular.</string>
+    <string name="err_termux_permission_title">Sem permissão para usar o Termux</string>
+    <string name="err_termux_permission_msg">O Easy Telebot precisa da permissão \"Executar comandos no Termux\". Conceda em Termux e scripts, na tela do bot.</string>
+    <string name="err_termux_no_answer_title">O Termux não respondeu</string>
+    <string name="err_termux_no_answer_msg">O app pediu para o Termux rodar o script, mas não teve resposta. Normalmente falta liberar o Termux para outros apps (allow-external-apps) ou o Android fechou o Termux para economizar bateria.</string>
+    <string name="err_termux_failed_title">O Termux recusou o comando</string>
+    <string name="err_termux_failed_msg">O Termux não conseguiu rodar o script. Veja o motivo abaixo.</string>
+    <string name="err_termux_exit_title">O script deu erro</string>
+    <string name="err_termux_exit_msg">O programa terminou com erro e o bot não respondeu. O final da saída de erro (stderr) está abaixo; teste o comando direto no Termux para ver tudo.</string>
+    <string name="err_termux_timeout_title">O script demorou demais</string>
+    <string name="err_termux_timeout_msg">O script passou do tempo máximo e foi interrompido. Aumente o tempo no comando ou deixe o script mais rápido.</string>
+    <string name="err_termux_port_title">Porta da API local ocupada</string>
+    <string name="err_termux_port_msg">Outro programa (ou outro bot) já usa essa porta neste celular. Escolha outra em Termux e scripts.</string>
 </resources>

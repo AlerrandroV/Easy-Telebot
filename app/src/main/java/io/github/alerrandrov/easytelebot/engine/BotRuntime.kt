@@ -69,6 +69,16 @@ object BotRuntime {
 
     fun bumpBans(id: Long) = _bansVersion.bump(id)
 
+    /** Muda a cada venda/assinatura, para as telas da loja recarregarem. */
+    private val _shopVersion = MutableStateFlow<Map<Long, Long>>(emptyMap())
+    val shopVersion: StateFlow<Map<Long, Long>> = _shopVersion.asStateFlow()
+
+    fun bumpShop(id: Long) = _shopVersion.bump(id)
+
+    /** Porta em que a API local do Termux está no ar, por bot (ausente = desligada). */
+    private val _localApi = MutableStateFlow<Map<Long, Int>>(emptyMap())
+    val localApi: StateFlow<Map<Long, Int>> = _localApi.asStateFlow()
+
     private fun MutableStateFlow<Map<Long, Long>>.bump(id: Long) = update { it + (id to ((it[id] ?: 0L) + 1)) }
 
     /** Motores Python ativos (para pedir recarga/parada de qualquer thread). */
@@ -103,7 +113,12 @@ object BotRuntime {
         it.copy(state = BotState.STARTING, running = true, startedAt = System.currentTimeMillis(), lastError = null)
     }
 
-    fun markStopped(id: Long) = updateStatus(id) {
+    fun markStopped(id: Long) {
+        _localApi.update { it - id }
+        markStoppedStatus(id)
+    }
+
+    private fun markStoppedStatus(id: Long) = updateStatus(id) {
         it.copy(running = false, state = if (it.state == BotState.FATAL) BotState.FATAL else BotState.STOPPED)
     }
 
@@ -173,6 +188,36 @@ object BotRuntime {
                 val botName = BotRepository.bots.value.firstOrNull { it.id == id }?.name ?: ""
                 Alerts.spamBlocked(app, id, botName, e.optLong("user_id"), name, reason)
             }
+            "order_created" -> add(id, LogEntry.Level.INFO, s(R.string.log_order_created, e.optString("order"), e.optString("buyer"), e.optString("total")))
+            "sale" -> {
+                val problems = e.optInt("problems") > 0
+                add(
+                    id, if (problems) LogEntry.Level.WARN else LogEntry.Level.INFO,
+                    s(if (problems) R.string.log_sale_problem else R.string.log_sale, e.optString("order"), e.optString("buyer"), e.optString("total")),
+                )
+                bumpShop(id)
+                val botName = BotRepository.bots.value.firstOrNull { it.id == id }?.name ?: ""
+                Alerts.sale(app, id, botName, e.optString("order"), e.optString("buyer"), e.optString("total"), problems)
+            }
+            "subscription_expired" -> {
+                add(
+                    id, LogEntry.Level.INFO,
+                    s(if (e.optBoolean("removed")) R.string.log_sub_expired else R.string.log_sub_expired_not_removed, e.optString("user"), e.optString("chat")),
+                )
+                bumpShop(id)
+            }
+            "local_api" -> {
+                if (e.optString("state") == "listening") {
+                    _localApi.update { it + (id to e.optInt("port")) }
+                    add(id, LogEntry.Level.INFO, s(R.string.log_local_api_on, e.optInt("port")))
+                } else {
+                    _localApi.update { it - id }
+                }
+            }
+            "script_done" -> add(
+                id, LogEntry.Level.OUT,
+                s(R.string.log_script_done, e.optString("command"), e.optDouble("seconds").toString().replace('.', ','), e.optInt("messages")),
+            )
             "spam_decided" -> {
                 val released = e.optString("action") == "release"
                 add(

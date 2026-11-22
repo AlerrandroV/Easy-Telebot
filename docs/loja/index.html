@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Loja</title>
+<!--
+  Vitrine (mini app do Telegram) do Easy Telebot.
+
+  Página estática: não fala com nenhum servidor. O bot abre esta página com o
+  catálogo no próprio endereço (#z= JSON comprimido com deflate, em base64url).
+  Ao finalizar, o carrinho volta ao bot por Telegram.WebApp.sendData e o bot
+  recalcula os preços pelo catálogo dele (o que vem daqui nunca é confiado).
+-->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --bg: var(--tg-theme-bg-color, #ffffff);
+    --bg2: var(--tg-theme-secondary-bg-color, #f2f3f7);
+    --text: var(--tg-theme-text-color, #1a1c1e);
+    --hint: var(--tg-theme-hint-color, #6b7178);
+    --accent: var(--tg-theme-button-color, #1565a8);
+    --on-accent: var(--tg-theme-button-text-color, #ffffff);
+    --card: var(--tg-theme-section-bg-color, var(--bg));
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg2); color: var(--text);
+         font: 15px/1.4 -apple-system, system-ui, Roboto, "Segoe UI", sans-serif; }
+  header { padding: 18px 16px 6px; }
+  header h1 { margin: 0; font-size: 20px; }
+  header p { margin: 4px 0 0; color: var(--hint); font-size: 13px; }
+  main { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px;
+         padding: 12px 16px 96px; }
+  .card { background: var(--card); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; }
+  .img { aspect-ratio: 4 / 3; background: rgba(127, 127, 127, .14); display: flex; align-items: center; justify-content: center;
+         color: var(--hint); }
+  .img img { width: 100%; height: 100%; object-fit: cover; }
+  .body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+  .name { font-weight: 600; }
+  .desc { color: var(--hint); font-size: 13px; display: -webkit-box; -webkit-line-clamp: 3;
+          -webkit-box-orient: vertical; overflow: hidden; }
+  .tag { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--accent); }
+  .price { font-weight: 700; margin-top: auto; padding-top: 6px; }
+  .row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  button { font: inherit; border: 0; border-radius: 10px; cursor: pointer; }
+  .add { flex: 1; background: var(--accent); color: var(--on-accent); padding: 9px 10px; font-weight: 600; }
+  .qty { display: flex; align-items: center; gap: 6px; flex: 1; justify-content: space-between; }
+  .qty button { width: 36px; height: 36px; background: var(--bg2); color: var(--text);
+                display: flex; align-items: center; justify-content: center; }
+  .qty span { font-weight: 700; min-width: 24px; text-align: center; }
+  .empty, .error { grid-column: 1 / -1; text-align: center; color: var(--hint); padding: 48px 16px; }
+  #bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+         background: var(--bg); box-shadow: 0 -2px 12px rgba(0,0,0,.08); display: none; }
+  #bar button { width: 100%; background: var(--accent); color: var(--on-accent); padding: 14px; font-weight: 700; }
+  svg { width: 18px; height: 18px; fill: currentColor; }
+  .img svg { width: 40px; height: 40px; opacity: .5; }
+</style>
+</head>
+<body>
+<header><h1 id="title">Loja</h1><p id="subtitle"></p></header>
+<main id="list"></main>
+<div id="bar"><button id="checkout" type="button"></button></div>
+
+<script>
+(function () {
+  "use strict";
+  var tg = window.Telegram && window.Telegram.WebApp;
+  var ICONS = {
+    bag: '<svg viewBox="0 0 24 24"><path d="M18 6h-2a4 4 0 0 0-8 0H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zm-6-2a2 2 0 0 1 2 2h-4a2 2 0 0 1 2-2zm6 16H6V8h2v2h2V8h4v2h2V8h2v12z"/></svg>',
+    plus: '<svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>',
+    minus: '<svg viewBox="0 0 24 24"><path d="M19 13H5v-2h14v2z"/></svg>',
+    clock: '<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm.5-13H11v6l5.2 3.2.8-1.3-4.5-2.7V7z"/></svg>'
+  };
+  var state = { data: null, cart: {} };
+
+  function el(tag, cls, html) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (html != null) e.innerHTML = html;
+    return e;
+  }
+  function text(tag, cls, value) { var e = el(tag, cls); e.textContent = value; return e; }
+
+  function money(cents) {
+    var d = state.data, noCents = d.c === "CLP" || d.c === "COP";
+    var whole = Math.floor(cents / 100).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    return d.s + " " + whole + (noCents ? "" : "," + String(cents % 100).padStart(2, "0"));
+  }
+
+  function decode() {
+    var m = /[#&]z=([A-Za-z0-9_-]+)/.exec(location.hash);
+    if (!m) return Promise.reject(new Error("sem catálogo"));
+    var b64 = m[1].replace(/-/g, "+").replace(/_/g, "/");
+    while (b64.length % 4) b64 += "=";
+    var bytes = Uint8Array.from(atob(b64), function (c) { return c.charCodeAt(0); });
+    if (typeof DecompressionStream === "undefined") return Promise.reject(new Error("navegador antigo"));
+    var stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate"));
+    return new Response(stream).text().then(JSON.parse);
+  }
+
+  function total() {
+    var sum = 0, count = 0;
+    state.data.p.forEach(function (p) { var q = state.cart[p.i] || 0; sum += q * p.v; count += q; });
+    return { sum: sum, count: count };
+  }
+
+  function maxFor(p) { return p.k === "subscription" ? 1 : (p.q >= 0 ? Math.min(p.q, 20) : 20); }
+
+  function setQty(p, q) {
+    q = Math.max(0, Math.min(maxFor(p), q));
+    if (q) state.cart[p.i] = q; else delete state.cart[p.i];
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    render();
+  }
+
+  function checkout() {
+    var cart = Object.keys(state.cart).map(function (id) { return { i: id, q: state.cart[id] }; });
+    if (!cart.length) return;
+    var payload = JSON.stringify({ cart: cart });
+    if (tg && tg.sendData) tg.sendData(payload); // fecha a vitrine; o bot continua no chat
+  }
+
+  function updateBar() {
+    var t = total(), label = t.count ? "Finalizar pedido · " + money(t.sum) : "";
+    if (tg && tg.MainButton) {
+      if (t.count) { tg.MainButton.setText(label); tg.MainButton.show(); } else tg.MainButton.hide();
+    } else {
+      var bar = document.getElementById("bar");
+      bar.style.display = t.count ? "block" : "none";
+      document.getElementById("checkout").textContent = label;
+    }
+  }
+
+  function card(p) {
+    var c = el("div", "card");
+    var img = el("div", "img", p.m ? "" : ICONS.bag);
+    if (p.m) { var i = el("img"); i.src = p.m; i.alt = ""; i.loading = "lazy"; img.appendChild(i); }
+    c.appendChild(img);
+    var body = el("div", "body");
+    body.appendChild(text("div", "name", p.n));
+    if (p.k === "subscription") body.appendChild(el("div", "tag", ICONS.clock + " Assinatura de " + p.y + " dias"));
+    if (p.d) body.appendChild(text("div", "desc", p.d));
+    body.appendChild(text("div", "price", p.f));
+    var row = el("div", "row"), q = state.cart[p.i] || 0;
+    if (!q) {
+      var add = text("button", "add", p.k === "subscription" ? "Assinar" : "Adicionar");
+      add.type = "button";
+      add.onclick = function () { setQty(p, 1); };
+      row.appendChild(add);
+    } else {
+      var box = el("div", "qty");
+      var minus = el("button", null, ICONS.minus), plus = el("button", null, ICONS.plus);
+      minus.type = plus.type = "button";
+      minus.setAttribute("aria-label", "Menos"); plus.setAttribute("aria-label", "Mais");
+      minus.onclick = function () { setQty(p, q - 1); };
+      plus.onclick = function () { setQty(p, q + 1); };
+      plus.disabled = q >= maxFor(p);
+      box.appendChild(minus); box.appendChild(text("span", null, String(q))); box.appendChild(plus);
+      row.appendChild(box);
+    }
+    body.appendChild(row);
+    c.appendChild(body);
+    return c;
+  }
+
+  function render() {
+    var list = document.getElementById("list");
+    list.innerHTML = "";
+    if (!state.data.p.length) list.appendChild(text("div", "empty", "Nenhum produto à venda no momento."));
+    state.data.p.forEach(function (p) { list.appendChild(card(p)); });
+    updateBar();
+  }
+
+  function fail(msg) {
+    document.getElementById("list").appendChild(text("div", "error", msg));
+  }
+
+  if (tg) {
+    tg.ready();
+    tg.expand();
+    if (tg.MainButton) tg.MainButton.onClick(checkout);
+  }
+  document.getElementById("checkout").onclick = checkout;
+
+  decode().then(function (data) {
+    state.data = data;
+    document.title = data.t || "Loja";
+    document.getElementById("title").textContent = data.t || "Loja";
+    document.getElementById("subtitle").textContent = data.p.length + (data.p.length === 1 ? " produto" : " produtos");
+    render();
+  }).catch(function () {
+    fail("Não foi possível abrir o catálogo. Feche e toque em Abrir loja de novo no chat do bot. "
+       + "Se continuar, atualize o Telegram.");
+  });
+})();
+</script>
+</body>
+</html>

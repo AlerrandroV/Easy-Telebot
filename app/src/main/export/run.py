@@ -17,6 +17,7 @@ no celular antes de ligar aqui.
 import json
 import os
 import signal
+import subprocess
 import sys
 import threading
 import time
@@ -45,6 +46,19 @@ class ConsoleCallbacks:
 
     def nowLocal(self):  # noqa: N802
         return time.strftime("%d/%m/%Y %H:%M")
+
+    def runTermux(self, command, env_json, timeout):  # noqa: N802
+        """Comandos de script: aqui (PC ou dentro do próprio Termux) rodam direto no bash."""
+        env = dict(os.environ)
+        env.update(json.loads(env_json))
+        try:
+            proc = subprocess.run(["bash", "-c", command], env=env, capture_output=True, text=True,
+                                  timeout=timeout, cwd=os.path.expanduser("~"))
+        except subprocess.TimeoutExpired:
+            return json.dumps({"ok": True, "stdout": "", "stderr": "tempo esgotado", "exit_code": 124})
+        except OSError as exc:
+            return json.dumps({"ok": False, "error": {"code": "termux_failed", "detail": str(exc)}})
+        return json.dumps({"ok": True, "stdout": proc.stdout, "stderr": proc.stderr, "exit_code": proc.returncode})
 
 
 def read_token():
@@ -90,12 +104,21 @@ def read_storage():
     return json.dumps(settings)
 
 
+def read_payments():
+    """payments.json: token do Mercado Pago e chave do Blink (só se exportado com o token)."""
+    path = os.path.join(HERE, "payments.json")
+    if not os.path.exists(path):
+        return None
+    with open(path, "r", encoding="utf-8") as fh:
+        return fh.read()
+
+
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "newadmin":
         new_admin_code(sys.argv[2] if len(sys.argv) > 2 else 1)
         return
     engine = Engine(read_token(), os.path.join(HERE, "config.json"), HERE, ConsoleCallbacks(),
-                    storage=read_storage())
+                    storage=read_storage(), payments=read_payments())
 
     def stop(*_):
         print("Parando…")

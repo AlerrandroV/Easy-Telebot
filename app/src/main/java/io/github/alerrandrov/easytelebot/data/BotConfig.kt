@@ -28,7 +28,34 @@ data class SimpleCommand(
     val messages: List<BotMessage> = listOf(BotMessage()),
     /** `null` = qualquer pessoa. 1..10 = só admins dessa classe ou acima (1 = classe I). */
     val adminLevel: Int? = null,
+    /** Se definido, o comando roda um script no Termux em vez de mandar as mensagens. */
+    val script: CommandScript? = null,
 )
+
+/** Linha de comando rodada no Termux (ex.: `python ~/bot/clima.py`) e o tempo máximo em segundos. */
+data class CommandScript(val command: String = "", val timeout: Int = 30)
+
+/** Integração com o Termux: API local do bot (veja `termux.py`). */
+data class TermuxSettings(
+    val apiEnabled: Boolean = false,
+    val port: Int = DEFAULT_PORT,
+    /** Chave que os scripts usam no lugar do token (formato de token: "123:abc..."). */
+    val key: String = "",
+    /** "unhandled" = só o que o app não respondeu; "all" = tudo. */
+    val forward: String = FORWARD_UNHANDLED,
+) {
+    companion object {
+        const val DEFAULT_PORT = 8780
+        const val FORWARD_UNHANDLED = "unhandled"
+        const val FORWARD_ALL = "all"
+
+        fun newKey(botId: Long): String {
+            val chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-"
+            val rnd = java.security.SecureRandom()
+            return "$botId:" + (1..36).map { chars[rnd.nextInt(chars.length)] }.joinToString("")
+        }
+    }
+}
 
 /**
  * Configuração de um bot, salva em `config.json`. O motor Python só lê o arquivo
@@ -62,6 +89,8 @@ data class BotConfig(
     val commands: List<SimpleCommand> = emptyList(),
     val broadcast: BroadcastSettings = BroadcastSettings(),
     val antispam: AntispamSettings = AntispamSettings(),
+    val shop: ShopSettings = ShopSettings(),
+    val termux: TermuxSettings = TermuxSettings(),
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("version", VERSION)
@@ -74,6 +103,7 @@ data class BotConfig(
                     put("description", c.description)
                     put("show_in_menu", c.showInMenu)
                     put("admin_level", c.adminLevel ?: JSONObject.NULL)
+                    put("script", c.script?.let { JSONObject().put("command", it.command).put("timeout", it.timeout) } ?: JSONObject.NULL)
                     put("messages", JSONArray().apply {
                         c.messages.forEach { m -> put(messageJson(m)) }
                     })
@@ -89,6 +119,12 @@ data class BotConfig(
             .put("sensitivity", antispam.sensitivity)
             .put("admin_level", antispam.adminLevel)
             .put("warn_user", antispam.warnUser))
+        put("shop", shop.toJson())
+        put("termux", JSONObject()
+            .put("api_enabled", termux.apiEnabled)
+            .put("port", termux.port)
+            .put("key", termux.key)
+            .put("forward", termux.forward))
         put("keywords", JSONArray())
         put("welcome", JSONObject().put("enabled", false).put("text", ""))
         put("schedules", JSONArray())
@@ -97,7 +133,7 @@ data class BotConfig(
 
     /** Arquivos de mídia usados (caminhos relativos à pasta do bot). */
     fun mediaFiles(): Set<String> =
-        commands.flatMap { c -> c.messages.mapNotNull { it.media?.file } }.toSet()
+        commands.flatMap { c -> c.messages.mapNotNull { it.media?.file } }.toSet() + shop.mediaFiles()
 
     companion object {
         const val VERSION = 2
@@ -112,7 +148,7 @@ data class BotConfig(
             )
         )
 
-        private fun messageJson(m: BotMessage) = JSONObject().apply {
+        internal fun messageJson(m: BotMessage) = JSONObject().apply {
             put("text", m.text)
             put("media", m.media?.let {
                 JSONObject().put("type", it.type).put("file", it.file).put("name", it.name)
@@ -127,7 +163,7 @@ data class BotConfig(
             put("link_preview", m.linkPreview)
         }
 
-        private fun parseMessage(o: JSONObject): BotMessage {
+        internal fun parseMessage(o: JSONObject): BotMessage {
             val media = o.optJSONObject("media")?.let {
                 MessageMedia(it.optString("type"), it.optString("file"), it.optString("name"))
             }
@@ -155,6 +191,9 @@ data class BotConfig(
                         showInMenu = o.optBoolean("show_in_menu", true),
                         adminLevel = if (o.isNull("admin_level")) null else o.optInt("admin_level", 1).coerceIn(1, AdminLevels.MAX),
                         messages = (0 until m.length()).mapNotNull { j -> m.optJSONObject(j)?.let(::parseMessage) },
+                        script = o.optJSONObject("script")?.let { s ->
+                            CommandScript(s.optString("command"), s.optInt("timeout", 30).coerceIn(1, 300))
+                        }?.takeIf { it.command.isNotBlank() },
                     )
                 } else {
                     // versão 1: um comando → um texto
@@ -179,7 +218,15 @@ data class BotConfig(
                 adminLevel = a.optInt("admin_level", 1).coerceIn(1, AdminLevels.MAX),
                 warnUser = a.optBoolean("warn_user", true),
             )
-            return BotConfig(json.optBoolean("auto_menu", true), list, broadcast, antispam)
+            val tx = json.optJSONObject("termux")
+            val termux = if (tx == null) TermuxSettings() else TermuxSettings(
+                apiEnabled = tx.optBoolean("api_enabled", false),
+                port = tx.optInt("port", TermuxSettings.DEFAULT_PORT).takeIf { it in 1024..65535 } ?: TermuxSettings.DEFAULT_PORT,
+                key = tx.optString("key"),
+                forward = if (tx.optString("forward") == TermuxSettings.FORWARD_ALL) TermuxSettings.FORWARD_ALL else TermuxSettings.FORWARD_UNHANDLED,
+            )
+            return BotConfig(json.optBoolean("auto_menu", true), list, broadcast, antispam,
+                ShopSettings.fromJson(json.optJSONObject("shop")), termux)
         }
     }
 }
@@ -224,7 +271,7 @@ object AdminLevels {
     /** Comando secreto do motor para virar admin; não pode ser usado em comandos. */
     const val NEWADMIN = "newadmin"
     /** Comandos do próprio app que não podem virar comandos comuns. */
-    val RESERVED = setOf(NEWADMIN, "post", "publi")
+    val RESERVED = setOf(NEWADMIN, "post", "publi", ShopSettings.SUBSCRIPTIONS_TRIGGER) + ShopSettings.TRIGGERS
     private val ROMAN = listOf("I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X")
 
     fun roman(level: Int): String = ROMAN.getOrElse(level - 1) { level.toString() }

@@ -24,6 +24,9 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -117,8 +120,16 @@ private fun ChatRow(chat: ChatSummary, token: String?, dir: String, onClick: () 
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                if (chat.isGroup || chat.type == "channel") {
+                    AppIcon(
+                        if (chat.isGroup) R.drawable.ic_group else R.drawable.ic_campaign,
+                        Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.width(4.dp))
+                }
                 Text(
-                    (if (chat.isGroup) "👥 " else "") + chat.displayName,
+                    chat.displayName,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = if (chat.unread > 0) FontWeight.Bold else FontWeight.Normal,
                     maxLines = 1,
@@ -132,14 +143,12 @@ private fun ChatRow(chat: ChatSummary, token: String?, dir: String, onClick: () 
                 )
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    (if (chat.lastOutgoing) stringResource(R.string.chat_you_prefix) else "") +
-                        previewText(chat.lastKind, chat.lastText),
-                    style = MaterialTheme.typography.bodyMedium,
+                PreviewLine(
+                    chat.lastKind,
+                    chat.lastText,
+                    Modifier.weight(1f),
+                    prefix = if (chat.lastOutgoing) stringResource(R.string.chat_you_prefix) else "",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
                 )
                 if (chat.unread > 0) {
                     Spacer(Modifier.width(8.dp))
@@ -182,27 +191,61 @@ fun ChatAvatar(chat: ChatSummary, token: String?, dir: String, size: Dp) {
     }
 }
 
-/** Texto curto para a lista: "📷 Foto", "🎬 Vídeo", o texto da mensagem... */
+/** Texto curto para a lista: "Foto", "Vídeo · legenda", o texto da mensagem... (o ícone vem de [mediaIcon]). */
 @Composable
 fun previewText(kind: String, text: String): String {
     val label = when (kind) {
-        "photo" -> "📷 " + stringResource(R.string.media_photo)
-        "video" -> "🎬 " + stringResource(R.string.media_video)
-        "animation" -> "🎞️ " + stringResource(R.string.media_animation)
-        "video_note" -> "⏺️ " + stringResource(R.string.media_video_note)
-        "voice" -> "🎤 " + stringResource(R.string.media_voice)
-        "audio" -> "🎵 " + stringResource(R.string.media_audio)
-        "document" -> "📄 " + stringResource(R.string.media_document)
-        "sticker" -> return (text.ifBlank { "🖼️" }) + " " + stringResource(R.string.media_sticker)
-        "location" -> return "📍 " + stringResource(R.string.media_location)
-        "contact" -> return "👤 " + text.substringBefore("\n")
-        "poll" -> return "📊 $text"
+        "photo" -> stringResource(R.string.media_photo)
+        "video" -> stringResource(R.string.media_video)
+        "animation" -> stringResource(R.string.media_animation)
+        "video_note" -> stringResource(R.string.media_video_note)
+        "voice" -> stringResource(R.string.media_voice)
+        "audio" -> stringResource(R.string.media_audio)
+        "document" -> stringResource(R.string.media_document)
+        "sticker" -> return listOf(text, stringResource(R.string.media_sticker)).filter { it.isNotBlank() }.joinToString(" ")
+        "location" -> return stringResource(R.string.media_location)
+        "contact" -> return text.substringBefore("\n")
+        "poll" -> return text
         else -> null
     }
     return when {
         label == null -> text
         text.isBlank() -> label
         else -> "$label · $text"
+    }
+}
+
+/** Ícone do tipo de mensagem (foto, vídeo, áudio...), ou `null` para texto. */
+fun mediaIcon(kind: String): Int? = when (kind) {
+    "photo" -> R.drawable.ic_image
+    "video", "animation", "video_note" -> R.drawable.ic_movie
+    "voice" -> R.drawable.ic_mic
+    "audio" -> R.drawable.ic_music_note
+    "document" -> R.drawable.ic_description
+    "sticker" -> R.drawable.ic_emoji_emotions
+    "location" -> R.drawable.ic_place
+    "contact" -> R.drawable.ic_contact_page
+    "poll" -> R.drawable.ic_poll
+    else -> null
+}
+
+/** Prévia de uma mensagem numa linha: ícone do tipo + texto. */
+@Composable
+fun PreviewLine(
+    kind: String,
+    text: String,
+    modifier: Modifier = Modifier,
+    prefix: String = "",
+    style: TextStyle = MaterialTheme.typography.bodyMedium,
+    color: Color = Color.Unspecified,
+) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        mediaIcon(kind)?.let {
+            if (prefix.isNotEmpty()) Text(prefix, style = style, color = color, maxLines = 1)
+            AppIcon(it, Modifier.size(16.dp), tint = if (color == Color.Unspecified) LocalContentColor.current else color)
+            Spacer(Modifier.width(4.dp))
+            Text(previewText(kind, text), style = style, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        } ?: Text(prefix + previewText(kind, text), style = style, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

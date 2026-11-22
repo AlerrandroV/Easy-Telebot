@@ -55,11 +55,29 @@ object ErrorExplainer {
             "storage_network" -> e(R.string.err_storage_network_title, R.string.err_storage_network_msg, null)
             "storage_permission" -> e(R.string.err_storage_permission_title, R.string.err_storage_permission_msg, null, ErrorAction.FILES_PERMISSION)
             "storage_unknown" -> e(R.string.err_storage_unknown_title, R.string.err_storage_unknown_msg, null)
+            "pay_config" -> e(R.string.err_pay_config_title, R.string.err_pay_config_msg, null)
+            "pay_auth" -> e(R.string.err_pay_auth_title, R.string.err_pay_auth_msg, R.array.err_pay_auth_steps)
+            "pay_network" -> e(R.string.err_pay_network_title, R.string.err_pay_network_msg, null)
+            "pay_rejected" -> e(R.string.err_pay_rejected_title, R.string.err_pay_rejected_msg, null)
+            "pay_no_gateway" -> e(R.string.err_pay_no_gateway_title, R.string.err_pay_no_gateway_msg, null)
+            "pay_already" -> e(R.string.err_pay_already_title, R.string.err_pay_already_msg, null)
+            "pay_not_found" -> e(R.string.err_pay_not_found_title, R.string.err_pay_not_found_msg, null)
+            "pay_invite" -> e(R.string.err_pay_invite_title, R.string.err_pay_invite_msg, R.array.err_pay_invite_steps)
+            "pay_unknown" -> e(R.string.err_pay_unknown_title, R.string.err_pay_unknown_msg, null)
+            "termux_missing" -> e(R.string.err_termux_missing_title, R.string.err_termux_missing_msg, R.array.termux_install_steps)
+            "termux_permission" -> e(R.string.err_termux_permission_title, R.string.err_termux_permission_msg, null)
+            "termux_no_answer" -> e(R.string.err_termux_no_answer_title, R.string.err_termux_no_answer_msg, R.array.termux_external_steps)
+            "termux_failed" -> e(R.string.err_termux_failed_title, R.string.err_termux_failed_msg, R.array.termux_external_steps)
+            "termux_exit" -> e(R.string.err_termux_exit_title, R.string.err_termux_exit_msg, null)
+            "termux_timeout" -> e(R.string.err_termux_timeout_title, R.string.err_termux_timeout_msg, null)
+            "termux_port_busy" -> e(R.string.err_termux_port_title, R.string.err_termux_port_msg, null)
             else -> e(R.string.err_unknown_title, R.string.err_unknown_msg, null)
         }
         val extra = buildList {
             error.retryIn?.let { add(r.getString(R.string.err_retry_in, it)) }
-            if ((error.code == "unknown" || error.code.startsWith("storage_")) && error.detail.isNotBlank()) {
+            if ((error.code == "unknown" || error.code.startsWith("storage_") || error.code.startsWith("pay_") || error.code.startsWith("termux_")) &&
+                error.detail.isNotBlank()
+            ) {
                 add(r.getString(R.string.err_detail, error.detail))
             }
         }

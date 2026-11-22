@@ -263,7 +263,7 @@ fun ChatScreen(botId: Long, chatId: Long, onBack: () -> Unit) {
                 },
                 actions = {
                     Box {
-                        TextButton(onClick = { topMenu = true }) { Text("⋮", fontSize = 20.sp) }
+                        IconButton(onClick = { topMenu = true }) { AppIcon(R.drawable.ic_more_vert, Modifier.size(24.dp), description = stringResource(R.string.more)) }
                         DropdownMenu(expanded = topMenu, onDismissRequest = { topMenu = false }) {
                             chat?.username?.takeIf { it.isNotBlank() }?.let { u ->
                                 DropdownMenuItem(text = { Text(stringResource(R.string.chat_open_telegram)) }, onClick = {
@@ -528,6 +528,13 @@ private fun telegramText(text: String, entities: List<TgEntity>, link: Color, co
     }
 }
 
+/** Figurinha sem imagem: mostra o emoji dela (conteúdo da figurinha) ou um ícone. */
+@Composable
+private fun StickerFallback(emoji: String, size: Int) {
+    if (emoji.isNotBlank()) Text(emoji, fontSize = size.sp)
+    else AppIcon(R.drawable.ic_emoji_emotions, Modifier.size((size * 0.75f).dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+}
+
 private fun formatDuration(seconds: Int) = "%d:%02d".format(seconds / 60, seconds % 60)
 
 private fun formatSize(bytes: Long): String = when {
@@ -624,7 +631,7 @@ private fun MessageBubble(m: ChatMessage, showSender: Boolean, token: String?, d
                         contentAlignment = Alignment.Center,
                     ) {
                         bmp?.let { Image(it.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
-                        if (opening) CircularProgressIndicator(Modifier.size(32.dp)) else Text("▶", color = Color.White, fontSize = 36.sp)
+                        if (opening) CircularProgressIndicator(Modifier.size(32.dp)) else AppIcon(R.drawable.ic_play_arrow, Modifier.size(44.dp), tint = Color.White)
                         if (m.duration > 0) {
                             Text(
                                 formatDuration(m.duration),
@@ -640,26 +647,26 @@ private fun MessageBubble(m: ChatMessage, showSender: Boolean, token: String?, d
                         val bmp by rememberTelegramImage(token, dir, m.fileId, m.fileUniqueId, 320)
                         Box(Modifier.size(150.dp), contentAlignment = Alignment.Center) {
                             bmp?.let { Image(it.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit) }
-                                ?: Text(m.emoji.ifBlank { "🖼️" }, fontSize = 64.sp)
+                                ?: StickerFallback(m.emoji, 64)
                         }
                     } else {
                         // Figurinha animada (.tgs) ou em vídeo (.webm): mostra a prévia ou o emoji.
                         val bmp by rememberTelegramImage(token, dir, m.thumbId, null, 320)
                         Box(Modifier.size(150.dp), contentAlignment = Alignment.Center) {
                             bmp?.let { Image(it.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit) }
-                                ?: Text(m.emoji.ifBlank { "🖼️" }, fontSize = 64.sp)
+                                ?: StickerFallback(m.emoji, 64)
                         }
                     }
                 }
                 "document", "audio", "voice" -> {
-                    val icon = when (m.kind) { "audio" -> "🎵"; "voice" -> "🎤"; else -> "📄" }
+                    val icon = mediaIcon(m.kind) ?: R.drawable.ic_description
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             Modifier.size(44.dp).clip(RoundedCornerShape(50)).background(colors.tint),
                             contentAlignment = Alignment.Center,
                         ) {
                             if (opening) CircularProgressIndicator(Modifier.size(22.dp), color = colors.content, strokeWidth = 2.dp)
-                            else Text(icon, fontSize = 20.sp)
+                            else AppIcon(icon, Modifier.size(22.dp))
                         }
                         Spacer(Modifier.width(10.dp))
                         Column {
@@ -680,10 +687,20 @@ private fun MessageBubble(m: ChatMessage, showSender: Boolean, token: String?, d
                     }
                 }
                 "location" -> TextButton(onClick = { openUrl(context, "geo:${m.text}?q=${m.text}") }) {
-                    Text("📍 " + stringResource(R.string.media_location) + "\n" + m.text, color = colors.content)
+                    AppIcon(R.drawable.ic_place, tint = colors.content)
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.media_location) + "\n" + m.text, color = colors.content)
                 }
-                "contact" -> Text("👤 " + m.text)
-                "poll" -> Text("📊 " + m.text, fontWeight = FontWeight.Medium)
+                "contact" -> Row(verticalAlignment = Alignment.CenterVertically) {
+                    AppIcon(R.drawable.ic_contact_page)
+                    Spacer(Modifier.width(6.dp))
+                    Text(m.text)
+                }
+                "poll" -> Row(verticalAlignment = Alignment.CenterVertically) {
+                    AppIcon(R.drawable.ic_poll)
+                    Spacer(Modifier.width(6.dp))
+                    Text(m.text, fontWeight = FontWeight.Medium)
+                }
                 "other" -> Text(stringResource(R.string.chat_unsupported), fontStyle = FontStyle.Italic)
             }
 
@@ -724,7 +741,13 @@ private fun MessageBubble(m: ChatMessage, showSender: Boolean, token: String?, d
                         enabled = b.url != null,
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                         modifier = Modifier.weight(1f),
-                    ) { Text(b.text + if (b.url != null) " ↗" else "", maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                    ) {
+                        Text(b.text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                        if (b.url != null) {
+                            Spacer(Modifier.width(4.dp))
+                            AppIcon(R.drawable.ic_open_in_new, Modifier.size(14.dp))
+                        }
+                    }
                 }
             }
         }
@@ -788,29 +811,29 @@ private fun Composer(
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.primary,
                         )
-                        Text(previewText(r.kind, if (r.kind == "sticker") r.emoji else r.text), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall)
+                        PreviewLine(r.kind, if (r.kind == "sticker") r.emoji else r.text, style = MaterialTheme.typography.bodySmall)
                     }
-                    TextButton(onClick = onCancelReply) { Text("✕") }
+                    IconButton(onClick = onCancelReply) { AppIcon(R.drawable.ic_close, description = stringResource(R.string.cancel)) }
                 }
             }
             attachment?.let { a ->
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
                     Row(Modifier.padding(start = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text(previewText(a.media.type, ""), style = MaterialTheme.typography.labelLarge)
+                            PreviewLine(a.media.type, "", style = MaterialTheme.typography.labelLarge)
                             Text(a.media.name, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                         if (a.fileId == null && a.media.type != "sticker") {
                             Checkbox(checked = a.media.type == "document", onCheckedChange = onAsDocument)
                             Text(stringResource(R.string.chat_as_file), style = MaterialTheme.typography.labelSmall)
                         }
-                        TextButton(onClick = onRemoveAttachment) { Text("✕") }
+                        IconButton(onClick = onRemoveAttachment) { AppIcon(R.drawable.ic_close, description = stringResource(R.string.delete)) }
                     }
                 }
             }
             if (buttonsCount > 0) {
                 TextButton(onClick = onEditButtons) {
-                    Text("🔗 " + LocalContext.current.resources.getQuantityString(R.plurals.cmd_buttons_count, buttonsCount, buttonsCount))
+                    ButtonLabel(R.drawable.ic_link, LocalContext.current.resources.getQuantityString(R.plurals.cmd_buttons_count, buttonsCount, buttonsCount))
                 }
             }
             if (showFormat) {
@@ -831,13 +854,18 @@ private fun Composer(
             }
             Row(verticalAlignment = Alignment.Bottom) {
                 Box {
-                    IconButton(onClick = { onAttachMenu(true) }) { Text("📎", fontSize = 22.sp) }
+                    IconButton(onClick = { onAttachMenu(true) }) { AppIcon(R.drawable.ic_attach_file, Modifier.size(24.dp), description = stringResource(R.string.chat_attach)) }
                     DropdownMenu(expanded = showAttachMenu, onDismissRequest = { onAttachMenu(false) }) {
-                        DropdownMenuItem(text = { Text("🖼️  " + stringResource(R.string.chat_attach_media)) }, onClick = onPickMedia)
-                        DropdownMenuItem(text = { Text("📄  " + stringResource(R.string.chat_attach_file)) }, onClick = onPickFile)
-                        DropdownMenuItem(text = { Text("😀  " + stringResource(R.string.chat_attach_sticker)) }, onClick = onPickSticker)
-                        DropdownMenuItem(text = { Text("🔗  " + stringResource(R.string.btn_title)) }, onClick = onButtonsMenu)
-                        DropdownMenuItem(text = { Text("Aa  " + stringResource(R.string.chat_formatting)) }, onClick = onToggleFormat)
+                        DropdownMenuItem(text = { Text(stringResource(R.string.chat_attach_media)) }, onClick = onPickMedia,
+                            leadingIcon = { AppIcon(R.drawable.ic_image) })
+                        DropdownMenuItem(text = { Text(stringResource(R.string.chat_attach_file)) }, onClick = onPickFile,
+                            leadingIcon = { AppIcon(R.drawable.ic_description) })
+                        DropdownMenuItem(text = { Text(stringResource(R.string.chat_attach_sticker)) }, onClick = onPickSticker,
+                            leadingIcon = { AppIcon(R.drawable.ic_emoji_emotions) })
+                        DropdownMenuItem(text = { Text(stringResource(R.string.btn_title)) }, onClick = onButtonsMenu,
+                            leadingIcon = { AppIcon(R.drawable.ic_link) })
+                        DropdownMenuItem(text = { Text(stringResource(R.string.chat_formatting)) }, onClick = onToggleFormat,
+                            leadingIcon = { AppIcon(R.drawable.ic_edit) })
                     }
                 }
                 OutlinedTextField(
@@ -909,7 +937,7 @@ private fun StickerDialog(token: String?, dir: String, onDismiss: () -> Unit, on
                                 if (s.format == "webp") s.uniqueId else null, 160)
                             Box(Modifier.size(64.dp).clickable { onPick(s) }, contentAlignment = Alignment.Center) {
                                 bmp?.let { Image(it.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit) }
-                                    ?: Text(s.emoji.ifBlank { "🖼️" }, fontSize = 32.sp)
+                                    ?: StickerFallback(s.emoji, 32)
                             }
                         }
                     }

@@ -166,8 +166,9 @@ object PythonBridge {
         dataDir: String,
         callbacks: EngineCallbacks,
         storageJson: String? = null,
+        paymentsJson: String? = null,
     ): PyObject = module(context, "engine").callAttr(
-        "Engine", token, configPath, dataDir, callbacks, Kwarg("storage", storageJson),
+        "Engine", token, configPath, dataDir, callbacks, Kwarg("storage", storageJson), Kwarg("payments", paymentsJson),
     )
 }
 
@@ -175,6 +176,8 @@ object PythonBridge {
 interface EngineCallbacks {
     fun onEvent(json: String)
     fun nowLocal(): String
+    /** Comando de script: roda no Termux e devolve o resultado em JSON (veja `TermuxRunner`). */
+    fun runTermux(command: String, envJson: String, timeoutSec: Int): String
 }
 
 /** Erro já classificado pelo motor (veja `errors.py`). */

@@ -23,6 +23,8 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -207,13 +209,23 @@ fun SectionCard(
     title: String,
     subtitle: String? = null,
     onClick: (() -> Unit)? = null,
+    icon: Int? = null,
     content: @Composable () -> Unit = {},
 ) {
     val inner: @Composable () -> Unit = {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
-            subtitle?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            content()
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (icon != null) {
+                Box(
+                    Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center,
+                ) { AppIcon(icon, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer) }
+                Spacer(Modifier.width(14.dp))
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(title, style = MaterialTheme.typography.titleMedium)
+                subtitle?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                content()
+            }
         }
     }
     if (onClick != null) {
@@ -221,6 +233,36 @@ fun SectionCard(
     } else {
         Card(modifier = Modifier.fillMaxWidth()) { inner() }
     }
+}
+
+/** Ícone vetorial do app (res/drawable/ic_*.xml, Material Icons). Decorativo: sem descrição. */
+@Composable
+fun AppIcon(res: Int, modifier: Modifier = Modifier.size(20.dp), tint: Color = LocalContentColor.current, description: String? = null) {
+    Icon(painterResource(res), description, modifier, tint)
+}
+
+/** Ícone + texto na mesma linha (ex.: "relógio 14/11 10:22"). */
+@Composable
+fun IconLabel(
+    icon: Int,
+    text: String,
+    modifier: Modifier = Modifier,
+    style: TextStyle = MaterialTheme.typography.bodyMedium,
+    tint: Color = LocalContentColor.current,
+) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        AppIcon(icon, Modifier.size(18.dp), tint = tint)
+        Spacer(Modifier.width(6.dp))
+        Text(text, style = style)
+    }
+}
+
+/** Conteúdo de botão: ícone + texto. */
+@Composable
+fun ButtonLabel(icon: Int, text: String) {
+    AppIcon(icon, Modifier.size(18.dp))
+    Spacer(Modifier.width(8.dp))
+    Text(text)
 }
 
 fun openUrl(context: Context, url: String) {

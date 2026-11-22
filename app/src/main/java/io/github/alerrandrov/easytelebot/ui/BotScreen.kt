@@ -61,6 +61,7 @@ import io.github.alerrandrov.easytelebot.engine.AntispamBridge
 import io.github.alerrandrov.easytelebot.engine.BotRuntime
 import io.github.alerrandrov.easytelebot.engine.BotState
 import io.github.alerrandrov.easytelebot.engine.ChatsBridge
+import io.github.alerrandrov.easytelebot.engine.ShopBridge
 import io.github.alerrandrov.easytelebot.engine.ErrorAction
 import io.github.alerrandrov.easytelebot.engine.ErrorExplainer
 import io.github.alerrandrov.easytelebot.engine.PythonBridge
@@ -84,6 +85,11 @@ fun BotScreen(
     onChats: () -> Unit,
     onBroadcast: () -> Unit,
     onAntispam: () -> Unit,
+    onShop: () -> Unit,
+    onTermux: () -> Unit,
+    onNewScriptCommand: () -> Unit,
+    /** Novo produto (true = assinatura de canal). */
+    onNewProduct: (Boolean) -> Unit,
     onChangeToken: () -> Unit,
     onBattery: () -> Unit,
 ) {
@@ -142,7 +148,7 @@ fun BotScreen(
         topBar = { AppBar(meta.name.ifEmpty { "@${meta.username}" }, onBack) },
         floatingActionButton = {
             ExtendedFloatingActionButton(onClick = { showAddSheet = true }) {
-                Text("+  " + stringResource(R.string.bot_add))
+                ButtonLabel(R.drawable.ic_add, stringResource(R.string.bot_add))
             }
         },
     ) { padding ->
@@ -225,7 +231,8 @@ fun BotScreen(
                     }
                 }
                 SectionCard(
-                    title = "💬  " + stringResource(R.string.chats_title),
+                    icon = R.drawable.ic_forum,
+                    title = stringResource(R.string.chats_title),
                     subtitle = if (unread > 0) stringResource(R.string.bot_chats_unread, unread) else stringResource(R.string.bot_chats_sub),
                     onClick = onChats,
                 )
@@ -233,7 +240,8 @@ fun BotScreen(
 
             item {
                 SectionCard(
-                    title = "📢  " + stringResource(R.string.broadcast_title),
+                    icon = R.drawable.ic_campaign,
+                    title = stringResource(R.string.broadcast_title),
                     subtitle = stringResource(R.string.bot_broadcast_sub),
                     onClick = onBroadcast,
                 )
@@ -241,7 +249,34 @@ fun BotScreen(
 
             item {
                 SectionCard(
-                    title = "🛡️  " + stringResource(R.string.antispam_title),
+                    icon = R.drawable.ic_storefront,
+                    title = stringResource(R.string.shop_title),
+                    subtitle = when {
+                        !config.shop.enabled -> stringResource(R.string.bot_shop_off)
+                        else -> pluralStringResourceSafe(R.plurals.bot_shop_products, config.shop.products.size)
+                    },
+                    onClick = onShop,
+                )
+            }
+
+            item {
+                SectionCard(
+                    icon = R.drawable.ic_terminal,
+                    title = stringResource(R.string.termux_title),
+                    subtitle = when {
+                        config.termux.apiEnabled -> stringResource(R.string.bot_termux_api_on, config.termux.port)
+                        config.commands.any { it.script != null } ->
+                            stringResource(R.string.bot_termux_scripts, config.commands.count { it.script != null })
+                        else -> stringResource(R.string.bot_termux_sub)
+                    },
+                    onClick = onTermux,
+                )
+            }
+
+            item {
+                SectionCard(
+                    icon = R.drawable.ic_shield,
+                    title = stringResource(R.string.antispam_title),
                     subtitle = when {
                         pending > 0 -> stringResource(R.string.bot_antispam_pending, pending)
                         config.antispam.enabled -> stringResource(R.string.bot_antispam_on)
@@ -285,10 +320,10 @@ fun BotScreen(
                 }
             }
             item {
-                SectionCard(stringResource(R.string.bot_profile), stringResource(R.string.bot_profile_sub), onProfile)
+                SectionCard(stringResource(R.string.bot_profile), stringResource(R.string.bot_profile_sub), onProfile, icon = R.drawable.ic_smart_toy)
             }
             item {
-                SectionCard(stringResource(R.string.admins_title), stringResource(R.string.bot_admins_sub), { onAdmins(false) })
+                SectionCard(stringResource(R.string.admins_title), stringResource(R.string.bot_admins_sub), { onAdmins(false) }, icon = R.drawable.ic_admin_panel_settings)
             }
             item {
                 val storageType = remember(meta.photoVersion) { StorageRepository.load(botId).type }
@@ -296,17 +331,18 @@ fun BotScreen(
                     stringResource(R.string.storage_title),
                     stringResource(R.string.bot_storage_sub, storageTypeLabel(storageType)),
                     onStorage,
+                    icon = R.drawable.ic_storage,
                 )
             }
-            item { SectionCard(stringResource(R.string.home_log), stringResource(R.string.home_log_sub), onLog) }
+            item { SectionCard(stringResource(R.string.home_log), stringResource(R.string.home_log_sub), onLog, icon = R.drawable.ic_list_alt) }
             item {
-                SectionCard(stringResource(R.string.bot_export), stringResource(R.string.bot_export_sub), { showExport = true })
+                SectionCard(stringResource(R.string.bot_export), stringResource(R.string.bot_export_sub), { showExport = true }, icon = R.drawable.ic_ios_share)
             }
             item {
-                SectionCard(stringResource(R.string.token_change), stringResource(R.string.token_change_sub), onChangeToken)
+                SectionCard(stringResource(R.string.token_change), stringResource(R.string.token_change_sub), onChangeToken, icon = R.drawable.ic_key)
             }
             item {
-                SectionCard(stringResource(R.string.bot_delete), stringResource(R.string.bot_delete_sub), { showDelete = true })
+                SectionCard(stringResource(R.string.bot_delete), stringResource(R.string.bot_delete_sub), { showDelete = true }, icon = R.drawable.ic_delete_forever)
             }
         }
     }
@@ -322,6 +358,7 @@ fun BotScreen(
             ) {
                 Text(stringResource(R.string.add_title), style = MaterialTheme.typography.titleLarge)
                 SectionCard(
+                    icon = R.drawable.ic_send,
                     title = stringResource(R.string.add_simple_command),
                     subtitle = stringResource(R.string.add_simple_command_sub),
                     onClick = {
@@ -330,6 +367,7 @@ fun BotScreen(
                     },
                 )
                 SectionCard(
+                    icon = R.drawable.ic_admin_panel_settings,
                     title = stringResource(R.string.add_admin_command),
                     subtitle = stringResource(R.string.add_admin_command_sub),
                     onClick = {
@@ -338,6 +376,34 @@ fun BotScreen(
                     },
                 )
                 SectionCard(
+                    icon = R.drawable.ic_terminal,
+                    title = stringResource(R.string.add_script_command),
+                    subtitle = stringResource(R.string.add_script_command_sub),
+                    onClick = {
+                        showAddSheet = false
+                        onNewScriptCommand()
+                    },
+                )
+                SectionCard(
+                    icon = R.drawable.ic_sell,
+                    title = stringResource(R.string.add_product),
+                    subtitle = stringResource(R.string.add_product_sub),
+                    onClick = {
+                        showAddSheet = false
+                        onNewProduct(false)
+                    },
+                )
+                SectionCard(
+                    icon = R.drawable.ic_card_membership,
+                    title = stringResource(R.string.add_subscription),
+                    subtitle = stringResource(R.string.add_subscription_sub),
+                    onClick = {
+                        showAddSheet = false
+                        onNewProduct(true)
+                    },
+                )
+                SectionCard(
+                    icon = R.drawable.ic_campaign,
                     title = stringResource(R.string.broadcast_title),
                     subtitle = stringResource(R.string.bot_broadcast_sub),
                     onClick = {
@@ -346,6 +412,7 @@ fun BotScreen(
                     },
                 )
                 SectionCard(
+                    icon = R.drawable.ic_group,
                     title = stringResource(R.string.add_admin),
                     subtitle = stringResource(R.string.add_admin_sub),
                     onClick = {
@@ -402,6 +469,7 @@ fun BotScreen(
                     showDelete = false
                     BotService.stop(context, botId)
                     ChatsBridge.close(context, BotRepository.dir(botId).path)
+                    ShopBridge.close(context, BotRepository.dir(botId).path)
                     BotRepository.delete(context, botId)
                     BotRuntime.clearLog(botId)
                     onBack()
@@ -441,7 +509,11 @@ private fun CommandCard(cmd: SimpleCommand, onClick: () -> Unit) {
             if (cmd.description.isNotBlank()) Text(cmd.description, style = MaterialTheme.typography.bodyMedium)
             val media = cmd.messages.count { it.media != null }
             val buttons = cmd.messages.sumOf { m -> m.buttons.sumOf { it.size } }
-            Text(
+            val script = cmd.script
+            if (script != null) IconLabel(
+                R.drawable.ic_terminal, script.command,
+                style = MaterialTheme.typography.bodySmall, tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            ) else Text(
                 listOfNotNull(
                     pluralStringResourceSafe(R.plurals.cmd_messages_count, cmd.messages.size),
                     media.takeIf { it > 0 }?.let { pluralStringResourceSafe(R.plurals.cmd_media_count, it) },

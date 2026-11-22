@@ -159,11 +159,11 @@ fun BroadcastScreen(botId: Long, onBack: () -> Unit) {
             item {
                 Card(Modifier.fillMaxWidth()) {
                     Column {
-                        TargetRow("👤  " + stringResource(R.string.broadcast_users, audience.users), users) { users = it }
+                        TargetRow(R.drawable.ic_person, stringResource(R.string.broadcast_users, audience.users), users) { users = it }
                         HorizontalDivider()
-                        TargetRow("👥  " + stringResource(R.string.broadcast_groups, audience.groups), groups) { groups = it }
+                        TargetRow(R.drawable.ic_group, stringResource(R.string.broadcast_groups, audience.groups), groups) { groups = it }
                         HorizontalDivider()
-                        TargetRow("📢  " + stringResource(R.string.broadcast_channels, audience.channels), channels) { channels = it }
+                        TargetRow(R.drawable.ic_campaign, stringResource(R.string.broadcast_channels, audience.channels), channels) { channels = it }
                     }
                 }
             }
@@ -198,7 +198,7 @@ fun BroadcastScreen(botId: Long, onBack: () -> Unit) {
             }
             item {
                 OutlinedButton(onClick = { drafts = drafts + Draft(nextKey, BotMessage()); nextKey++ }, modifier = Modifier.fillMaxWidth()) {
-                    Text("+  " + stringResource(R.string.cmd_add_message))
+                    ButtonLabel(R.drawable.ic_add, stringResource(R.string.cmd_add_message))
                 }
             }
             error?.let { e -> item { ExplanationCard(ErrorExplainer.explain(context, e)) } }
@@ -210,7 +210,7 @@ fun BroadcastScreen(botId: Long, onBack: () -> Unit) {
                     },
                     enabled = canSend,
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text("📢  " + stringResource(R.string.broadcast_send, selectedTotal)) }
+                ) { ButtonLabel(R.drawable.ic_send, stringResource(R.string.broadcast_send, selectedTotal)) }
             }
             if (!buttonsOk) {
                 item { Text(stringResource(R.string.broadcast_bad_buttons), color = MaterialTheme.colorScheme.error) }
@@ -287,13 +287,13 @@ internal fun adminClassExplanationShort(level: Int): String =
     else stringResource(R.string.broadcast_level_explain, (1..level).joinToString(", ") { io.github.alerrandrov.easytelebot.data.AdminLevels.roman(it) })
 
 @Composable
-private fun TargetRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+private fun TargetRow(icon: Int, label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
     Row(
         Modifier.fillMaxWidth().clickable { onChange(!checked) }.padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Checkbox(checked = checked, onCheckedChange = onChange)
-        Text(label, style = MaterialTheme.typography.bodyLarge)
+        IconLabel(icon, label, style = MaterialTheme.typography.bodyLarge, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

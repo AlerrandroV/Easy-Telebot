@@ -20,6 +20,7 @@ object Alerts {
     const val EXTRA_BOT = "open_bot"
     const val EXTRA_SCREEN = "open_screen"
     const val SCREEN_ANTISPAM = "antispam"
+    const val SCREEN_SHOP = "shop"
 
     fun createChannel(context: Context) {
         val channel = NotificationChannel(
@@ -36,21 +37,16 @@ object Alerts {
 
     private fun notificationId(botId: Long, userId: Long) = (31 * botId + userId).hashCode()
 
-    /** "Fulano foi bloqueado por spam: 12 mensagens em 10 segundos. Toque para analisar." */
-    fun spamBlocked(context: Context, botId: Long, botName: String, userId: Long, name: String, reason: String) {
+    private fun post(context: Context, id: Int, botId: Long, screen: String, title: String, text: String) {
         if (!allowed(context)) return
         val intent = Intent(context, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             .putExtra(EXTRA_BOT, botId)
-            .putExtra(EXTRA_SCREEN, SCREEN_ANTISPAM)
-        val open = PendingIntent.getActivity(
-            context, notificationId(botId, userId), intent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-        )
-        val text = context.getString(R.string.alert_spam_text, name, reason)
+            .putExtra(EXTRA_SCREEN, screen)
+        val open = PendingIntent.getActivity(context, id, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(context.getString(R.string.alert_spam_title, botName))
+            .setContentTitle(title)
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setContentIntent(open)
@@ -59,11 +55,26 @@ object Alerts {
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .build()
         try {
-            NotificationManagerCompat.from(context).notify(notificationId(botId, userId), notification)
+            NotificationManagerCompat.from(context).notify(id, notification)
         } catch (e: SecurityException) {
             // permissão retirada entre a checagem e o aviso
         }
     }
+
+    /** "Fulano foi bloqueado por spam: 12 mensagens em 10 segundos. Toque para analisar." */
+    fun spamBlocked(context: Context, botId: Long, botName: String, userId: Long, name: String, reason: String) =
+        post(
+            context, notificationId(botId, userId), botId, SCREEN_ANTISPAM,
+            context.getString(R.string.alert_spam_title, botName), context.getString(R.string.alert_spam_text, name, reason),
+        )
+
+    /** "Nova venda em Loja do Zé: R$ 19,90 de Ana." */
+    fun sale(context: Context, botId: Long, botName: String, orderId: String, buyer: String, total: String, problems: Boolean) =
+        post(
+            context, (31 * botId + orderId.hashCode()).hashCode(), botId, SCREEN_SHOP,
+            context.getString(R.string.alert_sale_title, botName),
+            context.getString(if (problems) R.string.alert_sale_text_problem else R.string.alert_sale_text, total, buyer, orderId),
+        )
 
     /** Caso resolvido (no Telegram ou no app): tira o aviso da barra. */
     fun dismissSpam(context: Context, botId: Long, userId: Long) {
