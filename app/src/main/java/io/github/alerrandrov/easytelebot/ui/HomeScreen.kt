@@ -48,7 +48,7 @@ import io.github.alerrandrov.easytelebot.engine.ErrorExplainer
 import io.github.alerrandrov.easytelebot.service.BatteryHelper
 
 @Composable
-fun HomeScreen(onAddBot: () -> Unit, onOpenBot: (Long) -> Unit, onBattery: () -> Unit) {
+fun HomeScreen(onAddBot: () -> Unit, onOpenBot: (Long) -> Unit, onBattery: () -> Unit, onLogs: () -> Unit) {
     val context = LocalContext.current
     val prefs = remember { Prefs(context) }
     val bots by BotRepository.bots.collectAsStateWithLifecycle()
@@ -65,7 +65,17 @@ fun HomeScreen(onAddBot: () -> Unit, onOpenBot: (Long) -> Unit, onBattery: () ->
     }
     val batteryOk = remember(resumeTick) { BatteryHelper.isIgnoringOptimizations(context) }
 
-    Scaffold(topBar = { AppBar(stringResource(R.string.app_name)) }) { padding ->
+    Scaffold(
+        topBar = {
+            AppBar(stringResource(R.string.app_name)) {
+                if (bots.isNotEmpty()) {
+                    androidx.compose.material3.IconButton(onClick = onLogs) {
+                        AppIcon(R.drawable.ic_list_alt, description = stringResource(R.string.log_title_all))
+                    }
+                }
+            }
+        },
+    ) { padding ->
         LazyColumn(
             Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(16.dp),

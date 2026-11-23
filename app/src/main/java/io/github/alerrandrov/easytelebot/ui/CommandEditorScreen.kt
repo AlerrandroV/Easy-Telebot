@@ -37,6 +37,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.FilterChip
 import androidx.compose.runtime.mutableIntStateOf
 import io.github.alerrandrov.easytelebot.data.CommandScript
+import io.github.alerrandrov.easytelebot.data.FlowNode
+import io.github.alerrandrov.easytelebot.data.ButtonTypes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -72,15 +74,15 @@ private const val CAPTION_LIMIT = 1024
 internal data class Draft(val key: Long, val msg: BotMessage)
 
 /** Botão em edição: lista "achatada" com a marca "na mesma linha do anterior". */
-internal data class ButtonDraft(val text: String, val url: String, val sameRow: Boolean)
+internal data class ButtonDraft(val text: String, val url: String, val sameRow: Boolean, val type: String = ButtonTypes.URL)
 
 internal fun toDrafts(rows: List<List<LinkButton>>): List<ButtonDraft> =
-    rows.flatMap { row -> row.mapIndexed { i, b -> ButtonDraft(b.text, b.url, i > 0) } }
+    rows.flatMap { row -> row.mapIndexed { i, b -> ButtonDraft(b.text, b.url, i > 0, b.type) } }
 
 internal fun toRows(buttons: List<ButtonDraft>): List<List<LinkButton>> {
     val rows = mutableListOf<MutableList<LinkButton>>()
     buttons.forEach { b ->
-        val button = LinkButton(b.text.trim(), b.url.trim())
+        val button = LinkButton(b.text.trim(), b.url.trim(), b.type)
         if (b.sameRow && rows.isNotEmpty() && rows.last().size < 8) rows.last().add(button) else rows.add(mutableListOf(button))
     }
     return rows
@@ -116,7 +118,11 @@ fun CommandEditorScreen(
         mutableStateOf(start.messages.ifEmpty { listOf(BotMessage()) }.mapIndexed { i, m -> Draft(i.toLong(), m) })
     }
     var showErrors by remember { mutableStateOf(false) }
-    var scriptMode by remember { mutableStateOf(start.script != null) }
+    /** Resposta: "messages", "script" (Termux) ou "flow" (iniciar um fluxo). */
+    var mode by remember { mutableStateOf(if (start.flow != null) "flow" else if (start.script != null) "script" else "messages") }
+    val scriptMode = mode == "script"
+    var flowStart by remember { mutableStateOf(start.flow ?: config.flows.firstOrNull()?.id) }
+    val nodeIds = config.flows.map { it.id }.toSet()
     var scriptCommand by remember { mutableStateOf(start.script?.command ?: "") }
     var scriptTimeout by remember { mutableIntStateOf(start.script?.timeout ?: 30) }
     var confirmDiscard by remember { mutableStateOf(false) }
@@ -131,10 +137,12 @@ fun CommandEditorScreen(
         adminLevel = adminLevel,
         messages = drafts.map { it.msg },
         script = if (scriptMode) CommandScript(scriptCommand.trim(), scriptTimeout) else null,
+        flow = if (mode == "flow") flowStart else null,
     )
     val changed = current() != start
 
-    val errors = validate(context, triggers, drafts.map { it.msg }, otherTriggers, if (scriptMode) scriptCommand else null)
+    val errors = validate(context, triggers, drafts.map { it.msg }, otherTriggers, if (scriptMode) scriptCommand else null,
+        if (mode == "flow") flowStart ?: "" else null, nodeIds)
 
     fun addTrigger() {
         val parts = triggerInput.split(' ', ',', ';').map { it.trim().removePrefix("/").lowercase() }.filter { it.isNotEmpty() }
@@ -146,7 +154,8 @@ fun CommandEditorScreen(
 
     fun save() {
         if (triggerInput.isNotBlank()) addTrigger()
-        if (validate(context, triggers, drafts.map { it.msg }, otherTriggers, if (scriptMode) scriptCommand else null).isNotEmpty()) {
+        if (validate(context, triggers, drafts.map { it.msg }, otherTriggers, if (scriptMode) scriptCommand else null,
+        if (mode == "flow") flowStart ?: "" else null, nodeIds).isNotEmpty()) {
             showErrors = true
             return
         }
@@ -271,12 +280,17 @@ fun CommandEditorScreen(
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(
-                        selected = !scriptMode, onClick = { scriptMode = false },
+                        selected = mode == "messages", onClick = { mode = "messages" },
                         label = { Text(stringResource(R.string.cmd_response_messages)) },
                         leadingIcon = { AppIcon(R.drawable.ic_send, Modifier.size(18.dp)) },
                     )
                     FilterChip(
-                        selected = scriptMode, onClick = { scriptMode = true },
+                        selected = mode == "flow", onClick = { mode = "flow" },
+                        label = { Text(stringResource(R.string.cmd_response_flow)) },
+                        leadingIcon = { AppIcon(R.drawable.ic_account_tree, Modifier.size(18.dp)) },
+                    )
+                    FilterChip(
+                        selected = scriptMode, onClick = { mode = "script" },
                         label = { Text(stringResource(R.string.cmd_response_script)) },
                         leadingIcon = { AppIcon(R.drawable.ic_terminal, Modifier.size(18.dp)) },
                     )
@@ -285,7 +299,29 @@ fun CommandEditorScreen(
             if (scriptMode) {
                 item { ScriptEditor(scriptCommand, { scriptCommand = it }, scriptTimeout, { scriptTimeout = it }) }
             }
-            if (!scriptMode) itemsIndexed(drafts, key = { _, d -> d.key }) { index, draft ->
+            if (mode == "flow") {
+                item {
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(stringResource(R.string.cmd_flow_start), style = MaterialTheme.typography.titleSmall)
+                            if (config.flows.isEmpty()) {
+                                Text(stringResource(R.string.cmd_flow_empty), style = MaterialTheme.typography.bodyMedium)
+                            }
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                config.flows.forEach { n ->
+                                    FilterChip(
+                                        selected = flowStart == n.id, onClick = { flowStart = n.id },
+                                        label = { Text(n.title.ifBlank { n.id }) },
+                                    )
+                                }
+                            }
+                            Text(stringResource(R.string.cmd_flow_help), style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
+            if (mode == "messages") itemsIndexed(drafts, key = { _, d -> d.key }) { index, draft ->
                 MessageEditor(
                     botId = botId,
                     index = index,
@@ -301,9 +337,11 @@ fun CommandEditorScreen(
                         }
                     },
                     onRemove = { drafts = drafts.filter { it.key != draft.key } },
+                    nodes = config.flows,
+                    extraVariables = config.flowVariables(),
                 )
             }
-            if (!scriptMode) item {
+            if (mode == "messages") item {
                 OutlinedButton(
                     onClick = {
                         drafts = drafts + Draft(nextKey, BotMessage())
@@ -312,7 +350,7 @@ fun CommandEditorScreen(
                     modifier = Modifier.fillMaxWidth(),
                 ) { ButtonLabel(R.drawable.ic_add, stringResource(R.string.cmd_add_message)) }
             }
-            if (!scriptMode) item {
+            if (mode == "messages") item {
                 Text(
                     stringResource(R.string.cmd_messages_help),
                     style = MaterialTheme.typography.bodySmall,
@@ -357,6 +395,9 @@ private fun validate(
     otherTriggers: Set<String>,
     /** Linha de comando do script (`null` = comando de mensagens prontas). */
     script: String?,
+    /** Etapa inicial do fluxo (`null` = não é fluxo). */
+    flow: String?,
+    nodeIds: Set<String>,
 ): List<String> = buildList {
     if (triggers.isEmpty()) add(context.getString(R.string.cmd_err_no_trigger))
     triggers.filter { it in AdminLevels.RESERVED }.forEach { add(context.getString(R.string.cmd_err_reserved, it)) }
@@ -365,10 +406,14 @@ private fun validate(
         if (script.isBlank()) add(context.getString(R.string.cmd_err_no_script))
         return@buildList
     }
+    if (flow != null) {
+        if (flow !in nodeIds) add(context.getString(R.string.cmd_err_no_flow))
+        return@buildList
+    }
     if (messages.none { it.text.isNotBlank() || it.media != null }) add(context.getString(R.string.cmd_err_no_message))
     messages.forEachIndexed { i, m ->
         if (m.text.length > TEXT_LIMIT) add(context.getString(R.string.cmd_err_too_long, i + 1))
-        if (m.buttons.flatten().any { b -> b.text.isBlank() || Variables.normalizeUrl(b.url) == null }) {
+        if (m.buttons.flatten().any { b -> !ButtonTypes.isValid(b, nodeIds) }) {
             add(context.getString(R.string.cmd_err_button, i + 1))
         }
     }
@@ -499,6 +544,12 @@ internal fun MessageEditor(
     onRemove: () -> Unit,
     /** "media" para comandos (limpa ao salvar); "outbox" para envios avulsos. */
     mediaFolder: String = "media",
+    /** Tipos de botão oferecidos (o tipo "etapa" só aparece se houver [nodes]). */
+    buttonTypes: List<String> = ButtonTypes.ALL,
+    /** Etapas de fluxo para os botões "ir para etapa". */
+    nodes: List<FlowNode> = emptyList(),
+    /** Variáveis extras aceitas no texto (as dos fluxos, como {cidade}). */
+    extraVariables: Set<String> = emptySet(),
 ) {
     val context = LocalContext.current
     val msg = draft.msg
@@ -593,7 +644,7 @@ internal fun MessageEditor(
             }
 
             val limit = if (media != null) CAPTION_LIMIT else TEXT_LIMIT
-            val unknown = Variables.unknown(field.text)
+            val unknown = Variables.unknown(field.text).filter { it !in extraVariables }
             OutlinedTextField(
                 value = field,
                 onValueChange = { setText(it) },
@@ -614,7 +665,7 @@ internal fun MessageEditor(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            // Botões (links)
+            // Botões
             Text(stringResource(R.string.btn_title), style = MaterialTheme.typography.titleSmall)
             buttons.forEachIndexed { i, b ->
                 ButtonEditor(
@@ -622,6 +673,8 @@ internal fun MessageEditor(
                     first = i == 0,
                     onChange = { nb -> setButtons(buttons.mapIndexed { j, x -> if (j == i) nb else x }) },
                     onRemove = { setButtons(buttons.filterIndexed { j, _ -> j != i }) },
+                    types = buttonTypes.filter { it != ButtonTypes.NODE || nodes.isNotEmpty() || b.type == ButtonTypes.NODE },
+                    nodes = nodes,
                 )
             }
             TextButton(onClick = { setButtons(buttons + ButtonDraft("", "", false)) }) {
@@ -677,14 +730,35 @@ private fun MediaRow(media: MessageMedia, onAsDocument: (Boolean) -> Unit, onRem
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun ButtonEditor(button: ButtonDraft, first: Boolean, onChange: (ButtonDraft) -> Unit, onRemove: () -> Unit) {
-    val urlInvalid = button.url.isNotBlank() && Variables.normalizeUrl(button.url) == null
+internal fun ButtonEditor(
+    button: ButtonDraft,
+    first: Boolean,
+    onChange: (ButtonDraft) -> Unit,
+    onRemove: () -> Unit,
+    types: List<String> = listOf(ButtonTypes.URL),
+    nodes: List<FlowNode> = emptyList(),
+) {
+    val asButton = LinkButton(button.text, button.url, button.type)
+    val invalid = button.url.isNotBlank() && !ButtonTypes.isValid(asButton.copy(text = "x"), nodes.map { it.id }.toSet())
     Card(
         Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
     ) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (types.size > 1) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    types.forEach { t ->
+                        FilterChip(
+                            selected = button.type == t,
+                            onClick = { if (button.type != t) onChange(button.copy(type = t, url = "")) },
+                            label = { Text(buttonTypeLabel(t)) },
+                            leadingIcon = { AppIcon(buttonTypeIcon(t), Modifier.size(16.dp)) },
+                        )
+                    }
+                }
+            }
             OutlinedTextField(
                 value = button.text,
                 onValueChange = { onChange(button.copy(text = it.take(64))) },
@@ -692,16 +766,32 @@ internal fun ButtonEditor(button: ButtonDraft, first: Boolean, onChange: (Button
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
-            OutlinedTextField(
-                value = button.url,
-                onValueChange = { onChange(button.copy(url = it.trim())) },
-                label = { Text(stringResource(R.string.btn_url)) },
-                placeholder = { Text("https://…  ·  t.me/…  ·  @canal") },
-                singleLine = true,
-                isError = urlInvalid,
-                supportingText = { if (urlInvalid) Text(stringResource(R.string.btn_url_invalid)) },
-                modifier = Modifier.fillMaxWidth(),
-            )
+            if (button.type == ButtonTypes.NODE) {
+                Text(stringResource(R.string.btn_node_pick), style = MaterialTheme.typography.labelLarge)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    nodes.forEach { n ->
+                        FilterChip(
+                            selected = button.url == n.id,
+                            onClick = { onChange(button.copy(url = n.id)) },
+                            label = { Text(n.title.ifBlank { n.id }) },
+                        )
+                    }
+                }
+                if (button.url.isNotBlank() && nodes.none { it.id == button.url }) {
+                    Text(stringResource(R.string.btn_node_missing), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+            } else {
+                OutlinedTextField(
+                    value = button.url,
+                    onValueChange = { onChange(button.copy(url = if (button.type == ButtonTypes.COPY) it.take(256) else it.trim())) },
+                    label = { Text(buttonValueLabel(button.type)) },
+                    placeholder = { Text(buttonValueHint(button.type)) },
+                    singleLine = button.type != ButtonTypes.COPY,
+                    isError = invalid,
+                    supportingText = { if (invalid) Text(buttonValueError(button.type)) else Text(buttonValueHelp(button.type)) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (!first) {
                     Checkbox(checked = button.sameRow, onCheckedChange = { onChange(button.copy(sameRow = it)) })
@@ -714,6 +804,60 @@ internal fun ButtonEditor(button: ButtonDraft, first: Boolean, onChange: (Button
         }
     }
 }
+
+@Composable
+internal fun buttonTypeLabel(type: String): String = stringResource(
+    when (type) {
+        ButtonTypes.COPY -> R.string.btn_type_copy
+        ButtonTypes.NODE -> R.string.btn_type_node
+        ButtonTypes.WEBAPP -> R.string.btn_type_webapp
+        ButtonTypes.CALLBACK -> R.string.btn_type_callback
+        else -> R.string.btn_type_url
+    },
+)
+
+internal fun buttonTypeIcon(type: String): Int = when (type) {
+    ButtonTypes.COPY -> R.drawable.ic_content_copy
+    ButtonTypes.NODE -> R.drawable.ic_account_tree
+    ButtonTypes.WEBAPP -> R.drawable.ic_storefront
+    ButtonTypes.CALLBACK -> R.drawable.ic_terminal
+    else -> R.drawable.ic_link
+}
+
+@Composable
+private fun buttonValueLabel(type: String): String = stringResource(
+    when (type) {
+        ButtonTypes.COPY -> R.string.btn_value_copy
+        ButtonTypes.WEBAPP -> R.string.btn_value_webapp
+        ButtonTypes.CALLBACK -> R.string.btn_value_callback
+        else -> R.string.btn_url
+    },
+)
+
+private fun buttonValueHint(type: String): String = when (type) {
+    ButtonTypes.COPY -> "chave-pix@exemplo.com"
+    ButtonTypes.WEBAPP -> "https://…"
+    ButtonTypes.CALLBACK -> "pedido:123"
+    else -> "https://…  ·  t.me/…  ·  @canal"
+}
+
+@Composable
+private fun buttonValueHelp(type: String): String = when (type) {
+    ButtonTypes.COPY -> stringResource(R.string.btn_help_copy)
+    ButtonTypes.WEBAPP -> stringResource(R.string.btn_help_webapp)
+    ButtonTypes.CALLBACK -> stringResource(R.string.btn_help_callback)
+    else -> ""
+}
+
+@Composable
+private fun buttonValueError(type: String): String = stringResource(
+    when (type) {
+        ButtonTypes.WEBAPP -> R.string.btn_err_webapp
+        ButtonTypes.CALLBACK -> R.string.btn_err_callback
+        ButtonTypes.COPY -> R.string.btn_err_copy
+        else -> R.string.btn_url_invalid
+    },
+)
 
 @Composable
 internal fun FormatButton(

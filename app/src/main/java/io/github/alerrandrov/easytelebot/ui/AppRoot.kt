@@ -13,7 +13,7 @@ import io.github.alerrandrov.easytelebot.data.BotRepository
 import io.github.alerrandrov.easytelebot.data.Prefs
 import io.github.alerrandrov.easytelebot.service.Alerts
 
-enum class Screen { HOME, ADD_BOT, BATTERY, BOT, CHANGE_TOKEN, PROFILE, COMMAND, LOG, ADMINS, STORAGE, CHATS, CHAT, BROADCAST, ANTISPAM, SHOP, PRODUCT, TERMUX }
+enum class Screen { HOME, ADD_BOT, BATTERY, BOT, CHANGE_TOKEN, PROFILE, COMMAND, LOG, ADMINS, STORAGE, CHATS, CHAT, BROADCAST, ANTISPAM, SHOP, PRODUCT, TERMUX, FLOWS, NODE, LOGS_ALL }
 
 /** Pedido vindo de fora (notificação) para abrir uma tela de um bot. */
 data class OpenRequest(val botId: Long, val screen: String)
@@ -32,6 +32,9 @@ fun AppRoot(openRequest: OpenRequest? = null, onOpenHandled: () -> Unit = {}) {
     /** Novo comando já como "comando de script" (Termux); para onde voltar do editor. */
     var newCommandIsScript by rememberSaveable { mutableStateOf(false) }
     var commandReturn by rememberSaveable { mutableStateOf(Screen.BOT) }
+    /** Etapa de fluxo em edição (`null` = nova) e para onde voltar. */
+    var nodeId by rememberSaveable { mutableStateOf<String?>(null) }
+    var nodeReturn by rememberSaveable { mutableStateOf(Screen.FLOWS) }
     /** Abrir a tela de admins já no fluxo de "adicionar". */
     var adminsAutoAdd by rememberSaveable { mutableStateOf(false) }
     var chatId by rememberSaveable { mutableLongStateOf(0L) }
@@ -64,6 +67,8 @@ fun AppRoot(openRequest: OpenRequest? = null, onOpenHandled: () -> Unit = {}) {
             Screen.CHAT -> chatReturn
             Screen.PRODUCT -> productReturn
             Screen.COMMAND -> commandReturn
+            Screen.NODE -> nodeReturn
+            Screen.FLOWS -> Screen.BOT
             Screen.CHATS, Screen.BROADCAST, Screen.ANTISPAM, Screen.SHOP, Screen.TERMUX,
             Screen.CHANGE_TOKEN, Screen.PROFILE, Screen.LOG, Screen.ADMINS, Screen.STORAGE -> Screen.BOT
             else -> Screen.HOME
@@ -75,7 +80,9 @@ fun AppRoot(openRequest: OpenRequest? = null, onOpenHandled: () -> Unit = {}) {
             onAddBot = { screen = Screen.ADD_BOT },
             onOpenBot = { botId = it; screen = Screen.BOT },
             onBattery = { screen = Screen.BATTERY },
+            onLogs = { screen = Screen.LOGS_ALL },
         )
+        Screen.LOGS_ALL -> LogScreen(botId = null, onBack = goHome)
         Screen.ADD_BOT -> TokenScreen(
             expectedBotId = null,
             onBack = goHome,
@@ -106,6 +113,8 @@ fun AppRoot(openRequest: OpenRequest? = null, onOpenHandled: () -> Unit = {}) {
                 screen = Screen.COMMAND
             },
             onTermux = { screen = Screen.TERMUX },
+            onFlows = { screen = Screen.FLOWS },
+            onNewNode = { nodeId = null; nodeReturn = Screen.BOT; screen = Screen.NODE },
             onProfile = { screen = Screen.PROFILE },
             onLog = { screen = Screen.LOG },
             onAdmins = { add -> adminsAutoAdd = add; screen = Screen.ADMINS },
@@ -132,6 +141,12 @@ fun AppRoot(openRequest: OpenRequest? = null, onOpenHandled: () -> Unit = {}) {
             newAsScript = newCommandIsScript,
             onDone = { screen = commandReturn },
         )
+        Screen.FLOWS -> FlowsScreen(
+            botId = botId,
+            onEditNode = { nodeId = it; nodeReturn = Screen.FLOWS; screen = Screen.NODE },
+            onBack = goBot,
+        )
+        Screen.NODE -> NodeEditorScreen(botId = botId, nodeId = nodeId, onDone = { screen = nodeReturn })
         Screen.TERMUX -> TermuxScreen(
             botId = botId,
             onNewScriptCommand = {

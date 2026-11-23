@@ -25,6 +25,7 @@ from . import chats
 from .publish import PostFlow
 from .shop.flow import ShopFlow
 from .termux import TermuxBridge
+from .flows import FlowRunner
 from . import termux as termux_mod
 from . import config as config_mod
 from . import errors, template
@@ -128,20 +129,47 @@ def parse_command(text, bot_username):
     return name, args.strip()
 
 
+def _is_private(chat_id):
+    """IDs de usuários são positivos; grupos e canais são negativos."""
+    try:
+        return int(chat_id) > 0
+    except (TypeError, ValueError):
+        return True
+
+
 def _display_name(user):
     if user.get("username"):
         return "@" + user["username"]
     return chats._full_name(user) or str(user.get("id", ""))
 
 
-def build_keyboard(rows):
+def build_button(b, private=True):
+    """Botão configurado no app -> botão do Telegram (``None`` se não der para montar)."""
+    text = str(b.get("text") or "")[:64]
+    kind = b.get("type") or "url"
+    value = str(b.get("value") if b.get("value") is not None else b.get("url") or "")
+    if not text or not value:
+        return None
+    if kind == "copy":
+        return {"text": text, "copy_text": {"text": value[:256]}}
+    if kind == "node":
+        return {"text": text, "callback_data": ("fl:" + value)[:64]}
+    if kind == "callback":
+        data = ("cb:" + value).encode("utf-8")[:64].decode("utf-8", "ignore")
+        return {"text": text, "callback_data": data}
+    url = template.normalize_url(value)
+    if not url:
+        return None
+    if kind == "webapp" and url.startswith("https://"):
+        # Mini app só abre em conversa privada; em grupo vira um link comum.
+        return {"text": text, "web_app": {"url": url}} if private else {"text": text, "url": url}
+    return {"text": text, "url": url}
+
+
+def build_keyboard(rows, private=True):
     keyboard = []
     for row in rows or []:
-        clean = []
-        for b in row:
-            url = template.normalize_url(b.get("url"))
-            if url and b.get("text"):
-                clean.append({"text": b["text"][:64], "url": url})
+        clean = [x for x in (build_button(b, private) for b in row) if x]
         if clean:
             keyboard.append(clean[:8])
     return {"inline_keyboard": keyboard} if keyboard else None
@@ -175,6 +203,7 @@ class Engine:
         self.post = PostFlow(self)
         self.shop = ShopFlow(self, payments)
         self.termux = TermuxBridge(self)
+        self.flows = FlowRunner(self)
         self.send_source = "auto"  # "auto" = resposta de comando; "manual" = enviada pelo app
         self.storage = None
         if storage:
@@ -524,6 +553,8 @@ class Engine:
             return True
         if self.post.handle(message, parsed):
             return True
+        if self.flows.handle_message(message, parsed):
+            return True
         if parsed is None:
             return False
         name, args = parsed
@@ -553,6 +584,10 @@ class Engine:
         if command.get("script"):
             self.termux.run_command(command, name, {"message": message}, chat.get("id"), user, args,
                                     reply_to=reply_to)
+            return True
+        if command.get("flow"):
+            self.flows.start(command["flow"], chat.get("id"), user, args, reply_to=reply_to)
+            self.emit("replied", command=name, chat=chat.get("id"), messages=1)
             return True
 
         stamp = self._now()
@@ -637,6 +672,8 @@ class Engine:
             return True
         if self.handle_script_callback(query):
             return True
+        if (query.get("data") or "").startswith(("fl:", "cb:")):
+            return self.flows.handle_callback(query)
         parsed = antispam.parse_callback(query.get("data"))
         if parsed is None:
             if self.termux.api is not None:
@@ -722,7 +759,7 @@ class Engine:
     def send_message(self, chat_id, msg, context, command_name, reply_to=None):
         """Envia uma mensagem configurada (texto e/ou mídia + botões). ``True`` se deu certo."""
         body = template.render(msg["text"], context) if msg["text"].strip() else ""
-        keyboard = build_keyboard(msg["buttons"])
+        keyboard = build_keyboard(msg["buttons"], private=_is_private(chat_id))
         base = {"chat_id": chat_id}
         if reply_to:
             base["reply_parameters"] = reply_to

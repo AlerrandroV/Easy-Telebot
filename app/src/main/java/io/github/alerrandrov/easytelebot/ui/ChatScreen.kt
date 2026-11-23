@@ -212,7 +212,7 @@ fun ChatScreen(botId: Long, chatId: Long, onBack: () -> Unit) {
             }
             put("buttons", JSONArray().apply {
                 toRows(validButtons).forEach { row ->
-                    put(JSONArray().apply { row.forEach { put(JSONObject().put("text", it.text).put("url", it.url)) } })
+                    put(JSONArray().apply { row.forEach { put(it.toJson()) } })
                 }
             })
         }
@@ -907,7 +907,7 @@ private fun ButtonsDialog(initial: List<ButtonDraft>, onDismiss: () -> Unit, onD
                         onRemove = { list = list.filterIndexed { j, _ -> j != i } },
                     )
                 }
-                TextButton(onClick = { list = list + ButtonDraft("", "", false) }) { Text("+  " + stringResource(R.string.btn_add)) }
+                TextButton(onClick = { list = list + ButtonDraft("", "", false) }) { ButtonLabel(R.drawable.ic_add, stringResource(R.string.btn_add)) }
             }
         },
         confirmButton = { TextButton(onClick = { onDone(list.filter { it.text.isNotBlank() || it.url.isNotBlank() }) }) { Text(stringResource(R.string.done)) } },

@@ -968,4 +968,111 @@
     <string name="err_host_rejected_msg">O serviço não aceitou o arquivo (pode ser grande demais). Com muitas fotos, use a chave do imgbb.</string>
     <string name="err_host_unknown_title">Problema ao publicar a vitrine</string>
     <string name="err_host_unknown_msg">Algo inesperado aconteceu. Os detalhes estão abaixo.</string>
+
+    <!-- Fluxos e menus -->
+    <string name="flows_title">Fluxos e menus</string>
+    <string name="bot_flows_sub">Conversas em etapas, menus com botões e perguntas</string>
+    <string name="bot_flows_n">%1$d etapa(s)</string>
+    <string name="add_flow_node">Etapa de fluxo ou menu</string>
+    <string name="add_flow_node_sub">Uma tela da conversa: mensagens com botões que levam a outras etapas, sequências automáticas e perguntas.</string>
+    <string name="flows_intro">Cada etapa é uma \"tela\" da conversa. Ligue as etapas com botões Ir para etapa (menus), com Seguir para (mensagens em sequência) ou com uma pergunta, que espera a resposta da pessoa e guarda numa variável. Para começar um fluxo, crie um comando e escolha Responder com: Fluxo.</string>
+    <string-array name="flows_how">
+        <item>Crie a etapa Menu, com o texto e botões do tipo Ir para etapa (crie antes as etapas de destino, ou volte para ligar depois).</item>
+        <item>Crie as outras etapas. Ligue Editar a mensagem do menu para navegar sem encher o chat.</item>
+        <item>Para perguntar algo, use Depois: Esperar resposta. A resposta vira uma variável, como {cidade}, que pode ser usada nos textos seguintes.</item>
+        <item>Crie um comando (ex.: /start) e escolha Responder com: Fluxo, começando pela etapa Menu.</item>
+    </string-array>
+    <string name="flow_via_button">botão \"%1$s\"</string>
+    <string name="flow_via_command">início: %1$s</string>
+    <string name="flow_via_next">em seguida</string>
+    <string name="flow_via_answer">depois da resposta</string>
+    <string name="flow_via_none">sem comando que inicie</string>
+    <string name="flow_back_to">volta para \"%1$s\"</string>
+    <string name="flow_missing_node">leva a uma etapa que não existe mais (%1$s)</string>
+    <string name="flow_n_messages">%1$d mensagens</string>
+    <string name="flow_asks">pergunta {%1$s}</string>
+    <string name="flow_new_node">Nova etapa</string>
+    <string name="flow_edit_node">Editar etapa</string>
+    <string name="flow_this_node">esta etapa</string>
+    <string name="flow_node_title">Nome da etapa</string>
+    <string name="flow_node_title_hint">Só para você se organizar (ex.: Menu, Planos, Pergunta da cidade).</string>
+    <string name="flow_reached_from">Chega aqui por: %1$s</string>
+    <string name="flow_behavior">Comportamento</string>
+    <string name="flow_edit">Editar a mensagem do menu</string>
+    <string name="flow_edit_sub">Quando aberta por um botão, a etapa substitui a mensagem do menu em vez de mandar outra. Vale para etapas com uma mensagem só de texto.</string>
+    <string name="flow_delay">Pausa antes de mandar</string>
+    <string name="flow_delay_none">Nenhuma</string>
+    <string name="flow_delay_n">%1$d s</string>
+    <string name="flow_delay_sub">O bot mostra \"digitando…\" durante a pausa. Bom para mensagens em sequência parecerem uma conversa.</string>
+    <string name="flow_after">Depois de mandar</string>
+    <string name="flow_after_none">Nada</string>
+    <string name="flow_after_goto">Seguir para</string>
+    <string name="flow_after_ask">Esperar resposta</string>
+    <string name="flow_after_none_sub">A etapa termina aqui (os botões dela continuam funcionando).</string>
+    <string name="flow_after_goto_sub">Manda a próxima etapa logo em seguida, sozinha (mensagens consecutivas).</string>
+    <string name="flow_after_ask_sub">O bot espera a próxima mensagem da pessoa e guarda numa variável. Se ela mandar um comando, a pergunta é cancelada.</string>
+    <string name="flow_variable">Nome da variável</string>
+    <string name="flow_variable_hint">Use {%1$s} nos textos das próximas etapas.</string>
+    <string name="flow_validate">Aceitar</string>
+    <string name="flow_validate_text">Qualquer texto</string>
+    <string name="flow_validate_number">Número</string>
+    <string name="flow_validate_email">E-mail</string>
+    <string name="flow_validate_phone">Telefone</string>
+    <string name="flow_invalid">Mensagem se a resposta não servir (opcional)</string>
+    <string name="flow_invalid_hint">Ex.: Mande só o número, tipo 30.</string>
+    <string name="flow_ask_next">Depois da resposta, ir para</string>
+    <string name="flow_no_other_nodes">Crie outra etapa primeiro para poder ligar.</string>
+    <string name="flow_err_title">Dê um nome à etapa.</string>
+    <string name="flow_err_empty">Escreva pelo menos uma mensagem.</string>
+    <string name="flow_err_buttons">Algum botão está sem texto, com valor inválido ou levando a uma etapa que não existe.</string>
+    <string name="flow_err_variable">O nome da variável deve ter só letras minúsculas, números e _ (ex.: cidade).</string>
+    <string name="flow_err_next">Escolha a etapa seguinte.</string>
+    <string name="flow_delete_title">Excluir %1$s?</string>
+    <string name="flow_delete_msg">A etapa será apagada.</string>
+    <string name="flow_delete_msg_refs">Estas partes levam a esta etapa e vão parar de funcionar: %1$s.</string>
+    <string name="cmd_response_flow">Fluxo</string>
+    <string name="cmd_flow_start">Começar pela etapa</string>
+    <string name="cmd_flow_empty">Nenhuma etapa criada ainda. Crie em Fluxos e menus, na tela do bot.</string>
+    <string name="cmd_flow_help">O comando abre esta etapa; dali em diante, os botões e as ligações das etapas conduzem a conversa.</string>
+    <string name="cmd_err_no_flow">Escolha a etapa em que o fluxo começa.</string>
+    <string name="btn_type_url">Link</string>
+    <string name="btn_type_copy">Copiar texto</string>
+    <string name="btn_type_node">Ir para etapa</string>
+    <string name="btn_type_webapp">Mini app</string>
+    <string name="btn_type_callback">Personalizado</string>
+    <string name="btn_value_copy">Texto que será copiado</string>
+    <string name="btn_value_webapp">Endereço do mini app (https)</string>
+    <string name="btn_value_callback">Dado do botão (callback data)</string>
+    <string name="btn_help_copy">Ao tocar, o texto vai para a área de transferência da pessoa (chave Pix, cupom, endereço…).</string>
+    <string name="btn_help_webapp">Abre a página dentro do Telegram, em conversa privada. Em grupos vira um link comum.</string>
+    <string name="btn_help_callback">Entregue aos seus scripts pela API local do Termux. Sem ela, o toque só aparece no registro.</string>
+    <string name="btn_err_copy">Escreva o texto (até 256 caracteres).</string>
+    <string name="btn_err_webapp">Precisa ser um endereço https.</string>
+    <string name="btn_err_callback">Escreva o dado (até cerca de 60 caracteres).</string>
+    <string name="btn_node_pick">Etapa de destino</string>
+    <string name="btn_node_missing">A etapa deste botão não existe mais. Escolha outra.</string>
+    <string name="log_flow_answer">%1$s respondeu {%2$s} na etapa %3$s.</string>
+    <string name="log_custom_callback">Botão personalizado tocado (%1$s), mas a API local do Termux está desligada.</string>
+    <string name="err_flow_missing_title">Etapa não encontrada</string>
+    <string name="err_flow_missing_msg">Um botão ou comando leva a uma etapa que foi apagada. Abra Fluxos e menus e ligue a outra etapa.</string>
+    <string name="err_flow_loop_title">Fluxo em círculo</string>
+    <string name="err_flow_loop_msg">Etapas com Seguir para se chamam em círculo, sem parar. O bot interrompeu depois de várias mensagens. Revise as ligações em Fluxos e menus.</string>
+
+    <!-- Logs -->
+    <string name="log_title_all">Logs de todos os bots</string>
+    <string name="log_intro_full">Tudo o que o bot fez: mensagens recebidas, respostas, avisos e erros explicados. Fica guardado mesmo com o app fechado (as últimas 3.000 entradas por bot).</string>
+    <string name="log_search">Buscar nos logs</string>
+    <string name="log_filter_all">Tudo</string>
+    <string name="log_filter_errors">Erros</string>
+    <string name="log_filter_warnings">Avisos</string>
+    <string name="log_filter_in">Recebidas</string>
+    <string name="log_filter_out">Enviadas</string>
+    <string name="log_filter_system">Sistema</string>
+    <string name="log_no_match">Nada encontrado com esse filtro.</string>
+    <string name="log_export">Exportar logs</string>
+    <string name="log_export_subject">Logs do Easy Telebot</string>
+    <string name="log_clear_title">Apagar os logs?</string>
+    <string name="log_clear_msg">O histórico some deste celular. Isso não afeta o bot nem as conversas.</string>
+    <string name="log_hide">Esconder</string>
+    <string name="log_error_code">código: %1$s</string>
 </resources>

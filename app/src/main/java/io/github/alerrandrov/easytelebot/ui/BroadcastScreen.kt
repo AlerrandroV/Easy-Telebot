@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.alerrandrov.easytelebot.R
 import io.github.alerrandrov.easytelebot.data.BotMessage
+import io.github.alerrandrov.easytelebot.data.ButtonTypes
 import io.github.alerrandrov.easytelebot.data.BotRepository
 import io.github.alerrandrov.easytelebot.data.ConfigRepository
 import io.github.alerrandrov.easytelebot.data.TokenStore
@@ -104,7 +105,7 @@ fun BroadcastScreen(botId: Long, onBack: () -> Unit) {
     val selectedTotal = (if (users) audience.users else 0) + (if (groups) audience.groups else 0) +
         (if (channels) audience.channels else 0)
     val messages = drafts.map { it.msg }.filter { it.text.isNotBlank() || it.media != null }
-    val buttonsOk = messages.all { m -> m.buttons.flatten().all { it.text.isNotBlank() && Variables.normalizeUrl(it.url) != null } }
+    val buttonsOk = messages.all { m -> m.buttons.flatten().all { it.text.isNotBlank() && ButtonTypes.isValid(it) && it.type != ButtonTypes.NODE } }
     val canSend = token != null && messages.isNotEmpty() && selectedTotal > 0 && buttonsOk && job?.running != true
 
     fun saveBroadcast(change: (io.github.alerrandrov.easytelebot.data.BroadcastSettings) -> io.github.alerrandrov.easytelebot.data.BroadcastSettings) {
@@ -128,7 +129,7 @@ fun BroadcastScreen(botId: Long, onBack: () -> Unit) {
                         m.media?.let { put("media", JSONObject().put("type", it.type).put("file", it.file).put("name", it.name)) }
                         put("buttons", JSONArray().apply {
                             m.buttons.forEach { row ->
-                                put(JSONArray().apply { row.forEach { put(JSONObject().put("text", it.text).put("url", it.url)) } })
+                                put(JSONArray().apply { row.forEach { put(it.toJson()) } })
                             }
                         })
                     })

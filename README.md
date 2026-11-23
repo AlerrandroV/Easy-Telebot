@@ -62,6 +62,18 @@ Em **Vendas**, na tela do bot:
   de lá. As fotos vão como miniaturas no próprio catálogo ou, com uma chave grátis
   do [imgbb](https://api.imgbb.com), hospedadas lá.
 
+## Fluxos, menus e botões
+
+- **Fluxos e menus**: etapas ligadas entre si, como um fluxograma. Botões *Ir para
+  etapa* montam menus que se editam no lugar; *Seguir para* manda mensagens em
+  sequência (com pausa de "digitando…"); *Esperar resposta* faz uma pergunta,
+  valida (texto, número, e-mail, telefone) e guarda a resposta numa variável,
+  como `{cidade}`, para usar nos textos seguintes. Um comando inicia o fluxo.
+- **Botões**: link, copiar texto, ir para etapa, mini app e personalizado
+  (callback entregue aos scripts do Termux), em comandos, fluxos e entregas.
+- **Logs**: guardados no celular (3.000 por bot), com filtros, busca, exportação
+  e uma visão de todos os bots juntos.
+
 ## Termux e scripts
 
 Em **Termux e scripts**, na tela do bot:

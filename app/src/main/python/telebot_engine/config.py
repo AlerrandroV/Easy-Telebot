@@ -29,7 +29,7 @@ A versão 1 (``command`` + ``response``) é convertida automaticamente.
 
 import json
 
-from . import antispam, termux
+from . import antispam, flows, termux
 from .shop import catalog as shop_catalog
 
 MEDIA_TYPES = ("photo", "video", "animation", "audio", "voice", "document", "sticker")
@@ -37,6 +37,25 @@ MEDIA_TYPES = ("photo", "video", "animation", "audio", "voice", "document", "sti
 
 def _clean_trigger(value):
     return str(value or "").strip().lstrip("/").lower()
+
+
+BUTTON_TYPES = ("url", "copy", "node", "webapp", "callback")
+
+
+def normalize_button(b):
+    """``{"text", "type", "value"}``. Tipos: ``url`` (link ou @), ``copy`` (copiar texto),
+    ``node`` (ir para uma etapa de fluxo), ``webapp`` (mini app) e ``callback`` (dado
+    entregue aos scripts do Termux). Botões antigos ``{"text", "url"}`` viram ``url``."""
+    if not isinstance(b, dict) or not str(b.get("text") or "").strip():
+        return None
+    kind = b.get("type") if b.get("type") in BUTTON_TYPES else "url"
+    value = str(b.get("value") if b.get("value") is not None else b.get("url") or "").strip()
+    if not value:
+        return None
+    out = {"text": str(b["text"]), "type": kind, "value": value}
+    if kind == "url":
+        out["url"] = value  # compatibilidade com quem lê "url"
+    return out
 
 
 def _message(item):
@@ -54,8 +73,9 @@ def _message(item):
             row = [row]
         clean = []
         for b in row or []:
-            if isinstance(b, dict) and b.get("text") and b.get("url"):
-                clean.append({"text": str(b["text"]), "url": str(b["url"])})
+            button = normalize_button(b)
+            if button:
+                clean.append(button)
         if clean:
             rows.append(clean)
     text = str(item.get("text") or "")
@@ -100,6 +120,7 @@ def normalize(data):
             "show_in_menu": bool(item.get("show_in_menu", True)),
             "messages": messages,
             "script": termux.normalize_script(item.get("script")),
+            "flow": str(item.get("flow") or "") or None,
         })
     b = data.get("broadcast") if isinstance(data.get("broadcast"), dict) else {}
     try:
@@ -111,6 +132,7 @@ def normalize(data):
         "version": 2,
         "antispam": antispam.normalize_settings(data.get("antispam")),
         "termux": termux.normalize_settings(data.get("termux")),
+        "flows": flows.normalize(data.get("flows"), _message),
         "shop": shop_catalog.normalize(data.get("shop"), _message),
         "auto_menu": bool(data.get("auto_menu", True)),
         "commands": commands,

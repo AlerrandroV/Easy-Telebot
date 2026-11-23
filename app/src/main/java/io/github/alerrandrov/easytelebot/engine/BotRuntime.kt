@@ -40,7 +40,7 @@ data class BotStatus(
  * eventos dos motores Python e os transforma em status + registro (log) legível.
  */
 object BotRuntime {
-    private const val MAX_LOG = 300
+    private const val MAX_LOG = LogStore.KEEP
 
     private lateinit var app: Context
     private lateinit var prefs: Prefs
@@ -126,11 +126,26 @@ object BotRuntime {
         engines[id]?.let { e -> Thread { runCatching { e.callAttr("request_reload") } }.start() }
     }
 
-    fun clearLog(id: Long) = _logs.update { it - id }
+    /** Bots cujo histórico de logs já foi lido do arquivo. */
+    private val loadedLogs = ConcurrentHashMap.newKeySet<Long>()
+
+    /** Lê do arquivo os logs de antes (de quando o app foi fechado). Chame fora da thread principal. */
+    fun ensureLogsLoaded(id: Long) {
+        if (!loadedLogs.add(id)) return
+        val old = LogStore.load(id)
+        _logs.update { map -> map + (id to ((map[id] ?: emptyList()) + old).take(MAX_LOG)) }
+    }
+
+    fun clearLog(id: Long) {
+        _logs.update { it - id }
+        LogStore.clear(id)
+    }
 
     fun add(id: Long, level: LogEntry.Level, text: String, error: EngineError? = null) {
         val entry = LogEntry(System.currentTimeMillis(), level, text, error)
+        if (id !in loadedLogs) ensureLogsLoaded(id)
         _logs.update { map -> map + (id to (listOf(entry) + (map[id] ?: emptyList())).take(MAX_LOG)) }
+        LogStore.append(id, entry)
     }
 
     private fun s(res: Int, vararg args: Any): String = app.getString(res, *args)
@@ -214,6 +229,11 @@ object BotRuntime {
                     _localApi.update { it - id }
                 }
             }
+            "flow_answer" -> add(
+                id, LogEntry.Level.IN,
+                s(R.string.log_flow_answer, e.optString("user"), e.optString("variable"), e.optString("node")),
+            )
+            "custom_callback" -> add(id, LogEntry.Level.WARN, s(R.string.log_custom_callback, e.optString("data")))
             "script_done" -> add(
                 id, LogEntry.Level.OUT,
                 s(R.string.log_script_done, e.optString("command"), e.optDouble("seconds").toString().replace('.', ','), e.optInt("messages")),

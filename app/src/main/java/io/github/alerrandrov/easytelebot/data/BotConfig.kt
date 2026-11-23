@@ -6,7 +6,78 @@ import org.json.JSONObject
 import java.io.File
 import java.util.UUID
 
-data class LinkButton(val text: String, val url: String)
+/**
+ * Botão embaixo da mensagem. [url] guarda o valor de acordo com o [type]:
+ * link (url), texto a copiar (copy), id da etapa (node), endereço do mini app (webapp)
+ * ou o dado entregue aos scripts (callback).
+ */
+data class LinkButton(val text: String, val url: String, val type: String = ButtonTypes.URL) {
+    fun toJson(): JSONObject = JSONObject().put("text", text).put("type", type).put("value", url).apply {
+        if (type == ButtonTypes.URL) put("url", url)
+    }
+
+    companion object {
+        fun fromJson(o: JSONObject): LinkButton {
+            val type = o.optString("type", ButtonTypes.URL).takeIf { it in ButtonTypes.ALL } ?: ButtonTypes.URL
+            return LinkButton(o.optString("text"), o.optString("value").ifEmpty { o.optString("url") }, type)
+        }
+    }
+}
+
+/** Tipos de botão (mesmos nomes do motor, `engine.build_button`). */
+object ButtonTypes {
+    const val URL = "url"
+    const val COPY = "copy"
+    const val NODE = "node"
+    const val WEBAPP = "webapp"
+    const val CALLBACK = "callback"
+    val ALL = listOf(URL, COPY, NODE, WEBAPP, CALLBACK)
+
+    /** `nodeIds` = etapas existentes (`null` = não conferir). */
+    fun isValid(b: LinkButton, nodeIds: Set<String>? = null): Boolean = b.text.isNotBlank() && when (b.type) {
+        COPY -> b.url.isNotBlank() && b.url.length <= 256
+        NODE -> b.url.isNotBlank() && (nodeIds == null || b.url in nodeIds)
+        WEBAPP -> Variables.normalizeUrl(b.url)?.startsWith("https://") == true
+        CALLBACK -> b.url.isNotBlank() && b.url.toByteArray().size <= 61
+        else -> Variables.normalizeUrl(b.url) != null
+    }
+}
+
+/** Etapa de um fluxo (veja `flows.py`). */
+data class FlowNode(
+    val id: String = UUID.randomUUID().toString().take(8),
+    val title: String = "",
+    val messages: List<BotMessage> = listOf(BotMessage()),
+    /** Aberta por botão: edita a mensagem do menu em vez de mandar outra. */
+    val edit: Boolean = true,
+    /** Pausa (segundos, com "digitando…") antes de mandar. */
+    val delay: Int = 0,
+    val after: FlowAfter = FlowAfter(),
+) {
+    /** Etapas para onde esta leva (botões e "depois"). */
+    fun links(): List<String> =
+        (messages.flatMap { m -> m.buttons.flatten().filter { it.type == ButtonTypes.NODE }.map { it.url } } +
+            listOfNotNull(after.node.takeIf { after.type != FlowAfter.NONE })).filter { it.isNotBlank() }.distinct()
+}
+
+/** O que acontece depois de mandar as mensagens da etapa. */
+data class FlowAfter(
+    /** "none", "goto" (segue sozinha) ou "ask" (espera resposta). */
+    val type: String = NONE,
+    val node: String? = null,
+    val variable: String = "",
+    /** "text", "number", "email" ou "phone". */
+    val validate: String = "text",
+    val invalid: String = "",
+) {
+    companion object {
+        const val NONE = "none"
+        const val GOTO = "goto"
+        const val ASK = "ask"
+        val VALIDATIONS = listOf("text", "number", "email", "phone")
+        val VAR_NAME = Regex("^[a-z_][a-z0-9_]{0,31}$")
+    }
+}
 
 /** Tipos aceitos pelo motor: photo, video, animation, audio, voice, document. */
 data class MessageMedia(val type: String, val file: String, val name: String)
@@ -30,6 +101,8 @@ data class SimpleCommand(
     val adminLevel: Int? = null,
     /** Se definido, o comando roda um script no Termux em vez de mandar as mensagens. */
     val script: CommandScript? = null,
+    /** Se definido, o comando inicia este fluxo (id da etapa). */
+    val flow: String? = null,
 )
 
 /** Linha de comando rodada no Termux (ex.: `python ~/bot/clima.py`) e o tempo máximo em segundos. */
@@ -91,7 +164,12 @@ data class BotConfig(
     val antispam: AntispamSettings = AntispamSettings(),
     val shop: ShopSettings = ShopSettings(),
     val termux: TermuxSettings = TermuxSettings(),
+    val flows: List<FlowNode> = emptyList(),
 ) {
+    /** Variáveis criadas pelas perguntas dos fluxos (ex.: {cidade}). */
+    fun flowVariables(): Set<String> =
+        flows.filter { it.after.type == FlowAfter.ASK }.map { it.after.variable }.toSet() + if (flows.any { it.after.type == FlowAfter.ASK }) setOf("resposta") else emptySet()
+
     fun toJson(): JSONObject = JSONObject().apply {
         put("version", VERSION)
         put("auto_menu", autoMenu)
@@ -104,6 +182,7 @@ data class BotConfig(
                     put("show_in_menu", c.showInMenu)
                     put("admin_level", c.adminLevel ?: JSONObject.NULL)
                     put("script", c.script?.let { JSONObject().put("command", it.command).put("timeout", it.timeout) } ?: JSONObject.NULL)
+                    put("flow", c.flow ?: JSONObject.NULL)
                     put("messages", JSONArray().apply {
                         c.messages.forEach { m -> put(messageJson(m)) }
                     })
@@ -120,6 +199,22 @@ data class BotConfig(
             .put("admin_level", antispam.adminLevel)
             .put("warn_user", antispam.warnUser))
         put("shop", shop.toJson())
+        put("flows", JSONObject().put("nodes", JSONArray().apply {
+            flows.forEach { n ->
+                put(JSONObject()
+                    .put("id", n.id)
+                    .put("title", n.title)
+                    .put("messages", JSONArray().apply { n.messages.forEach { put(messageJson(it)) } })
+                    .put("edit", n.edit)
+                    .put("delay", n.delay)
+                    .put("after", JSONObject()
+                        .put("type", n.after.type)
+                        .put("node", n.after.node ?: JSONObject.NULL)
+                        .put("variable", n.after.variable)
+                        .put("validate", n.after.validate)
+                        .put("invalid", n.after.invalid)))
+            }
+        }))
         put("termux", JSONObject()
             .put("api_enabled", termux.apiEnabled)
             .put("port", termux.port)
@@ -133,7 +228,8 @@ data class BotConfig(
 
     /** Arquivos de mídia usados (caminhos relativos à pasta do bot). */
     fun mediaFiles(): Set<String> =
-        commands.flatMap { c -> c.messages.mapNotNull { it.media?.file } }.toSet() + shop.mediaFiles()
+        commands.flatMap { c -> c.messages.mapNotNull { it.media?.file } }.toSet() + shop.mediaFiles() +
+            flows.flatMap { n -> n.messages.mapNotNull { it.media?.file } }
 
     companion object {
         const val VERSION = 2
@@ -156,7 +252,7 @@ data class BotConfig(
             put("buttons", JSONArray().apply {
                 m.buttons.forEach { row ->
                     put(JSONArray().apply {
-                        row.forEach { b -> put(JSONObject().put("text", b.text).put("url", b.url)) }
+                        row.forEach { b -> put(b.toJson()) }
                     })
                 }
             })
@@ -171,7 +267,7 @@ data class BotConfig(
             val buttons = (0 until rows.length()).mapNotNull { i ->
                 val row = rows.optJSONArray(i) ?: return@mapNotNull null
                 (0 until row.length()).mapNotNull { j ->
-                    row.optJSONObject(j)?.let { LinkButton(it.optString("text"), it.optString("url")) }
+                    row.optJSONObject(j)?.let { LinkButton.fromJson(it) }
                 }.takeIf { it.isNotEmpty() }
             }
             return BotMessage(o.optString("text"), media, buttons, o.optBoolean("link_preview", false))
@@ -194,6 +290,7 @@ data class BotConfig(
                         script = o.optJSONObject("script")?.let { s ->
                             CommandScript(s.optString("command"), s.optInt("timeout", 30).coerceIn(1, 300))
                         }?.takeIf { it.command.isNotBlank() },
+                        flow = if (o.isNull("flow")) null else o.optString("flow").ifEmpty { null },
                     )
                 } else {
                     // versão 1: um comando → um texto
@@ -225,8 +322,28 @@ data class BotConfig(
                 key = tx.optString("key"),
                 forward = if (tx.optString("forward") == TermuxSettings.FORWARD_ALL) TermuxSettings.FORWARD_ALL else TermuxSettings.FORWARD_UNHANDLED,
             )
+            val nodesArr = json.optJSONObject("flows")?.optJSONArray("nodes") ?: JSONArray()
+            val nodes = (0 until nodesArr.length()).mapNotNull { i ->
+                val n = nodesArr.optJSONObject(i) ?: return@mapNotNull null
+                val m = n.optJSONArray("messages") ?: JSONArray()
+                val a = n.optJSONObject("after") ?: JSONObject()
+                FlowNode(
+                    id = n.optString("id").ifEmpty { UUID.randomUUID().toString().take(8) },
+                    title = n.optString("title"),
+                    messages = (0 until m.length()).mapNotNull { j -> m.optJSONObject(j)?.let(::parseMessage) }.ifEmpty { listOf(BotMessage()) },
+                    edit = n.optBoolean("edit", true),
+                    delay = n.optInt("delay", 0).coerceIn(0, 30),
+                    after = FlowAfter(
+                        type = a.optString("type", FlowAfter.NONE).takeIf { it in listOf(FlowAfter.NONE, FlowAfter.GOTO, FlowAfter.ASK) } ?: FlowAfter.NONE,
+                        node = if (a.isNull("node")) null else a.optString("node").ifEmpty { null },
+                        variable = a.optString("variable"),
+                        validate = a.optString("validate", "text").takeIf { it in FlowAfter.VALIDATIONS } ?: "text",
+                        invalid = a.optString("invalid"),
+                    ),
+                )
+            }
             return BotConfig(json.optBoolean("auto_menu", true), list, broadcast, antispam,
-                ShopSettings.fromJson(json.optJSONObject("shop")), termux)
+                ShopSettings.fromJson(json.optJSONObject("shop")), termux, nodes)
         }
     }
 }
