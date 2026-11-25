@@ -29,7 +29,7 @@ A versão 1 (``command`` + ``response``) é convertida automaticamente.
 
 import json
 
-from . import antispam, flows, termux
+from . import antispam, flows, i18n, pyfacil, termux
 from .shop import catalog as shop_catalog
 
 MEDIA_TYPES = ("photo", "video", "animation", "audio", "voice", "document", "sticker")
@@ -124,6 +124,10 @@ def _block_list(raw):
             sc = termux.normalize_script(b)
             if sc:
                 out.append({"type": "termux", "script": sc})
+        elif kind == "code":
+            code = str(b.get("code") or "")[:pyfacil.MAX_CODE]
+            if code.strip():
+                out.append({"type": "code", "code": code})
         elif kind == "flow" and b.get("node"):
             out.append({"type": "flow", "node": str(b["node"])})
         elif kind == "wait":
@@ -136,6 +140,7 @@ def _block_list(raw):
                           for r in b.get("rules") or [] if isinstance(r, dict)],
                 "otherwise": _block_list(b.get("otherwise")),
                 "otherwise_keep": bool(b.get("otherwise_keep", True)),
+                "code": code if (code := str(b.get("code") or "")[:pyfacil.MAX_CODE]).strip() else "",
             })
     return out
 
@@ -233,6 +238,7 @@ def normalize(data):
     b_triggers = [_clean_trigger(t) for t in b.get("triggers") or ["post", "publi"]]
     return {
         "version": 2,
+        "language": i18n.normalize(data.get("language")),
         "antispam": antispam.normalize_settings(data.get("antispam")),
         "termux": termux.normalize_settings(data.get("termux")),
         "flows": flows.normalize(data.get("flows"), _message),

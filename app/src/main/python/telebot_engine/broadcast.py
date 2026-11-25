@@ -34,9 +34,11 @@ TARGET_TYPES = {
 }
 TARGET_WORDS = {
     "todos": ("users", "groups", "channels"), "tudo": ("users", "groups", "channels"),
+    "all": ("users", "groups", "channels"), "everyone": ("users", "groups", "channels"),
     "usuarios": ("users",), "usuários": ("users",), "users": ("users",), "pessoas": ("users",),
     "grupos": ("groups",), "groups": ("groups",),
-    "canais": ("channels",), "canal": ("channels",), "channels": ("channels",),
+    "canais": ("channels",), "canal": ("channels",), "channels": ("channels",), "channel": ("channels",),
+    "people": ("users",), "group": ("groups",), "grupo": ("groups",),
 }
 
 _TOKEN = re.compile(r"\[([^\[\]|\n]+)\|([^\[\]\n]+)\]")

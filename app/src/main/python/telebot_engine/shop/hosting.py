@@ -17,6 +17,7 @@ import json
 
 from ..storage import http
 from . import catalog
+from .. import i18n
 
 CONFIG = "host_config"
 AUTH = "host_auth"
@@ -63,7 +64,7 @@ def upload_image(key, b64, request=None):
     raise HostingError(REJECTED if 400 <= status < 500 else UNKNOWN, "imgbb HTTP %s %s" % (status, msg or ""))
 
 
-def publish_gist(token, gist_id, content, description="Catálogo da loja (Easy Telebot)", request=None):
+def publish_gist(token, gist_id, content, description="Easy Telebot shop catalog", request=None):
     """Cria ou atualiza o Gist. Devolve ``{"gist_id", "raw_url"}`` (raw da revisão publicada)."""
     if not token:
         raise HostingError(CONFIG, "falta o token do GitHub")
@@ -84,7 +85,7 @@ def publish_gist(token, gist_id, content, description="Catálogo da loja (Easy T
                            "GitHub HTTP %s %s" % (status, (data or {}).get("message", "") if isinstance(data, dict) else ""))
     raw = ((data.get("files") or {}).get(GIST_FILE) or {}).get("raw_url")
     if not raw:
-        raise HostingError(UNKNOWN, "o GitHub não devolveu o endereço do arquivo")
+        raise HostingError(UNKNOWN, i18n.t("detail.github_no_url"))
     return {"gist_id": data.get("id"), "raw_url": raw}
 
 

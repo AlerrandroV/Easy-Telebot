@@ -849,7 +849,8 @@ private fun Composer(
                         onInput(v.copy(selection = androidx.compose.ui.text.TextRange(v.selection.start - 1)))
                     }
                     FormatButton(stringResource(R.string.fmt_quote)) { onInput(quote(input)) }
-                    FormatButton("{nome}") { onInput(insert(input, "{nome}")) }
+                    val nameVar = stringResource(R.string.variable_name_example)
+                    FormatButton(nameVar) { onInput(insert(input, nameVar)) }
                 }
             }
             Row(verticalAlignment = Alignment.Bottom) {

@@ -36,10 +36,23 @@ object TermuxRunner {
     private const val HOME = "/data/data/com.termux/files/home"
     internal const val EXTRA_REQUEST = "io.github.alerrandrov.easytelebot.TERMUX_REQUEST"
 
-    /** Exporta os pares NOME VALOR recebidos como argumentos e roda o comando com tempo limite. */
+    /**
+     * Exporta os pares NOME VALOR recebidos como argumentos e roda o comando com tempo limite.
+     * Arquivos do Python facilitado (`termux("cmd", arquivo)`) chegam pelo stdin, uma linha
+     * `nome<TAB>base64` por arquivo, e são gravados em `$TELEBOT_FILES_DIR` (apagados no fim).
+     */
     private const val WRAPPER =
         "while [ \$# -gt 1 ]; do export \"\$1=\$2\"; shift 2; done; " +
-            "exec timeout -k 3 \"\$TELEBOT_TIMEOUT\" bash -c \"\$TELEBOT_SCRIPT\""
+            "export TELEBOT_FILES_DIR=\"\${TMPDIR:-/data/data/com.termux/files/usr/tmp}/telebot\"; " +
+            "names=''; if [ -n \"\$TELEBOT_HAS_FILES\" ]; then mkdir -p \"\$TELEBOT_FILES_DIR\"; " +
+            "while IFS=\$'\\t' read -r n d; do case \"\$n\" in ''|*/*) continue;; esac; " +
+            "printf '%s' \"\$d\" | base64 -d > \"\$TELEBOT_FILES_DIR/\$n\"; names=\"\$names \$n\"; done; fi; " +
+            "timeout -k 3 \"\$TELEBOT_TIMEOUT\" bash -c \"\$TELEBOT_SCRIPT\" </dev/null; code=\$?; " +
+            "for n in \$names; do rm -f \"\$TELEBOT_FILES_DIR/\$n\"; done; exit \$code"
+
+    /** Limite do que passa pelo stdin do RUN_COMMAND (o Android limita o tamanho de um intent). */
+    private const val MAX_FILES_BYTES = 700 * 1024
+    private val FILE_NAME = Regex("^[A-Za-z0-9._-]{1,80}$")
 
     private val ENV_NAME = Regex("^[A-Z][A-Z0-9_]*$")
     private val ids = AtomicInteger(1000)
@@ -62,6 +75,25 @@ object TermuxRunner {
         pending[id]?.complete(result)
     }
 
+    /** `[{"src": caminho no app, "name": nome no Termux}]` → linhas `nome<TAB>base64` para o stdin. */
+    private fun filesStdin(raw: String): String? {
+        if (raw.isBlank()) return null
+        val arr = org.json.JSONArray(raw)
+        var total = 0L
+        val out = StringBuilder()
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            val name = o.optString("name")
+            val file = java.io.File(o.optString("src"))
+            require(FILE_NAME.matches(name)) { "nome de arquivo inválido: $name" }
+            total += file.length()
+            require(total <= MAX_FILES_BYTES) { "arquivos grandes demais para o Termux (${total / 1024} KB)" }
+            out.append(name).append('\t')
+                .append(android.util.Base64.encodeToString(file.readBytes(), android.util.Base64.NO_WRAP)).append('\n')
+        }
+        return out.toString().takeIf { it.isNotEmpty() }
+    }
+
     /**
      * Roda `command` e bloqueia até o fim (chame fora da thread principal).
      * Devolve JSON: `{"ok": true, "stdout", "stderr", "exit_code"}` ou `{"ok": false, "error": {...}}`.
@@ -72,6 +104,13 @@ object TermuxRunner {
         if (!hasPermission(app)) return error("termux_permission")
 
         val env = try { JSONObject(envJson) } catch (e: Exception) { JSONObject() }
+        val stdin = try {
+            filesStdin(env.optString("TELEBOT_FILES"))
+        } catch (e: Exception) {
+            return error("termux_failed", e.message ?: e.toString())
+        }
+        env.remove("TELEBOT_FILES")
+        if (stdin != null) env.put("TELEBOT_HAS_FILES", "1")
         val args = mutableListOf("-c", WRAPPER, "telebot")
         env.keys().forEach { k ->
             if (ENV_NAME.matches(k)) { args += k; args += env.optString(k) }
@@ -97,6 +136,7 @@ object TermuxRunner {
                 .putExtra("com.termux.RUN_COMMAND_BACKGROUND", true)
                 .putExtra("com.termux.RUN_COMMAND_COMMAND_LABEL", "Easy Telebot")
                 .putExtra("com.termux.RUN_COMMAND_PENDING_INTENT", result)
+            if (stdin != null) intent.putExtra("com.termux.RUN_COMMAND_STDIN", stdin)
             try {
                 app.startService(intent)
             } catch (e: IllegalStateException) {

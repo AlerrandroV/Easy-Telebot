@@ -1,5 +1,7 @@
 # Easy Telebot
 
+**Idiomas do app:** português (Brasil) e inglês (EUA). · *English summary below.*
+
 Crie um bot do Telegram e deixe ele rodando **no seu próprio celular Android**,
 sem servidor, sem domínio, sem mensalidade e sem programar.
 
@@ -42,6 +44,9 @@ enquanto o celular estiver ligado e com internet.
 | `{hora}` | Hora atual (hh:mm) |
 | `{bot}` | @usuário do bot |
 
+As mesmas variáveis também aceitam nomes em inglês: `{name}`, `{last_name}`,
+`{username}`, `{group}`, `{date}` e `{time}`.
+
 ## Vendas e assinaturas
 
 Em **Vendas**, na tela do bot:
@@ -74,6 +79,46 @@ Em **Vendas**, na tela do bot:
 - **Logs**: guardados no celular (3.000 por bot), com filtros, busca, exportação
   e uma visão de todos os bots juntos.
 
+## Python facilitado
+
+Para quem quer um pouco mais que blocos, sem virar programador: um pedaço de Python
+seguro, que roda dentro do app. Dá para usar como bloco de um comando ou dentro do
+**Aguardar resposta** (o código roda a cada mensagem até chamar `parar()`):
+
+```python
+if mensagem.tipo == foto:
+    arquivo = mensagem.foto.baixar()
+    r = termux("node atualizar_foto_perfil.js", arquivo, tempo=60)
+    enviar_texto("Foto atualizada!" if r.ok else "Deu erro: " + r.erro)
+    parar()
+else:
+    enviar_texto("Isso não é uma imagem, envie uma foto válida!")
+```
+
+Os nomes valem em português, inglês, espanhol, francês e russo ao mesmo tempo
+(`mensagem.tipo` = `message.type` = `mensaje.tipo`…). O editor confere o código
+enquanto você digita, e os erros vêm explicados com a linha. Há limite de passos,
+de tempo e de mensagens, para o bot nunca travar.
+
+Guia completo: [Português](docs/python-facilitado/pt-BR.md) ·
+[English](docs/python-facilitado/en-US.md) · [Español](docs/python-facilitado/es-MX.md) ·
+[Français](docs/python-facilitado/fr.md) · [Русский](docs/python-facilitado/ru.md)
+
+## Idiomas
+
+- O app está em **português (Brasil)** e **inglês (EUA)**. Ele segue o idioma do
+  celular (outros idiomas caem no inglês) e dá para trocar no ícone de tradução da
+  tela inicial. No Android 13 ou mais novo, a escolha também aparece em
+  Configurações › Apps › Easy Telebot › Idioma.
+- Cada bot tem o seu **idioma das mensagens automáticas** (loja, antispam,
+  publicação…), nas configurações do bot. A vitrine segue o idioma do Telegram de
+  quem a abre.
+- Todo texto do app fica em `app/src/main/res/values*/strings.xml` (inglês em
+  `values/`, português em `values-pt/`) e as mensagens do motor em
+  `telebot_engine/i18n.py`. Para adicionar um idioma: copie esses textos, traduza e
+  inclua a sigla em `res/xml/locales_config.xml`, em `AppLanguages.kt` e em
+  `i18n.SUPPORTED`.
+
 ## Termux e scripts
 
 Em **Termux e scripts**, na tela do bot:
@@ -102,6 +147,18 @@ Em **Termux e scripts**, na tela do bot:
   no PATH).
 - Testes do motor (rodam em qualquer PC, sem Android):
   `python -m unittest discover -s app/src/test/python -t app/src/test/python`
+
+## English summary
+
+Easy Telebot lets anyone create a Telegram bot and run it **on their own Android
+phone**: no server, no domain, no monthly fee and no coding. Paste the token from
+@BotFather, create commands with ready replies (text, media, buttons, menus,
+"wait for reply" rules), and the bot answers while the phone is on and online.
+It also has a shop (Mercado Pago, Bitcoin Lightning, Telegram Stars, paid channel
+subscriptions), antispam, broadcasts, Termux scripts and **Simple Python**, a safe
+slice of Python for small decisions
+([guide](docs/python-facilitado/en-US.md)). The app is available in English and
+Brazilian Portuguese.
 
 ### Release assinado
 

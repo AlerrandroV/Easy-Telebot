@@ -25,6 +25,7 @@ import time
 
 from .. import admins as admins_mod
 from .. import chats
+from .. import i18n
 from . import http
 from .backends import DynamoDBStore, FirebaseRealtimeStore, FirestoreStore, LocalStore
 from .http import StorageError
@@ -140,7 +141,7 @@ def test(settings, bot_dir, namespace):
         store.put("_teste", "conexao", {"ok": True, "at": stamp})
         back = store.get("_teste", "conexao")
         if not back or back.get("at") != stamp:
-            raise StorageError(http.UNKNOWN, "gravou, mas não conseguiu ler de volta")
+            raise StorageError(http.UNKNOWN, i18n.t("detail.storage_readback"))
         store.delete("_teste", "conexao")
         return {"table_created": created}
     return _result(run)
@@ -166,7 +167,7 @@ def restore(settings, bot_dir, namespace):
         store = open_store(settings, bot_dir, namespace)
         doc = store.get(BACKUP, "ultimo")
         if not doc or not doc.get("config"):
-            raise StorageError(http.NOT_FOUND, "nenhum backup encontrado neste banco para este bot")
+            raise StorageError(http.NOT_FOUND, i18n.t("detail.storage_no_backup"))
         config = json.loads(doc["config"])
         admins = json.loads(doc.get("admins") or "[]")
         path = os.path.join(bot_dir, "config.json")

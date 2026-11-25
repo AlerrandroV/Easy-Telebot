@@ -1,0 +1,12 @@
+#!/usr/bin/env python3
+# ~/bot/ola.py  ->  comando: python ~/bot/ola.py
+import json, os
+
+update = json.loads(os.environ["TELEBOT_UPDATE"])
+nome = os.environ["TELEBOT_USER_NAME"]
+args = os.environ["TELEBOT_ARGS"]
+
+print(json.dumps({
+    "text": f"Olá, *{nome}*! Você mandou: {args or 'nada'}",
+    "buttons": [[{"text": "De novo", "data": "repetir"}]],
+}))

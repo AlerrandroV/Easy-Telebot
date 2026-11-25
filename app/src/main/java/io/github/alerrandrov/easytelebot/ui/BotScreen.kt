@@ -8,6 +8,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -23,6 +25,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -316,6 +320,11 @@ fun BotScreen(
                             subtitle = stringResource(R.string.home_boot_sub),
                             checked = meta.autoStart,
                         ) { v -> BotRepository.update(botId) { it.copy(autoStart = v) } }
+                        HorizontalDivider()
+                        BotLanguageRow(config.language) {
+                            config = config.copy(language = it)
+                            ConfigRepository.save(botId, config)
+                        }
                     }
                 }
             }
@@ -553,5 +562,37 @@ fun SwitchRow(title: String, subtitle: String?, checked: Boolean, onChange: (Boo
         }
         Spacer(Modifier.width(12.dp))
         Switch(checked = checked, onCheckedChange = onChange)
+    }
+}
+
+
+/** Idioma das mensagens automáticas do bot (loja, antispam, publicação...). */
+@Composable
+private fun BotLanguageRow(language: String, onChange: (String) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val options = listOf("" to stringResource(R.string.bot_language_app)) + AppLanguages.ALL.map { it.code to stringResource(it.label) }
+    Box {
+        Row(
+            Modifier.fillMaxWidth().clickable { open = true }.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            AppIcon(R.drawable.ic_translate, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                Text(stringResource(R.string.bot_language), style = MaterialTheme.typography.bodyLarge)
+                Text(options.firstOrNull { it.first == language }?.second ?: options.first().second,
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.bot_language_sub), style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            options.forEach { (code, label) ->
+                DropdownMenuItem(
+                    text = { Text(label) },
+                    leadingIcon = { if (code == language) AppIcon(R.drawable.ic_check) },
+                    onClick = { open = false; onChange(code) },
+                )
+            }
+        }
     }
 }

@@ -242,3 +242,130 @@ class CallbackTreeAndWaitTests(unittest.TestCase):
         self.assertEqual(cb.of("custom_callback")[0]["data"], "solto")  # sem resposta: vai para os scripts
         self.assertNotIn("zerado", [p.get("text") for p in api.sent])  # botão de comando de admin
         self.assertEqual(len(api.sent), 1)
+
+
+class TermuxCallbacks:
+    def __init__(self, base):
+        self.base = base
+        self.commands = []
+
+    def __getattr__(self, name):
+        return getattr(self.base, name)
+
+    def runTermux(self, command, env, timeout):  # noqa: N802
+        self.commands.append((command, json.loads(env), timeout))
+        return json.dumps({"ok": True, "stdout": "ok\n", "stderr": "", "exit_code": 0})
+
+
+class PythonCodeTests(unittest.TestCase):
+    """Bloco "Python facilitado" nos comandos e no "Aguardar resposta"."""
+
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        chats.close(self.dir)
+
+    def make(self, script, commands):
+        path = os.path.join(self.dir, "config.json")
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump({"version": 2, "commands": commands}, fh)
+        cb = TermuxCallbacks(Callbacks())
+        api = FakeApi(script)
+        eng = engine.Engine("1:x", path, self.dir, cb, api=api)
+        eng.flows.sync = True
+        eng.termux.sync_scripts = True
+        api.engine = eng
+        eng.sleep = lambda s: None
+        return eng, api, cb
+
+    def test_listener_runs_until_stop(self):
+        code = ("if mensagem.tipo == foto:\n"
+                "    r = termux('node atualizar.js', mensagem.foto.id, tempo=60)\n"
+                "    enviar_texto('Foto atualizada! ' + r.saida)\n"
+                "    parar()\n"
+                "else:\n"
+                "    enviar_texto('Envie uma foto, {}'.replace('{}', usuario.nome))\n")
+        cmd = {"triggers": ["foto"], "blocks": [
+            {"type": "message", "text": "Me envie a foto"},
+            {"type": "wait", "variable": "foto", "code": code},
+        ]}
+        photo = CallbackTreeAndWaitTests.photo
+        eng, api, cb = self.make([[msg("/foto")], [reply("oi", 2)], [photo(None, 3)], [photo(None, 4)]], [cmd])
+        eng.run()
+        self.assertEqual([p["text"] for p in api.sent], ["Me envie a foto", "Envie uma foto, Ana", "Foto atualizada! ok"])
+        command, env, timeout = cb.commands[0]
+        self.assertEqual(command, "node atualizar.js FOTO1")
+        self.assertEqual(timeout, 60)
+        self.assertEqual(env["TELEBOT_CHAT_ID"], "42")
+        state = flows.user_state(self.dir, 42)
+        self.assertNotIn("waiting", state)
+        self.assertEqual(state["vars"]["foto"], "FOTO1")
+
+    def test_code_block_variables_and_stop(self):
+        cmds = [
+            {"triggers": ["conta"], "blocks": [
+                {"type": "code", "code": "variaveis['pontos'] = variaveis.get('pontos', 0) + 5\n"
+                                         "enviar_texto(f'*{variaveis[\"pontos\"]}* pontos')\nparar()\n"},
+                {"type": "message", "text": "nunca chega aqui"}]},
+            {"triggers": ["saldo"], "blocks": [{"type": "message", "text": "Você tem {pontos}"}]},
+        ]
+        eng, api, cb = self.make([[msg("/conta")], [msg("/conta", update_id=2)], [msg("/saldo", update_id=3)]], cmds)
+        eng.run()
+        self.assertEqual([p["text"] for p in api.sent], ["<b>5</b> pontos", "<b>10</b> pontos", "Você tem 10"])
+
+    def test_code_error_is_reported(self):
+        cmd = {"triggers": ["x"], "blocks": [{"type": "code", "code": "enviar_texto(1/0)\n"}]}
+        eng, api, cb = self.make([[msg("/x")]], [cmd])
+        eng.run()
+        err = cb.of("code_error")[0]
+        self.assertEqual((err["line"], err["code"]), (1, "zero"))
+
+    def test_button_click_goes_to_listener(self):
+        code = ("if mensagem.tipo == botao:\n"
+                "    enviar_texto('Escolheu ' + mensagem.dado)\n"
+                "    parar()\n")
+        cmd = {"triggers": ["menu"], "blocks": [
+            {"type": "code", "code": "enviar_texto('Escolha', botoes=[[botao('Sim'), botao('Não')]])\n"},
+            {"type": "wait", "code": code},
+        ]}
+        eng, api, cb = self.make([[msg("/menu")], [press("cb:nao", 2)]], [cmd])
+        eng.run()
+        self.assertEqual(api.sent[0]["reply_markup"]["inline_keyboard"][0][1]["callback_data"], "cb:nao")
+        self.assertEqual(api.sent[1]["text"], "Escolheu nao")
+        self.assertNotIn("waiting", flows.user_state(self.dir, 42))
+
+
+class LanguageTests(unittest.TestCase):
+    """Mensagens automáticas no idioma do bot e variáveis com nomes em inglês."""
+
+    def test_i18n_texts_complete(self):
+        from telebot_engine import i18n
+        for key, table in i18n.TEXTS.items():
+            for lang in i18n.SUPPORTED:
+                self.assertIn(lang, table, key)
+            a, b = table["pt"], table["en"]
+            self.assertEqual(a.count("%"), b.count("%"), key)
+
+    def test_english_bot_and_aliases(self):
+        from telebot_engine import i18n, template
+        ctx = template.build_context({"from": {"id": 1, "first_name": "Ann"}, "chat": {"id": 1}}, "x", "b", "d", "t")
+        self.assertEqual(template.render("{name} {nome} {date}", ctx), "Ann Ann d")
+        self.assertEqual(template.unknown_variables("{name} {foo}"), ["foo"])
+        self.assertEqual(i18n.normalize("en-US"), "en")
+        self.assertEqual(i18n.normalize("es-MX"), "")
+        self.assertEqual(i18n.pick("en"), "en")
+
+    def test_validation_message_in_bot_language(self):
+        d = tempfile.mkdtemp()
+        try:
+            path = os.path.join(d, "config.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump({"version": 2, "language": "en", "commands": []}, fh)
+            eng = engine.Engine("1:x", path, d, Callbacks(), api=FakeApi([]))
+            eng.maybe_reload_config(force=True)
+            self.assertEqual(eng.lang, "en")
+            from telebot_engine import i18n
+            self.assertEqual(i18n.t("shop.how_to_pay", eng.lang), "How would you like to pay?")
+        finally:
+            chats.close(d)

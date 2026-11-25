@@ -71,7 +71,7 @@ object ShopPublisher {
         try {
             val secrets = PaymentRepository.load(context, botId)
             if (secrets.githubToken.isBlank()) {
-                return@withLock PythonBridge.Result.Failed(EngineError("host_config", "falta o token do GitHub"))
+                return@withLock PythonBridge.Result.Failed(EngineError("host_config", context.getString(R.string.shop_host_missing_token)))
             }
             val config = ConfigRepository.load(botId)
             val title = title(botId)

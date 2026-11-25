@@ -1,7 +1,7 @@
 # Seu bot, em código aberto
 
 Este arquivo foi exportado pelo **Easy Telebot**. Ele tem tudo o que o bot
-precisa para rodar em qualquer computador ou servidor com Python 3.8+,
+precisa para rodar em qualquer computador ou servidor com Python 3.9+,
 sem instalar nada além do Python:
 
 - `run.py` — liga o bot (`python3 run.py`). Pare com Ctrl+C.
@@ -31,7 +31,24 @@ celular antes de ligá-lo aqui (senão aparece o erro 409 Conflict).
 `*negrito*`, `_itálico_`, `__sublinhado__`, `~riscado~`, `||spoiler||`,
 `` `código` ``, `[texto](https://link)` e `> citação`. Variáveis: `{nome}`,
 `{sobrenome}`, `{usuario}`, `{id}`, `{grupo}`, `{args}`, `{data}`, `{hora}`,
-`{bot}`.
+`{bot}` (ou, em inglês, `{name}`, `{last_name}`, `{username}`, `{group}`,
+`{date}`, `{time}`).
+
+## Python facilitado
+
+Os blocos "Python facilitado" (e o "Aguardar resposta" com código) ficam no
+`config.json`, no campo `code`. Eles rodam no interpretador seguro do motor
+(`telebot_engine/pyfacil.py`), aqui do mesmo jeito que no celular. O `termux()`
+roda o comando direto no `bash` deste computador; arquivos passados a ele
+(`mensagem.foto.baixar()`) são copiados para uma pasta temporária em
+`$TELEBOT_FILES_DIR`. Guia: `docs/python-facilitado/` no repositório do app,
+em português, inglês, espanhol, francês e russo.
+
+## Idioma
+
+O campo `language` do `config.json` (`pt` ou `en`) escolhe o idioma das
+mensagens automáticas do bot (loja, antispam, publicação). Vazio = o idioma
+do sistema (variável `LANG`), ou português se não for inglês.
 
 ## Administradores
 
@@ -57,7 +74,8 @@ nomes de campo.
 
 Admins (com a classe configurada no app) mandam `/post` em conversa privada,
 enviam as mensagens, `/pronto` para ver a prévia e `/confirmar CÓDIGO` para
-enviar a todos (ou `/confirmar CÓDIGO usuarios grupos canais`). Botões:
+enviar a todos (ou `/confirmar CÓDIGO usuarios grupos canais`). Em inglês:
+`/done`, `/confirm CÓDIGO users groups channels` e `/cancel`. Botões:
 linhas `[Texto | link]` no fim do texto ou da legenda.
 
 ## Antispam

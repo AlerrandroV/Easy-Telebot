@@ -48,7 +48,8 @@ data class ShopGateways(
 data class ShopSettings(
     val enabled: Boolean = false,
     val currency: String = "BRL",
-    val intro: String = "Confira nossos produtos:",
+    /** Vazio = texto padrão no idioma do bot. */
+    val intro: String = "",
     val miniapp: Boolean = true,
     val storeUrl: String = DEFAULT_STORE_URL,
     /** Classe mínima de admin avisada a cada venda. */
@@ -168,7 +169,7 @@ data class ShopSettings(
             return ShopSettings(
                 enabled = o.optBoolean("enabled", false),
                 currency = o.optString("currency", "BRL").takeIf { it in CURRENCIES } ?: "BRL",
-                intro = o.optString("intro", "Confira nossos produtos:"),
+                intro = o.optString("intro", ""),
                 miniapp = o.optBoolean("miniapp", true),
                 storeUrl = o.optString("store_url", DEFAULT_STORE_URL).ifBlank { DEFAULT_STORE_URL },
                 catalogUrl = o.optString("catalog_url"),

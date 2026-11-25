@@ -28,7 +28,7 @@ import threading
 import time
 
 from . import admins as admins_mod
-from . import chats, template
+from . import chats, i18n, template
 
 CALLBACK = "fl:"
 CUSTOM_CALLBACK = "cb:"
@@ -38,10 +38,11 @@ WAIT_TTL = 24 * 3600      # pergunta sem resposta por 24 h é esquecida
 VAR_NAME = re.compile(r"^[a-z_][a-z0-9_]{0,31}$")
 AFTER_TYPES = ("none", "goto", "ask")
 VALIDATIONS = {
-    "text": (re.compile(r"\S"), "Mande a resposta em texto, por favor."),
-    "number": (re.compile(r"^\s*-?\d+([.,]\d+)?\s*$"), "Mande só números, por favor."),
-    "email": (re.compile(r"^\s*[^@\s]+@[^@\s]+\.[^@\s]+\s*$"), "Esse e-mail não parece válido. Tente de novo."),
-    "phone": (re.compile(r"^\s*\+?[\d\s().-]{8,20}\s*$"), "Esse telefone não parece válido. Tente de novo."),
+    # (padrão, chave do texto em i18n pedindo de novo)
+    "text": (re.compile(r"\S"), "flow.invalid_text"),
+    "number": (re.compile(r"^\s*-?\d+([.,]\d+)?\s*$"), "flow.invalid_number"),
+    "email": (re.compile(r"^\s*[^@\s]+@[^@\s]+\.[^@\s]+\s*$"), "flow.invalid_email"),
+    "phone": (re.compile(r"^\s*\+?[\d\s().-]{8,20}\s*$"), "flow.invalid_phone"),
 }
 
 _lock = threading.RLock()
@@ -172,6 +173,8 @@ class FlowRunner:
         if reaction is not None:
             return self._react(query, reaction)
         if data.startswith(CUSTOM_CALLBACK):
+            if self._button_to_listener(query):
+                return True
             if self.engine.termux.api is not None:
                 return False  # os scripts da API local recebem e respondem
             self.engine._try_call("answerCallbackQuery", {"callback_query_id": query.get("id")})
@@ -202,11 +205,30 @@ class FlowRunner:
         chat_id = (msg.get("chat") or {}).get("id") or user.get("id")
         editable = msg.get("message_id") if reaction.get("edit") and msg.get("text") is not None else None
         eng.emit("callback_reaction", button=reaction.get("text") or "")
-        eng.start_blocks(reaction["blocks"], reaction.get("text") or "botão", chat_id, user,
+        eng.start_blocks(reaction["blocks"], reaction.get("text") or i18n.t("label.button"), chat_id, user,
                          update={"callback_query": query}, edit_message=editable)
         return True
 
     # -- Aguardar resposta (bloco com regras) -----------------------------------------------
+
+    def _button_to_listener(self, query):
+        """Botão sem resposta própria apertado durante um "Aguardar resposta" com código:
+        o código recebe o clique (``mensagem.tipo == botao``, ``mensagem.dado``)."""
+        eng = self.engine
+        user = query.get("from") or {}
+        chat = (query.get("message") or {}).get("chat") or {}
+        waiting = user_state(eng.base_dir, user.get("id")).get("waiting") or {}
+        block = (eng.config.get("waits") or {}).get(waiting.get("wait"))
+        if not block or not block.get("code") or waiting.get("chat_id") != chat.get("id"):
+            return False
+        eng._try_call("answerCallbackQuery", {"callback_query_id": query.get("id")})
+        eng.start_blocks([{"type": "code", "code": block["code"], "listener": True}],
+                         waiting.get("name") or i18n.t("label.answer"), chat.get("id"), user,
+                         update={"callback_query": query})
+        return True
+
+    def end_wait(self, user):
+        _update(self.engine.base_dir, (user or {}).get("id"), lambda st: st.pop("waiting", None))
 
     def wait_for(self, block, chat_id, user, name):
         waiting = {"wait": block.get("id"), "chat_id": chat_id, "since": int(time.time()), "name": name}
@@ -219,6 +241,18 @@ class FlowRunner:
         if block is None:  # a configuração mudou: esquece a espera
             _update(eng.base_dir, uid, lambda st: st.pop("waiting", None))
             return False
+        if block.get("code"):
+            # Python facilitado: o código decide; a espera continua até ele chamar parar().
+            text = (message.get("text") or message.get("caption") or "").strip()
+            if block["variable"]:
+                value = (text or chats.parse_message(message).get("file_id") or "")[:1000]
+                _update(eng.base_dir, uid, lambda st: st.setdefault("vars", {}).update(
+                    {block["variable"]: value, "resposta": value}))
+            eng.emit("wait_answer", rule=None, name=waiting.get("name") or "", user=user.get("first_name") or "")
+            eng.start_blocks([{"type": "code", "code": block["code"], "listener": True}],
+                             waiting.get("name") or i18n.t("label.answer"), chat.get("id"), user, text,
+                             update={"message": message})
+            return True
         index = next((i for i, r in enumerate(block["rules"]) if matches(r["condition"], message)), None)
         if index is not None:
             rule = block["rules"][index]
@@ -236,7 +270,7 @@ class FlowRunner:
                 st["vars"]["resposta"] = value[:1000]
         _update(eng.base_dir, uid, save)
         eng.emit("wait_answer", rule=index, name=waiting.get("name") or "", user=user.get("first_name") or "")
-        eng.start_blocks(blocks, waiting.get("name") or "resposta", chat.get("id"), user, text,
+        eng.start_blocks(blocks, waiting.get("name") or i18n.t("label.answer"), chat.get("id"), user, text,
                          update={"message": message})
         return True
 
@@ -265,9 +299,9 @@ class FlowRunner:
         if not valid_answer(text, after["validate"]):
             self.engine._call_send("sendMessage", {
                 "chat_id": chat.get("id"),
-                "text": after["invalid"] or VALIDATIONS[after["validate"]][1],
+                "text": after["invalid"] or i18n.t(VALIDATIONS[after["validate"]][1], self.engine.lang),
                 "reply_parameters": {"message_id": message.get("message_id"), "allow_sending_without_reply": True},
-            }, "fluxo")
+            }, i18n.t("label.flow"))
             return True
         var = after["variable"]
 
@@ -312,6 +346,8 @@ class FlowRunner:
         for k, v in (user_state(eng.base_dir, user.get("id")).get("vars") or {}).items():
             if VAR_NAME.match(k) and k not in ctx:
                 ctx[k] = v
+        if "resposta" in ctx:
+            ctx.setdefault("answer", ctx["resposta"])  # mesmo valor, nome em inglês
         return ctx
 
     def _run(self, node_id, chat_id, user, args, reply_to, edit_message):
@@ -372,7 +408,7 @@ class FlowRunner:
             return 1
         sent = 0
         for msg in msgs:
-            if sender.send_message(chat_id, msg, context, "fluxo", reply_to):
+            if sender.send_message(chat_id, msg, context, i18n.t("label.flow"), reply_to):
                 sent += 1
                 reply_to = None
         return sent

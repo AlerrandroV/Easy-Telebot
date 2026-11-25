@@ -185,7 +185,7 @@ fun CommandEditorScreen(
             else onOpenFlows()
         }),
     )
-    val rootName = "/" + (triggers.firstOrNull() ?: triggerInput.trim().removePrefix("/").ifBlank { "comando" })
+    val rootName = "/" + (triggers.firstOrNull() ?: triggerInput.trim().removePrefix("/").ifBlank { stringResource(R.string.command_placeholder) })
     val crumbs = folderCrumbs(blocks, path, rootName)
 
     BackHandler {
@@ -405,7 +405,8 @@ private fun validateBlocks(
             }
             is CommandBlock.Termux -> if (b.script.command.isBlank()) add(context.getString(R.string.cmd_err_block_script, n))
             is CommandBlock.Flow -> if (b.node !in nodeIds) add(context.getString(R.string.cmd_err_no_flow))
-            is CommandBlock.Wait -> {
+            is CommandBlock.Code -> if (b.code.isBlank()) add(context.getString(R.string.cmd_err_block_code, n))
+            is CommandBlock.Wait -> if (b.usesCode) Unit else {
                 b.rules.forEachIndexed { j, r ->
                     if (r.condition.field == "text" && r.condition.op !in WaitCondition.NO_VALUE && r.condition.value.isBlank()) {
                         add(context.getString(R.string.cmd_err_rule_value, j + 1))
@@ -604,7 +605,7 @@ internal fun MessageEditor(
 
             if (showVariables) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Variables.KNOWN.forEach { v -> AssistChip(onClick = { setText(insert(field, "{$v}")) }, label = { Text("{$v}") }) }
+                    Variables.shown(LocalContext.current).forEach { v -> AssistChip(onClick = { setText(insert(field, "{$v}")) }, label = { Text("{$v}") }) }
                 }
                 Text(
                     stringResource(R.string.cmd_variables_help),
@@ -813,11 +814,12 @@ internal fun buttonValueLabel(type: String): String = stringResource(
     },
 )
 
+@Composable
 internal fun buttonValueHint(type: String): String = when (type) {
-    ButtonTypes.USER -> "@usuario"
-    ButtonTypes.CHANNEL -> "@meucanal  ·  t.me/meucanal"
-    ButtonTypes.GROUP -> "t.me/+convite  ·  @meugrupo"
-    ButtonTypes.COPY -> "chave-pix@exemplo.com"
+    ButtonTypes.USER -> stringResource(R.string.btn_hint_user)
+    ButtonTypes.CHANNEL -> stringResource(R.string.btn_hint_channel)
+    ButtonTypes.GROUP -> stringResource(R.string.btn_hint_group)
+    ButtonTypes.COPY -> stringResource(R.string.btn_hint_copy)
     ButtonTypes.WEBAPP -> "https://…"
     ButtonTypes.CALLBACK -> "pedido:123"
     else -> "https://…  ·  t.me/…  ·  @canal"

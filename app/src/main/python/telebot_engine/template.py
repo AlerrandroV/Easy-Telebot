@@ -16,6 +16,9 @@ import html
 import re
 
 VARIABLES = ("nome", "sobrenome", "usuario", "id", "grupo", "args", "data", "hora", "bot")
+# Os mesmos valores com nomes em inglês (valem em qualquer idioma do app).
+ALIASES = {"name": "nome", "last_name": "sobrenome", "username": "usuario", "group": "grupo",
+           "date": "data", "time": "hora"}
 
 _VAR = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
 _PH = re.compile("\x00(\\d+)\x00")
@@ -35,7 +38,7 @@ def unknown_variables(text):
     """Nomes entre chaves que não são variáveis conhecidas (para avisar no editor)."""
     seen = []
     for name in _VAR.findall(text or ""):
-        if name not in VARIABLES and name not in seen:
+        if name not in VARIABLES and name not in ALIASES and name not in seen:
             seen.append(name)
     return seen
 
@@ -66,7 +69,7 @@ def build_context(message, args, bot_username, now_date, now_time):
     group = ""
     if chat.get("type") in ("group", "supergroup", "channel"):
         group = chat.get("title") or ""
-    return {
+    ctx = {
         "nome": first,
         "sobrenome": last,
         "usuario": "@" + username if username else first,
@@ -77,6 +80,9 @@ def build_context(message, args, bot_username, now_date, now_time):
         "hora": now_time,
         "bot": "@" + bot_username if bot_username else "",
     }
+    for alias, name in ALIASES.items():
+        ctx[alias] = ctx[name]
+    return ctx
 
 
 # -- marcação -------------------------------------------------------------------

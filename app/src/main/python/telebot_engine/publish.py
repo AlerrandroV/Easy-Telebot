@@ -16,30 +16,14 @@ import threading
 import time
 
 from . import admins as admins_mod
-from . import broadcast, chats, errors
+from . import broadcast, chats, errors, i18n
 from .api import TelegramApi
 
 SESSION_TTL = 60 * 60
 CONTROL = ("pronto", "cancelar", "confirmar")
-
-INTRO = (
-    "📢 <b>Modo publicação</b>\n\n"
-    "Envie agora as mensagens da publicação, do jeito que quiser: texto, fotos, vídeos, "
-    "documentos, áudios, figurinhas, álbuns… Elas serão enviadas <b>sem mostrar quem escreveu</b>.\n\n"
-    "🔘 <b>Botões</b>: no fim do texto ou da legenda, escreva linhas assim:\n"
-    "<code>[Site | https://exemplo.com] [Canal | @meucanal]</code>\n"
-    "<code>[Grupo | t.me/meugrupo]</code>\n"
-    "Cada linha vira uma fileira de botões. Uma mensagem só com essas linhas coloca os botões "
-    "na mensagem anterior (útil para foto sem legenda).\n\n"
-    "Quando terminar, mande /pronto para ver a prévia. Para desistir: /cancelar."
-)
-
-WARNINGS = {
-    "album_buttons": "⚠️ Álbuns (várias fotos juntas) não aceitam botões: as linhas de botão "
-                     "dentro de um álbum ficarão como texto.",
-    "orphan_buttons": "⚠️ Uma mensagem só com botões não tinha uma mensagem antes para recebê-los "
-                      "(ou veio depois de um álbum) e foi ignorada.",
-}
+# Os mesmos comandos em inglês (/done, /cancel, /confirm).
+CONTROL_ALIASES = {"done": "pronto", "ready": "pronto", "cancel": "cancelar", "confirm": "confirmar"}
+WARNINGS = {"album_buttons": "post.album_buttons", "orphan_buttons": "post.orphan_buttons"}
 
 
 class Session:
@@ -96,6 +80,9 @@ class PostFlow:
         except Exception:  # noqa: BLE001 - reação é só um enfeite
             pass
 
+    def t(self, key, *args):
+        return i18n.t(key, self.engine.lang, *args)
+
     # -- entrada -----------------------------------------------------------------
 
     def handle(self, message, parsed):
@@ -104,6 +91,8 @@ class PostFlow:
         user = message.get("from") or {}
         uid = user.get("id")
         name, args = parsed if parsed else (None, "")
+        name = CONTROL_ALIASES.get(name, name)
+        t = self.t
         if chat.get("type") != "private":
             return bool(name and self.is_trigger(name))  # em grupo: ignora em silêncio
 
@@ -119,19 +108,18 @@ class PostFlow:
                                  level=None)
                 return True
             if session:
-                self.say(chat["id"], "Você já está montando uma publicação. Continue enviando, "
-                                     "mande /pronto para ver a prévia ou /cancelar.")
+                self.say(chat["id"], t("post.already"))
                 return True
             self.sessions[uid] = Session(chat["id"])
             self.engine.emit("post_started", user=user.get("username") or user.get("first_name", ""))
-            self.say(chat["id"], INTRO)
+            self.say(chat["id"], t("post.intro"))
             return True
 
         if name == "cancelar" and not session:
             job = broadcast.running(self.engine.base_dir)
             if job and job.owner == uid:
                 broadcast.cancel(self.engine.base_dir)
-                self.say(chat["id"], "⏹️ Envio interrompido. O resumo chega em instantes.")
+                self.say(chat["id"], t("post.stopped"))
                 return True
             return False
 
@@ -160,63 +148,53 @@ class PostFlow:
         self.react(session.chat_id, message["message_id"])
         if not session.acked:
             session.acked = True
-            self.say(session.chat_id, "📥 Recebido! Continue enviando ou mande /pronto.")
+            self.say(session.chat_id, self.t("post.received"))
 
     def cmd_cancelar(self, session, uid, args, message):
         self.sessions.pop(uid, None)
-        self.say(session.chat_id, "🗑️ Publicação cancelada. Nada foi enviado.")
+        self.say(session.chat_id, self.t("post.cancelled"))
 
     def cmd_pronto(self, session, uid, args, message):
+        t = self.t
         if not session.items:
-            self.say(session.chat_id, "Você ainda não enviou nenhuma mensagem para a publicação. "
-                                      "Envie as mensagens e depois mande /pronto.")
+            self.say(session.chat_id, t("post.nothing_yet"))
             return
         plan, warnings = broadcast.build_plan(session.items)
         if not plan:
-            self.say(session.chat_id, "Não sobrou nada para enviar. Envie as mensagens de novo ou /cancelar.")
+            self.say(session.chat_id, t("post.nothing_left"))
             return
-        self.say(session.chat_id, "👀 <b>Prévia</b> — é assim que a publicação vai chegar:")
+        self.say(session.chat_id, t("post.preview"))
         try:
             broadcast.run_plan(self.engine.api, session.chat_id, session.chat_id, plan)
         except Exception as exc:  # noqa: BLE001
             info = errors.classify(exc)
-            self.say(session.chat_id, "❌ O Telegram recusou a prévia (%s). Confira os botões e as mensagens, "
-                                      "mande /cancelar e comece de novo." % html.escape(info["detail"] or info["code"]))
+            self.say(session.chat_id, t("post.preview_failed", html.escape(info["detail"] or info["code"])))
             return
         counts = broadcast.audience_counts(self.engine.base_dir, exclude=(session.chat_id,))
         session.plan = plan
         session.code = broadcast.new_code()
-        lines = [
-            "✅ Prévia acima (%d mensagem(ns)).\n" % len(plan),
-            "Destinos: 👤 %d usuário(s) · 👥 %d grupo(s) · 📢 %d canal(is)\n"
-            % (counts["users"], counts["groups"], counts["channels"]),
-            "Para enviar para <b>todos</b>, mande:\n<code>/confirmar %s</code>\n" % session.code,
-            "Para escolher: <code>/confirmar %s usuarios</code> (ou <code>grupos</code>, <code>canais</code>; "
-            "pode combinar).\n" % session.code,
-            "Quer mudar algo? Envie mais mensagens e mande /pronto de novo, ou /cancelar.",
-        ]
+        lines = [t("post.summary", len(plan), counts["users"], counts["groups"], counts["channels"],
+                   session.code, session.code)]
         for w in dict.fromkeys(warnings):
             if w.startswith("bad_button:"):
-                lines.append("\n⚠️ Linha de botão com link inválido (ficou como texto): <code>%s</code>"
-                             % html.escape(w.split(":", 1)[1]))
+                lines.append("\n" + t("post.bad_button", html.escape(w.split(":", 1)[1])))
             else:
-                lines.append("\n" + WARNINGS.get(w, w))
+                lines.append("\n" + (t(WARNINGS[w]) if w in WARNINGS else w))
         self.say(session.chat_id, "\n".join(lines))
 
     def cmd_confirmar(self, session, uid, args, message):
         words = args.split()
+        t = self.t
         if not session.code or not session.plan:
-            self.say(session.chat_id, "Mande /pronto primeiro para ver a prévia e receber o código.")
+            self.say(session.chat_id, t("post.need_preview"))
             return
         if not words or words[0].upper() != session.code:
-            self.say(session.chat_id, "❌ Código incorreto. Use o código da última prévia (mande /pronto "
-                                      "para ver de novo).")
+            self.say(session.chat_id, t("post.wrong_code"))
             return
         targets = broadcast.parse_targets(words[1:])
         recipients = broadcast.audience(self.engine.base_dir, targets, exclude=(session.chat_id,))
         if not recipients:
-            self.say(session.chat_id, "Não há destinos desse tipo ainda. O bot só conhece quem já falou com "
-                                      "ele e os grupos/canais onde ele foi adicionado.")
+            self.say(session.chat_id, t("post.no_audience"))
             return
         plan, from_chat = session.plan, session.chat_id
         api = self.side_api()
@@ -226,8 +204,7 @@ class PostFlow:
             return broadcast.run_plan(api, chat["chat_id"], from_chat, plan)
 
         def on_progress(state):
-            text = "🚀 Enviando… %d de %d (%d falha(s))" % (state["sent"] + state["failed"], state["total"],
-                                                           state["failed"])
+            text = t("post.progress", state["sent"] + state["failed"], state["total"], state["failed"])
             if status.get("message_id"):
                 try:
                     api.call("editMessageText", {"chat_id": from_chat, "message_id": status["message_id"],
@@ -236,14 +213,13 @@ class PostFlow:
                     pass
 
         def on_done(state):
-            title = {"done": "✅ <b>Publicação concluída!</b>", "cancelled": "⏹️ <b>Envio interrompido.</b>"}
-            parts = [title.get(state["status"], "Publicação finalizada."),
-                     "Entregues: %d de %d" % (state["sent"], state["total"])]
+            title = {"done": t("post.done_title"), "cancelled": t("post.cancelled_title")}
+            parts = [title.get(state["status"], t("post.finished_title")),
+                     t("post.delivered", state["sent"], state["total"])]
             if state["failed"]:
-                parts.append("Falharam: %d" % state["failed"])
+                parts.append(t("post.failed", state["failed"]))
                 if state["unreachable"]:
-                    parts.append("(%d bloquearam o bot ou o removeram; não receberão as próximas)"
-                                 % state["unreachable"])
+                    parts.append(t("post.unreachable", state["unreachable"]))
             try:
                 result = api.call("sendMessage", {"chat_id": from_chat, "text": "\n".join(parts),
                                                   "parse_mode": "HTML"})
@@ -256,11 +232,10 @@ class PostFlow:
             broadcast.start(self.engine.base_dir, recipients, send_one, "telegram", owner=uid,
                             on_progress=on_progress, on_done=on_done)
         except RuntimeError:
-            self.say(session.chat_id, "⏳ Já existe uma publicação sendo enviada por este bot. Espere terminar.")
+            self.say(session.chat_id, t("post.busy"))
             return
         self.sessions.pop(uid, None)
-        result = self.say(session.chat_id, "🚀 Enviando para %d chat(s)… Você pode continuar usando o "
-                                           "Telegram. Para interromper: /cancelar." % len(recipients))
+        result = self.say(session.chat_id, t("post.sending", len(recipients)))
         if isinstance(result, dict):
             status["message_id"] = result.get("message_id")
         self.engine.emit("broadcast_started", total=len(recipients), source="telegram")

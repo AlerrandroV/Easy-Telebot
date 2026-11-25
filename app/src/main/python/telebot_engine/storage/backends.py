@@ -14,6 +14,7 @@ import time
 import urllib.parse
 
 from . import http
+from .. import i18n
 from .gauth import ServiceAccount
 from .http import StorageError
 from .sigv4 import sign
@@ -32,7 +33,7 @@ class LocalStore:
 
     def __init__(self, root):
         if not root:
-            raise StorageError(http.CONFIG, "pasta não informada")
+            raise StorageError(http.CONFIG, i18n.t("detail.storage_no_folder"))
         self.root = root
 
     def _dir(self, collection):
@@ -105,7 +106,7 @@ class FirebaseRealtimeStore:
     def __init__(self, url, secret, namespace):
         url = (url or "").strip().rstrip("/")
         if not url.startswith("https://"):
-            raise StorageError(http.CONFIG, "a URL do Realtime Database deve começar com https://")
+            raise StorageError(http.CONFIG, i18n.t("detail.rtdb_https"))
         self.base = url
         self.secret = (secret or "").strip()
         self.ns = _safe(namespace)
@@ -122,7 +123,7 @@ class FirebaseRealtimeStore:
         if status in (401, 403):
             raise StorageError(http.AUTH, "Firebase recusou o acesso (segredo errado ou regras do banco)")
         if status == 404:
-            raise StorageError(http.NOT_FOUND, "banco não encontrado nesta URL")
+            raise StorageError(http.NOT_FOUND, i18n.t("detail.rtdb_not_found"))
         http.check(status, raw, "Firebase")
         return http.parse_json(raw)
 
@@ -203,7 +204,7 @@ class FirestoreStore:
         if status == 404 and allow_404:
             return None
         if status == 403:
-            raise StorageError(http.AUTH, "sem permissão no Firestore (papel da conta de serviço ou API desativada): "
+            raise StorageError(http.AUTH, i18n.t("detail.firestore_forbidden") + ": "
                                + raw.decode("utf-8", "replace")[:200])
         http.check(status, raw, "Firestore")
         return http.parse_json(raw)
@@ -232,10 +233,10 @@ class DynamoDBStore:
     kind = "dynamodb"
 
     def __init__(self, access_key, secret_key, region, table, namespace):
-        for name, value in (("chave de acesso", access_key), ("chave secreta", secret_key),
-                            ("região", region), ("tabela", table)):
+        for name, value in (("aws_access", access_key), ("aws_secret", secret_key),
+                            ("aws_region", region), ("aws_table", table)):
             if not (value or "").strip():
-                raise StorageError(http.CONFIG, "falta a %s da AWS" % name)
+                raise StorageError(http.CONFIG, i18n.t("detail.aws_missing", None, i18n.t("detail." + name)))
         self.access_key = access_key.strip()
         self.secret_key = secret_key.strip()
         self.region = region.strip()
@@ -259,7 +260,7 @@ class DynamoDBStore:
                     "MissingAuthenticationTokenException", "ExpiredTokenException"):
             raise StorageError(http.AUTH, "%s: %s" % (kind, message))
         if kind == "ResourceNotFoundException":
-            raise StorageError(http.NOT_FOUND, "tabela '%s' não existe na região %s" % (self.table, self.region))
+            raise StorageError(http.NOT_FOUND, i18n.t("detail.aws_no_table", None, self.table, self.region))
         raise StorageError(http.UNKNOWN, "%s %s: %s" % (status, kind, message))
 
     def ensure_table(self, wait=30):

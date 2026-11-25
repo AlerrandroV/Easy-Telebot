@@ -1,5 +1,6 @@
 package io.github.alerrandrov.easytelebot
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -7,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.mutableStateOf
 import io.github.alerrandrov.easytelebot.service.Alerts
+import io.github.alerrandrov.easytelebot.ui.AppLanguages
 import io.github.alerrandrov.easytelebot.ui.AppRoot
 import io.github.alerrandrov.easytelebot.ui.EasyTelebotTheme
 import io.github.alerrandrov.easytelebot.ui.OpenRequest
@@ -14,6 +16,10 @@ import io.github.alerrandrov.easytelebot.ui.OpenRequest
 class MainActivity : ComponentActivity() {
     /** Tela pedida por uma notificação (ex.: antispam de um bot). */
     private val openRequest = mutableStateOf<OpenRequest?>(null)
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(AppLanguages.wrap(newBase))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

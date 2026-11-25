@@ -34,7 +34,7 @@ import threading
 import time
 import urllib.parse
 
-from . import chats, template
+from . import chats, i18n, template
 
 CALLBACK_PREFIX = "sc:"
 DEFAULT_PORT = 8780
@@ -249,7 +249,7 @@ class TermuxBridge:
             if code != 0:
                 eng.emit("error", context="script", command=trigger, retry_in=None, fatal=False,
                          code="termux_timeout" if code == 124 else "termux_exit",
-                         detail="código %d. %s" % (code, (result.get("stderr") or "").strip()[-600:]), retry_after=None)
+                         detail=i18n.t("detail.exit_code", None, code, (result.get("stderr") or "").strip()[-600:]), retry_after=None)
                 return -1
             sender = sender or self._sender()
             context = None
@@ -428,11 +428,11 @@ class LocalApi:
             if str(p.get("drop_pending_updates")).lower() in ("true", "1"):
                 with self.cond:
                     self.updates = []
-            self._reply(h, 200, {"ok": True, "result": True, "description": "Easy Telebot: sem webhook"})
+            self._reply(h, 200, {"ok": True, "result": True, "description": "Easy Telebot: no webhook"})
         elif name in BLOCKED:
             self._reply(h, 400, {"ok": False, "error_code": 400,
-                                 "description": "Bad Request: %s não é permitido pela API local do Easy Telebot "
-                                                "(o app é quem recebe as atualizações do Telegram)" % method})
+                                 "description": "Bad Request: %s is not allowed by the Easy Telebot local API "
+                                                "(the app receives the Telegram updates)" % method})
         else:
             path = "/bot%s/%s" % (self.engine.token, method) + ("?" + parts.query if parts.query else "")
             self.forward(h, h.command, path, body, ctype)
@@ -452,7 +452,7 @@ class LocalApi:
         try:
             status, raw, rtype = self.upstream_call(verb, path, body, ctype)
         except (OSError, http.client.HTTPException) as exc:
-            self._reply(h, 502, {"ok": False, "error_code": 502, "description": "Easy Telebot: sem conexão com o "
+            self._reply(h, 502, {"ok": False, "error_code": 502, "description": "Easy Telebot: no connection to "
                                                                                  "Telegram (%s)" % exc})
             return
         self._reply(h, status, raw, rtype)

@@ -238,6 +238,8 @@ object BotRuntime {
                 id, LogEntry.Level.OUT,
                 s(R.string.log_script_done, e.optString("command"), e.optDouble("seconds").toString().replace('.', ','), e.optInt("messages")),
             )
+            "code_log" -> add(id, LogEntry.Level.INFO, s(R.string.log_code_log, e.optString("command"), e.optString("text")))
+            "code_error" -> add(id, LogEntry.Level.ERROR, s(R.string.log_code_error, e.optString("command"), e.optString("message")))
             "spam_decided" -> {
                 val released = e.optString("action") == "release"
                 add(

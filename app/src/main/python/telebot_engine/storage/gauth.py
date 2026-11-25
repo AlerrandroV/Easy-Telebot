@@ -14,6 +14,7 @@ import time
 import urllib.parse
 
 from . import http
+from .. import i18n
 from .http import StorageError
 
 _SHA256_PREFIX = bytes.fromhex("3031300d060960864801650304020105000420")
@@ -58,7 +59,7 @@ class RsaKey:
             ints = [int.from_bytes(v, "big") for t, v in items if t == 0x02]
             return cls(*ints[1:9])
         except Exception as exc:  # noqa: BLE001
-            raise StorageError(http.CONFIG, "chave privada inválida (%s)" % exc) from None
+            raise StorageError(http.CONFIG, i18n.t("detail.sa_bad_key", None, exc)) from None
 
     def sign_sha256(self, message):
         digest = hashlib.sha256(message).digest()
@@ -84,12 +85,12 @@ class ServiceAccount:
             try:
                 info = json.loads(info)
             except ValueError:
-                raise StorageError(http.CONFIG, "o arquivo da conta de serviço não é um JSON válido") from None
+                raise StorageError(http.CONFIG, i18n.t("detail.sa_not_json")) from None
         if not isinstance(info, dict) or info.get("type") != "service_account":
-            raise StorageError(http.CONFIG, "isso não é o JSON de uma conta de serviço (type=service_account)")
+            raise StorageError(http.CONFIG, i18n.t("detail.sa_wrong_type"))
         for key in ("client_email", "private_key", "project_id"):
             if not info.get(key):
-                raise StorageError(http.CONFIG, "o JSON da conta de serviço não tem '%s'" % key)
+                raise StorageError(http.CONFIG, i18n.t("detail.sa_missing", None, key))
         self.email = info["client_email"]
         self.project_id = info["project_id"]
         self.token_uri = info.get("token_uri") or "https://oauth2.googleapis.com/token"
@@ -116,7 +117,7 @@ class ServiceAccount:
             status, raw = http.request("POST", self.token_uri, body,
                                        {"Content-Type": "application/x-www-form-urlencoded"})
             if status in (400, 401, 403):
-                raise StorageError(http.AUTH, "o Google recusou a conta de serviço: %s" % raw.decode("utf-8", "replace")[:200])
+                raise StorageError(http.AUTH, i18n.t("detail.sa_refused", None, raw.decode("utf-8", "replace")[:200]))
             http.check(status, raw, "token")
             data = http.parse_json(raw) or {}
             self._token = data.get("access_token")

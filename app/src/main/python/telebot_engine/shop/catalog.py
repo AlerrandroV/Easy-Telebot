@@ -78,7 +78,7 @@ def normalize(data, message_normalizer):
         "enabled": bool(data.get("enabled", False)),
         "currency": currency if currency in CURRENCIES else "BRL",
         "triggers": [t for t in triggers if t] or list(DEFAULT_TRIGGERS),
-        "intro": str(data.get("intro") or "Confira nossos produtos:")[:1000],
+        "intro": str(data.get("intro") or "")[:1000],  # vazio = texto padrão no idioma do bot
         "miniapp": bool(data.get("miniapp", True)),
         "store_url": str(data.get("store_url") or DEFAULT_STORE_URL).strip(),
         "catalog_url": _catalog_url(data.get("catalog_url")),

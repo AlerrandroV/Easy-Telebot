@@ -5,6 +5,8 @@ import json
 import ssl
 import urllib.parse
 
+from .. import i18n
+
 _SSL = ssl.create_default_context()
 
 # Códigos que o app sabe explicar (veja ErrorExplainer.kt).
@@ -30,7 +32,7 @@ def request(method, url, body=None, headers=None, timeout=30):
     """Faz a requisição e devolve ``(status, bytes)``. Erros de rede viram ``StorageError``."""
     parts = urllib.parse.urlsplit(url)
     if parts.scheme != "https" or not parts.hostname:
-        raise StorageError(CONFIG, "endereço precisa começar com https://")
+        raise StorageError(CONFIG, i18n.t("detail.https_required"))
     path = parts.path or "/"
     if parts.query:
         path += "?" + parts.query

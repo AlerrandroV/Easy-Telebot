@@ -239,7 +239,7 @@ fun BroadcastScreen(botId: Long, onBack: () -> Unit) {
                                 Text(stringResource(R.string.broadcast_buttons_title), style = MaterialTheme.typography.titleSmall)
                                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                                     Text(
-                                        "[Site | https://exemplo.com] [Canal | @meucanal]\n[Grupo | t.me/meugrupo]",
+                                        stringResource(R.string.broadcast_buttons_example),
                                         fontFamily = FontFamily.Monospace,
                                         style = MaterialTheme.typography.bodySmall,
                                         modifier = Modifier.padding(10.dp),

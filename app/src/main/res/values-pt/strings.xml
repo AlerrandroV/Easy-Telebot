@@ -1,0 +1,1243 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Português (Brasil). O inglês (values/) é o padrão para os outros idiomas. -->
+<resources>
+
+    <!-- Geral -->
+    <string name="back">Voltar</string>
+    <string name="save">Salvar</string>
+    <string name="cancel">Cancelar</string>
+    <string name="dismiss">Dispensar</string>
+    <string name="done">Pronto</string>
+    <string name="show">Mostrar</string>
+    <string name="hide">Ocultar</string>
+
+    <!-- Token -->
+    <string name="token_title">Conectar seu bot</string>
+    <string name="token_intro">Cole aqui o token que o @BotFather te deu. Ele é a “senha” do seu bot: com ele o app consegue receber e responder mensagens.</string>
+    <string name="token_label">Token do bot</string>
+    <string name="token_check">Verificar token</string>
+    <string name="token_checking">Verificando…</string>
+    <string name="token_ok">Tudo certo! Encontramos o seu bot.</string>
+    <string name="token_save">Usar este bot</string>
+    <string name="token_change">Trocar token</string>
+    <string name="token_change_sub">Usar outro bot ou um token novo</string>
+    <string name="token_help_toggle">Não tenho um token / como pegar?</string>
+    <string name="token_help_title">Como criar um bot e pegar o token</string>
+    <string name="token_open_botfather">Abrir o @BotFather</string>
+    <string name="token_privacy">O token fica só neste celular, guardado de forma criptografada. Ninguém além de você e do Telegram tem acesso a ele.</string>
+
+    <string-array name="botfather_steps">
+        <item>Abra o Telegram e procure por @BotFather (tem o selo azul de verificado).</item>
+        <item>Toque em Iniciar e mande /newbot.</item>
+        <item>Escolha um nome para o bot (pode ter espaços, ex.: Loja da Ana).</item>
+        <item>Escolha um usuário que termine em “bot” (ex.: lojadaana_bot).</item>
+        <item>O BotFather responde com o token: uma linha parecida com 123456789:AAH… Toque nela para copiar.</item>
+        <item>Volte aqui, cole no campo acima e toque em Verificar token.</item>
+    </string-array>
+    <string-array name="botfather_token_steps">
+        <item>Abra o @BotFather no Telegram.</item>
+        <item>Mande /mybots e escolha o seu bot.</item>
+        <item>Toque em API Token para ver o token atual (ou em Revoke para gerar um novo).</item>
+        <item>Copie o token inteiro e cole aqui de novo.</item>
+    </string-array>
+
+    <!-- Início -->
+    <string name="state_stopped">Desligado</string>
+    <string name="state_starting">Ligando…</string>
+    <string name="state_running">No ar, respondendo mensagens</string>
+    <string name="state_retrying">Com problema, tentando de novo…</string>
+    <string name="state_fatal">Parado por um erro</string>
+    <string name="bot_start">Ligar o bot</string>
+    <string name="bot_stop">Desligar o bot</string>
+    <string name="home_messages_today">Mensagens recebidas hoje: %1$d</string>
+    <string name="home_commands">Comandos</string>
+    <string name="home_commands_sub">%1$d comando(s). Toque para criar ou editar respostas.</string>
+    <string name="home_log">Registro</string>
+    <string name="home_log_sub">Mensagens recebidas, respostas enviadas e erros explicados</string>
+    <string name="home_battery">Bateria e segundo plano</string>
+    <string name="home_battery_ok">Otimização de bateria liberada. Confira também o guia da fabricante.</string>
+    <string name="home_battery_bad">Atenção: o Android pode desligar o bot com a tela apagada. Toque para resolver.</string>
+    <string name="home_boot">Iniciar com o celular</string>
+    <string name="home_boot_sub">Liga o bot sozinho quando o celular é ligado ou reiniciado</string>
+    <string name="home_limitation">O bot roda neste celular: com ele desligado ou sem internet, o bot fica fora do ar. O Telegram guarda as mensagens por até 24 horas e o bot responde as pendentes quando voltar.</string>
+    <string name="webhook_remove">Remover webhook</string>
+    <string name="webhook_removed">Webhook removido. O bot vai voltar a funcionar em alguns segundos.</string>
+
+    <!-- Comandos -->
+    <string name="commands_title">Comandos</string>
+    <string name="commands_add">Novo comando</string>
+    <string name="commands_intro">Quando alguém mandar o comando para o bot, ele responde com o texto que você escreveu. Os comandos aparecem sozinhos no menu “/” do Telegram.</string>
+    <string name="commands_empty">Nenhum comando ainda. Toque em “Adicionar” para criar o primeiro.</string>
+    <string name="cmd_new">Novo comando</string>
+    <string name="cmd_edit">Editar comando</string>
+    <string name="cmd_name">Comando</string>
+    <string name="cmd_name_hint">Letras minúsculas, números e _ (ex.: horario)</string>
+    <string name="cmd_name_invalid">Use só letras minúsculas sem acento, números e _ (até 32).</string>
+    <string name="cmd_name_duplicate">Já existe um comando com esse nome.</string>
+    <string name="cmd_description">Descrição</string>
+    <string name="cmd_description_hint">Aparece no menu “/” do Telegram</string>
+    <string name="cmd_response">Resposta</string>
+    <string name="cmd_unknown_vars">Variável desconhecida: %1$s. Ela será enviada do jeito que está.</string>
+    <string name="cmd_variables">Toque para inserir uma variável:</string>
+    <string name="cmd_variables_help">{nome} primeiro nome · {sobrenome} · {usuario} @usuário · {id} · {grupo} nome do grupo · {args} texto depois do comando · {data} · {hora} · {bot} @ do bot</string>
+    <string name="cmd_delete">Excluir comando</string>
+
+    <!-- Registro -->
+    <string name="log_title">Registro</string>
+    <string name="log_intro">Últimos acontecimentos desde que o app foi aberto.</string>
+    <string name="log_clear">Limpar</string>
+    <string name="log_empty">Nada por aqui ainda. Ligue o bot e mande um comando para ele no Telegram.</string>
+    <string name="log_what_to_do">O que fazer?</string>
+    <string name="log_running">Bot no ar, esperando mensagens.</string>
+    <string name="log_stopped">Bot desligado.</string>
+    <string name="log_connected">Conectado como @%1$s.</string>
+    <string name="log_config">Configuração carregada: %1$d comando(s) no menu.</string>
+    <string name="log_received">%1$s: %2$s</string>
+    <string name="log_received_group">%1$s em %2$s: %3$s</string>
+    <string name="log_replied">Resposta enviada para /%1$s (%2$d mensagem(ns)).</string>
+    <string name="log_unknown_command">/%1$s não está na sua lista de comandos; nada foi respondido.</string>
+    <string name="log_recovered">Conexão restabelecida.</string>
+    <string name="log_debug_text">Texto recusado pelo Telegram: %1$s</string>
+    <string name="log_restarted_by_system">O Android tinha fechado o bot; ele foi religado sozinho.</string>
+    <string name="log_no_token">Nenhum token salvo para este bot. Use “Trocar token” antes de ligar.</string>
+    <string name="log_engine_crash">O motor do bot parou inesperadamente: %1$s</string>
+
+    <!-- Notificação -->
+    <string name="notif_channel">Status do bot</string>
+    <string name="notif_channel_desc">Notificação fixa que mantém o bot funcionando</string>
+        <string name="notif_starting">Ligando o bot…</string>
+    <string name="notif_retrying">Bot com problema, tentando de novo</string>
+    <string name="notif_fatal">Bot parado por um erro</string>
+    <string name="notif_stop_all">Desligar todos</string>
+
+    <!-- Bateria -->
+    <string name="battery_title">Manter o bot ligado</string>
+    <string name="battery_intro">Para economizar bateria, o Android costuma fechar apps que ficam rodando com a tela apagada. Como o bot precisa ficar ligado o tempo todo, faça os dois passos abaixo uma vez.</string>
+    <string name="battery_step1_title">1. Liberar da otimização de bateria</string>
+    <string name="battery_step1_msg">Sem isso, o Android corta a internet do app quando a tela apaga e o bot para de responder. Toque no botão e escolha “Permitir”.</string>
+    <string name="battery_step1_ok">Pronto! O app já está liberado da otimização de bateria.</string>
+    <string name="battery_step1_button">Liberar agora</string>
+    <string name="battery_step2_title">2. Economia de energia da %1$s</string>
+    <string name="battery_step2_msg">Muitas marcas têm um economizador próprio que fecha apps mesmo depois do passo 1. Siga o passo a passo:</string>
+    <string name="battery_open_app_settings">Abrir as configurações do app</string>
+    <string name="battery_more_info">Ver guia completo (dontkillmyapp.com)</string>
+    <string name="battery_open_guide">Ver como resolver</string>
+    <string name="battery_test_tip">Dica: depois de configurar, ligue o bot, apague a tela por uns 30 minutos e mande um comando para ele. Se responder, está tudo certo.</string>
+
+    <string-array name="guide_generic">
+        <item>Toque em “Abrir as configurações do app”.</item>
+        <item>Entre em Bateria (ou Uso da bateria).</item>
+        <item>Escolha “Sem restrições” (ou “Não otimizar”).</item>
+        <item>Se houver a opção “Permitir atividade em segundo plano”, deixe ligada.</item>
+    </string-array>
+    <string-array name="guide_xiaomi">
+        <item>Toque em “Abrir as configurações do app”.</item>
+        <item>Ative “Início automático” (Autostart).</item>
+        <item>Entre em “Economia de bateria” e escolha “Sem restrições”.</item>
+        <item>Abra os apps recentes, segure o Easy Telebot e toque no cadeado para travá-lo.</item>
+    </string-array>
+    <string-array name="guide_samsung">
+        <item>Toque em “Abrir as configurações do app”.</item>
+        <item>Entre em Bateria e escolha “Sem restrições”.</item>
+        <item>Em Configurações › Bateria › Limites de uso em segundo plano, confira se o Easy Telebot NÃO está em “Apps em suspensão” nem em “Apps em suspensão profunda”.</item>
+        <item>Se puder, adicione o app em “Apps que nunca entram em suspensão”.</item>
+    </string-array>
+    <string-array name="guide_huawei">
+        <item>Vá em Configurações › Bateria › Inicialização de apps.</item>
+        <item>Encontre o Easy Telebot e desligue “Gerenciar automaticamente”.</item>
+        <item>Na janela que abrir, ative as três opções: início automático, início secundário e executar em segundo plano.</item>
+        <item>Nos apps recentes, puxe o Easy Telebot para baixo para travá-lo.</item>
+    </string-array>
+    <string-array name="guide_oneplus">
+        <item>Toque em “Abrir as configurações do app”.</item>
+        <item>Entre em Uso da bateria e escolha “Sem restrições” (ou “Não otimizar”).</item>
+        <item>Ative “Permitir atividade em segundo plano” e “Início automático”, se existirem.</item>
+        <item>Nos apps recentes, trave o Easy Telebot (ícone de cadeado).</item>
+    </string-array>
+    <string-array name="guide_oppo">
+        <item>Toque em “Abrir as configurações do app”.</item>
+        <item>Entre em Uso da bateria e ative “Permitir atividade em segundo plano” e “Permitir início automático”.</item>
+        <item>Em Configurações › Bateria, desligue a otimização para o Easy Telebot.</item>
+        <item>Nos apps recentes, trave o Easy Telebot (ícone de cadeado).</item>
+    </string-array>
+    <string-array name="guide_vivo">
+        <item>Vá em Configurações › Bateria › Consumo de energia em segundo plano.</item>
+        <item>Permita alto consumo em segundo plano para o Easy Telebot.</item>
+        <item>Em i Manager › Gerenciador de apps › Início automático, ative o Easy Telebot.</item>
+        <item>Nos apps recentes, trave o Easy Telebot.</item>
+    </string-array>
+
+    <!-- Erros explicados -->
+    <string name="err_retry_in">Vou tentar de novo sozinho em %1$d segundos.</string>
+    <string name="err_detail">Detalhe técnico: %1$s</string>
+
+    <string name="err_token_format_title">Isso não parece um token</string>
+    <string name="err_token_format_msg">O token tem o formato 123456789:AAH… (números, dois-pontos e uma sequência longa de letras). Confira se você copiou a linha inteira, sem espaços.</string>
+
+    <string name="err_invalid_token_title">Token recusado pelo Telegram</string>
+    <string name="err_invalid_token_msg">O Telegram não reconheceu esse token. Pode ter sido digitado errado ou trocado (revogado) no @BotFather. Pegue o token atual assim:</string>
+
+    <string name="err_network_title">Sem conexão com o Telegram</string>
+    <string name="err_network_msg">Não consegui falar com o Telegram. Confira se o celular está com internet (Wi-Fi ou dados móveis). Não precisa fazer nada no app: assim que a internet voltar, o bot volta sozinho.</string>
+
+    <string name="err_conflict_title">O bot está ligado em outro lugar</string>
+    <string name="err_conflict_msg">O Telegram só deixa um programa por vez receber as mensagens de um bot, e outro já está fazendo isso.</string>
+    <string-array name="err_conflict_steps">
+        <item>Veja se o mesmo bot não está ligado em outro celular ou computador e desligue-o lá.</item>
+        <item>Se você não reconhece esse outro lugar, troque o token no @BotFather (/mybots › API Token › Revoke) e cole o novo aqui.</item>
+    </string-array>
+
+    <string name="err_webhook_title">O bot está configurado com webhook</string>
+    <string name="err_webhook_msg">Esse bot foi configurado antes para mandar as mensagens para um servidor (webhook). Enquanto isso estiver ativo, o app não consegue recebê-las. Toque no botão abaixo para remover o webhook e usar o bot aqui.</string>
+
+    <string name="err_chat_not_found_title">Conversa ou grupo não encontrado</string>
+    <string name="err_chat_not_found_msg">O ID do chat está errado ou o bot não faz parte desse grupo/canal. Adicione o bot ao grupo e tente de novo.</string>
+
+    <string name="err_cant_initiate_title">O bot não pode puxar conversa</string>
+    <string name="err_cant_initiate_msg">No Telegram, um bot só pode mandar mensagem para quem falou com ele primeiro. A pessoa precisa abrir o bot e mandar /start.</string>
+
+    <string name="err_blocked_title">A pessoa bloqueou o bot</string>
+    <string name="err_blocked_msg">Essa pessoa bloqueou o bot, então ele não consegue mais mandar mensagens para ela. Nada a fazer do seu lado.</string>
+
+    <string name="err_rights_title">O bot não tem permissão nesse grupo</string>
+    <string name="err_rights_msg">O bot não tem permissão para mandar mensagens nesse grupo ou canal.</string>
+    <string-array name="err_rights_steps">
+        <item>Abra o grupo/canal no Telegram e toque no nome dele.</item>
+        <item>Vá em Administradores › Adicionar administrador e escolha o seu bot.</item>
+        <item>Ative a permissão de enviar/publicar mensagens e salve.</item>
+    </string-array>
+
+    <string name="err_429_title">Muitas mensagens em pouco tempo</string>
+    <string name="err_429_msg">O Telegram pediu para o bot esperar um pouco antes de mandar mais mensagens. O app espera o tempo pedido e continua sozinho.</string>
+
+    <string name="err_parse_title">O Telegram recusou o texto da resposta</string>
+    <string name="err_parse_msg">Isso não deveria acontecer. O texto recusado foi salvo no registro; se puder, avise o desenvolvedor mostrando essa linha.</string>
+
+    <string name="err_killed_title">O Android desligou o bot</string>
+    <string name="err_killed_msg">O bot estava ligado, mas o sistema fechou o app sem você pedir (geralmente para economizar bateria). Libere o app da economia de bateria para isso não acontecer de novo.</string>
+
+    <string name="err_unknown_title">Aconteceu um erro inesperado</string>
+    <string name="err_unknown_msg">Algo deu errado e não reconheci o problema. Tente de novo; se continuar, avise o desenvolvedor com o detalhe abaixo.</string>
+    <!-- Geral (v0.2) -->
+    <string name="add">Adicionar</string>
+    <string name="remove">Remover</string>
+    <string name="delete">Excluir</string>
+    <string name="discard">Descartar</string>
+    <string name="try_again">Tentar de novo</string>
+
+    <string name="elapsed_now">menos de 1 min</string>
+    <string name="elapsed_min">%1$d min</string>
+    <string name="elapsed_hours">%1$d h %2$d min</string>
+    <string name="elapsed_days">%1$d d %2$d h</string>
+    <string name="state_running_for">Ligado há %1$s</string>
+
+    <!-- Tela inicial (vários bots) -->
+    <string name="home_add_bot">Adicionar bot</string>
+    <string name="home_add_bot_sub">Cole o token de um bot criado no @BotFather</string>
+    <string name="home_no_bots">Você ainda não tem bots. Toque em “Adicionar bot” para começar.</string>
+    <string name="token_ok_existing">Esse bot já está no app. Vamos só atualizar o token dele.</string>
+    <string name="token_update">Atualizar token</string>
+
+    <string name="notif_one_running">%1$s ativo — %2$d mensagens hoje</string>
+    <string name="notif_many_running">%1$d bots ativos — %2$d mensagens hoje</string>
+    <string name="notif_all_ok">Tudo funcionando. Toque para abrir.</string>
+
+    <!-- Configurações do bot -->
+    <string name="bot_add">Adicionar</string>
+    <string name="bot_section_commands">Comandos</string>
+    <string name="bot_section_settings">Configurações</string>
+    <string name="bot_auto_menu">Menu de comandos automático</string>
+    <string name="bot_auto_menu_sub">Mostra os comandos no botão “Menu” do Telegram e quando a pessoa digita “/”. Desligado, o menu fica vazio.</string>
+    <string name="bot_profile">Perfil do bot</string>
+    <string name="bot_profile_sub">Foto, nome, “sobre” e descrição</string>
+    <string name="bot_export">Exportar código-fonte</string>
+    <string name="bot_export_sub">Baixe o bot completo (.zip) para rodar no computador ou servidor e modificar como quiser</string>
+    <string name="bot_delete">Remover bot</string>
+    <string name="bot_delete_sub">Apaga do app este bot, os comandos e o token (o bot continua existindo no Telegram)</string>
+    <string name="bot_delete_confirm_title">Remover %1$s?</string>
+    <string name="bot_delete_confirm_msg">O bot será desligado e os comandos, mídias e o token dele serão apagados deste celular. Se quiser guardar uma cópia, use “Exportar código-fonte” antes. O bot continua existindo no Telegram.</string>
+
+    <string name="add_title">O que você quer adicionar?</string>
+    <string name="add_simple_command">Comando simples</string>
+    <string name="add_simple_command_sub">Um ou mais comandos (ex.: /start e /iniciar) que respondem com uma ou mais mensagens: texto formatado, fotos, vídeos, arquivos e botões com links.</string>
+    <string name="add_more_soon">Em breve: boas-vindas, palavras-chave, mensagens agendadas e mais.</string>
+    <string name="add_admin_command">Comando de admin</string>
+    <string name="add_admin_command_sub">Igual ao comando simples, mas só administradores da classe escolhida (ou acima) podem usar. Para os outros, o bot não responde nada.</string>
+    <string name="add_admin">Adicionar administrador</string>
+    <string name="add_admin_sub">Gera um código secreto para alguém virar admin do bot pelo Telegram.</string>
+
+    <string name="export_explain">O arquivo .zip traz o motor do bot (o mesmo código Python que roda aqui), seus comandos, as mídias e um run.py. Para usar: descompacte e rode “python3 run.py” em qualquer computador com Python 3.9+. Lembre de desligar o bot no celular antes, pois ele só pode rodar em um lugar por vez.</string>
+    <string name="export_include_token">Incluir o token no arquivo</string>
+    <string name="export_token_warning">Quem tiver esse arquivo vai controlar o seu bot. Não compartilhe com ninguém.</string>
+    <string name="export_save">Escolher onde salvar</string>
+    <string name="export_done">Código-fonte exportado!</string>
+    <string name="export_failed">Não foi possível salvar o arquivo. Tente escolher outra pasta.</string>
+
+    <!-- Editor de comando -->
+    <string name="cmd_triggers">Comandos que ativam esta resposta</string>
+    <string name="cmd_triggers_help">Digite e toque em Adicionar. Pode ter mais de um, por exemplo /start e /iniciar.</string>
+    <string name="cmd_show_in_menu">Mostrar no menu</string>
+    <string name="cmd_show_in_menu_sub">Aparece no menu do Telegram (usa o primeiro comando e a descrição)</string>
+    <string name="cmd_messages_title">Mensagens enviadas</string>
+    <string name="cmd_message_n">Mensagem %1$d</string>
+    <string name="cmd_add_message">Adicionar mensagem</string>
+    <string name="cmd_messages_help">As mensagens são enviadas nesta ordem. Formatação: *negrito*, _itálico_, __sublinhado__, ~riscado~, ||spoiler||, `código`, [texto](link) e “> ” no começo da linha para citação. Os botões acima do texto fazem isso para você.</string>
+    <string name="cmd_text">Texto</string>
+    <string name="cmd_caption">Legenda (opcional)</string>
+    <string name="cmd_caption_too_long">Legendas vão até 1024 caracteres. O texto será enviado numa mensagem separada, logo depois da mídia.</string>
+    <string name="cmd_link_preview">Mostrar prévia dos links do texto</string>
+    <string name="cmd_saved">Comando salvo</string>
+    <string name="cmd_err_title">Falta pouco! Corrija antes de salvar:</string>
+    <string name="cmd_err_no_trigger">Adicione pelo menos um comando (ex.: start).</string>
+    <string name="cmd_err_trigger_taken">/%1$s já é usado por outro comando deste bot.</string>
+    <string name="cmd_err_no_message">Escreva um texto ou anexe uma mídia em pelo menos uma mensagem.</string>
+    <string name="cmd_err_too_long">Mensagem %1$d: o texto passa do limite do Telegram (4096 caracteres, ou 1024 numa legenda).</string>
+    <string name="cmd_err_button">Mensagem %1$d: algum botão está sem nome ou com o valor inválido (marcado em vermelho).</string>
+    <string name="cmd_discard_title">Salvar as alterações?</string>
+    <string name="cmd_discard_msg">Você mudou este comando e ainda não salvou.</string>
+    <string name="cmd_delete_title">Excluir este comando?</string>
+    <string name="cmd_delete_msg">O comando e as mídias dele serão apagados. Não dá para desfazer.</string>
+
+    <string name="fmt_spoiler">Spoiler</string>
+    <string name="fmt_link">Link</string>
+    <string name="fmt_quote">Citação</string>
+
+    <string name="media_attach">Anexar foto, vídeo, áudio ou arquivo</string>
+    <string name="media_photo">Foto</string>
+    <string name="media_video">Vídeo</string>
+    <string name="media_animation">GIF</string>
+    <string name="media_audio">Áudio</string>
+    <string name="media_voice">Mensagem de voz</string>
+    <string name="media_document">Arquivo</string>
+    <string name="media_as_document">Enviar como arquivo (sem compressão)</string>
+    <string name="media_import_failed">Não foi possível ler esse arquivo. Tente outro.</string>
+
+    <string name="btn_title">Botões embaixo da mensagem</string>
+    <string name="btn_add">Adicionar botão</string>
+    <string name="btn_text">Texto do botão</string>
+    <string name="btn_url">Link, canal ou grupo</string>
+    <string name="btn_url_invalid">Use um link (https://…), t.me/… ou @canal</string>
+    <string name="btn_same_row">Na mesma linha do botão anterior</string>
+
+    <plurals name="cmd_messages_count">
+        <item quantity="one">%d mensagem</item>
+        <item quantity="other">%d mensagens</item>
+    </plurals>
+    <plurals name="cmd_media_count">
+        <item quantity="one">%d mídia</item>
+        <item quantity="other">%d mídias</item>
+    </plurals>
+    <plurals name="cmd_buttons_count">
+        <item quantity="one">%d botão</item>
+        <item quantity="other">%d botões</item>
+    </plurals>
+
+    <!-- Perfil -->
+    <string name="profile_loading">Buscando o perfil no Telegram…</string>
+    <string name="profile_photo">Foto de perfil</string>
+    <string name="profile_change_photo">Trocar foto</string>
+    <string name="profile_name">Nome</string>
+    <string name="profile_name_hint">Nome exibido do bot.</string>
+    <string name="profile_about">Sobre</string>
+    <string name="profile_about_hint">Aparece no perfil do bot e quando alguém compartilha o bot.</string>
+    <string name="profile_description">Descrição</string>
+    <string name="profile_description_hint">Aparece na conversa vazia, antes de a pessoa tocar em Iniciar.</string>
+    <string name="profile_save">Salvar no Telegram</string>
+    <string name="profile_saved">Perfil atualizado! Pode levar alguns minutos para aparecer no Telegram de todo mundo.</string>
+    <string name="profile_username_note">O usuário @%1$s só pode ser trocado pelo @BotFather (/mybots › Edit Bot).</string>
+
+    <!-- Erros novos -->
+    <string name="err_media_title">O Telegram recusou a mídia</string>
+    <string name="err_media_msg">O arquivo pode estar corrompido, ser grande demais (até 50 MB, fotos até 10 MB) ou ter um formato que o Telegram não aceita desse jeito. Tente marcar “Enviar como arquivo” ou escolher outro arquivo.</string>
+    <string name="err_media_missing_title">Arquivo de mídia não encontrado</string>
+    <string name="err_media_missing_msg">O arquivo anexado a esta mensagem sumiu do celular. Abra o comando e anexe a mídia de novo.</string>
+    <string name="err_too_long_title">Texto longo demais</string>
+    <string name="err_too_long_msg">O Telegram aceita até 4096 caracteres por mensagem (1024 em legendas). Encurte o texto ou divida em mais mensagens.</string>
+    <string name="err_button_url_title">Link de botão inválido</string>
+    <string name="err_button_url_msg">Algum botão tem um link que o Telegram não aceita. Confira se começa com https:// ou se é um t.me/… ou @canal que existe.</string>
+    <string name="err_photo_unsupported_title">Troque a foto pelo @BotFather</string>
+    <string name="err_photo_unsupported_msg">O Telegram ainda não deixa um bot trocar a própria foto pelo app. Leva menos de um minuto pelo @BotFather:</string>
+    <string-array name="botfather_photo_steps">
+        <item>Abra o @BotFather e mande /setuserpic.</item>
+        <item>Escolha este bot na lista.</item>
+        <item>Envie a foto nova (como foto, não como arquivo).</item>
+        <item>Volte aqui e abra o perfil de novo para ver a foto atualizada.</item>
+    </string-array>
+    <string name="err_wrong_bot_title">Esse token é de outro bot</string>
+    <string name="err_wrong_bot_msg">O token que você colou pertence a outro bot. Para trocar o token deste bot, pegue o token dele no @BotFather (/mybots › escolha o bot › API Token). Se quiser adicionar o outro bot, use “Adicionar bot” na tela inicial.</string>
+    <!-- Administradores -->
+    <string name="admins_title">Administradores</string>
+    <string name="bot_admins_sub">Quem pode usar os comandos de admin, e em qual classe</string>
+    <string name="admins_intro">Administradores têm classes de I a X. A classe I é a mais alta e pode tudo. Uma classe pode usar os comandos dela e das classes abaixo: a classe III usa os comandos de III, IV, V…, mas não os de II e I. Pode haver quantos admins quiser em cada classe.</string>
+    <string name="admins_add">Adicionar administrador</string>
+    <string name="admins_list_title">Administradores (%1$d)</string>
+    <string name="admins_empty">Ninguém ainda. Toque em “Adicionar administrador” para gerar um código.</string>
+    <string name="admin_choose_class">Classe do novo admin</string>
+    <string name="admin_continue">Continuar</string>
+    <string name="admin_class_explain_top">Classe I: a mais alta. Pode usar todos os comandos de admin.</string>
+    <string name="admin_class_explain">Classe %1$s: usa os comandos de classe %1$s a %2$s. Não usa os comandos de classe %3$s.</string>
+    <string name="admin_class_n">Classe %1$s</string>
+    <string name="admin_class_short">Classe</string>
+    <string name="admin_badge_prefix">Admin</string>
+    <string name="admin_auth_title">Confirme que é você</string>
+    <string name="admin_auth_subtitle">Para gerar um código de administrador de %1$s</string>
+    <string name="admin_no_lock_title">Ative o bloqueio de tela</string>
+    <string name="admin_no_lock_msg">Por segurança, só é possível criar administradores em um celular com bloqueio de tela (PIN, padrão, senha ou digital). Assim, ninguém que pegue seu celular desbloqueado por um instante consegue virar admin do seu bot.</string>
+    <string name="admin_open_security">Abrir configurações de segurança</string>
+    <string name="admin_code_title">Código de admin — classe %1$s</string>
+    <string name="admin_code_steps">Quem vai ser admin deve abrir a conversa privada com @%1$s e mandar exatamente esta mensagem:</string>
+    <string name="admin_code_expires">Expira em %1$d:%2$02d. Só funciona uma vez.</string>
+    <string name="admin_code_copy">Copiar mensagem</string>
+    <string name="admin_code_copied">Copiado! Cole na conversa com o bot.</string>
+    <string name="admin_code_open_bot">Abrir o bot</string>
+    <string name="admin_code_cancel">Cancelar código</string>
+    <string name="admin_code_bot_off">O bot está desligado. Ligue-o para ele receber o código.</string>
+    <string name="admin_code_warning">Não compartilhe este código em grupos: quem mandar primeiro vira admin. Em grupos o bot ignora o comando. Depois de usado, o bot tenta apagar a mensagem com o código.</string>
+    <string name="admin_success">%1$s agora é administrador (classe %2$s)!</string>
+    <string name="admin_added_on">Admin desde %1$s</string>
+    <string name="admin_change_class">Mudar classe</string>
+    <string name="admin_remove_title">Remover %1$s dos administradores?</string>
+    <string name="admin_remove_msg">A pessoa deixa de poder usar os comandos de admin na hora. Para voltar, é preciso gerar um código novo.</string>
+
+    <string name="cmd_new_admin">Novo comando de admin</string>
+    <string name="cmd_admin_only">Comando de administrador</string>
+    <string name="cmd_admin_only_sub">Só admins podem usar. Para quem não é admin, o bot não responde nada (o comando parece não existir).</string>
+    <string name="cmd_admin_level">Classe necessária</string>
+    <string name="cmd_admin_level_explain_top">Só admins de classe I podem usar.</string>
+    <string name="cmd_admin_level_explain">Podem usar: classes %1$s. Não podem: classes %2$s.</string>
+    <string name="cmd_show_in_menu_admin_sub">Aparece só no menu dos admins que podem usar (na conversa privada com o bot)</string>
+    <string name="cmd_err_reserved">/%1$s é um comando reservado do app (usado para adicionar admins).</string>
+
+    <string name="log_admin_added">%1$s virou administrador (classe %2$s).</string>
+    <string name="log_denied">%1$s tentou usar /%2$s, mas não é admin. Nada foi respondido.</string>
+    <string name="log_denied_level">%1$s (classe %3$s) tentou usar /%2$s, que exige classe %4$s. Nada foi respondido.</string>
+    <string name="log_newadmin_empty">%1$s mandou /newadmin sem código. Nada foi respondido.</string>
+    <string name="log_newadmin_invalid">%1$s mandou /newadmin com um código inválido ou vencido. Nada foi respondido.</string>
+    <string name="log_newadmin_group">%1$s mandou /newadmin em um grupo. Ignorado: só vale em conversa privada.</string>
+    <!-- Banco de dados -->
+    <string name="storage_title">Banco de dados</string>
+    <string name="bot_storage_sub">Onde o bot guarda usuários, histórico e backup: %1$s</string>
+    <string name="storage_intro">O bot pode guardar quem falou com ele (base para recursos futuros, como mandar avisos para todos) e o histórico de mensagens. O banco também guarda um backup dos seus comandos e administradores, para recuperar o bot em outro celular ou no computador.</string>
+    <string name="storage_users">Guardar usuários</string>
+    <string name="storage_users_sub">Nome, @usuário, ID, primeira e última vez que falou com o bot e quantas mensagens mandou</string>
+    <string name="storage_history">Guardar as mensagens</string>
+    <string name="storage_history_sub">Cada mensagem recebida e enviada pelo bot (texto, tipo, quem mandou, onde, se foi resposta automática ou enviada por você). Ocupa mais espaço; avise seus usuários que as conversas ficam guardadas.</string>
+    <string name="storage_where">Onde guardar</string>
+    <string name="storage_type_internal">Interno do app</string>
+    <string name="storage_type_internal_sub">Neste celular, numa pasta só do app. Simples e sem configuração.</string>
+    <string name="storage_type_device">Pasta do aparelho</string>
+    <string name="storage_type_device_sub">Arquivos JSON numa pasta que você vê no gerenciador de arquivos (/sdcard). Precisa de “acesso a todos os arquivos”.</string>
+    <string name="storage_type_firebase">Firebase Realtime Database</string>
+    <string name="storage_type_firebase_sub">Banco na nuvem do Google/Firebase. Bom plano grátis. Precisa da URL do banco.</string>
+    <string name="storage_type_firestore">Firestore (Firebase / Google Cloud)</string>
+    <string name="storage_type_firestore_sub">Cloud Firestore com uma conta de serviço (arquivo .json). Funciona com projetos Firebase e Google Cloud.</string>
+    <string name="storage_type_dynamodb">AWS DynamoDB</string>
+    <string name="storage_type_dynamodb_sub">Banco da Amazon. Precisa de uma chave de acesso; o app cria a tabela sozinho.</string>
+    <string name="storage_internal_info">Os dados ficam em uma pasta interna do app. Atenção: se você desinstalar o app ou limpar os dados dele, eles são apagados. Use o backup em um banco na nuvem se quiser guardar uma cópia.</string>
+    <string name="storage_device_path">Pasta</string>
+    <string name="storage_files_ok">Acesso a todos os arquivos liberado.</string>
+    <string name="storage_files_needed">Para gravar fora da pasta do app, o Android exige a permissão “Acesso a todos os arquivos”.</string>
+    <string name="storage_files_grant">Permitir acesso aos arquivos</string>
+    <string name="storage_device_info">Os dados continuam lá mesmo se você desinstalar o app, e dá para copiar a pasta para o computador. Outros apps com acesso a arquivos também conseguem ler essa pasta.</string>
+    <string name="storage_firebase_url">URL do Realtime Database</string>
+    <string name="storage_firebase_secret">Segredo do banco (opcional)</string>
+    <string name="storage_sa_none">Nenhuma conta de serviço escolhida.</string>
+    <string name="storage_sa_loaded">Projeto: %1$s\nConta: %2$s</string>
+    <string name="storage_sa_pick">Escolher arquivo .json da conta de serviço</string>
+    <string name="storage_sa_change">Trocar arquivo .json</string>
+    <string name="storage_sa_invalid">O arquivo escolhido não é o JSON de uma conta de serviço do Google (precisa ter client_email, private_key e project_id).</string>
+    <string name="storage_firestore_db">ID do banco</string>
+    <string name="storage_firestore_db_hint">Deixe (default), a não ser que você tenha criado outro banco no projeto.</string>
+    <string name="storage_aws_access">ID da chave de acesso</string>
+    <string name="storage_aws_secret">Chave de acesso secreta</string>
+    <string name="storage_aws_region">Região</string>
+    <string name="storage_aws_region_hint">Ex.: sa-east-1 (São Paulo), us-east-1 (Virgínia)</string>
+    <string name="storage_aws_table">Tabela</string>
+    <string name="storage_aws_table_hint">Se não existir, o app cria ao tocar em Testar (cobrança só pelo uso).</string>
+    <string name="storage_help_title">Como conseguir esses dados</string>
+    <string name="storage_test">Testar conexão</string>
+    <string name="storage_test_ok">Conexão funcionando! O app gravou, leu e apagou um dado de teste.</string>
+    <string name="storage_test_ok_created">Conexão funcionando! A tabela não existia e foi criada.</string>
+    <string name="storage_saved">Banco de dados salvo</string>
+    <string name="storage_working">Falando com o banco…</string>
+    <string name="storage_data">Seus dados</string>
+    <string name="storage_save_first">Salve as alterações antes de usar o backup ou ver os dados.</string>
+    <string name="storage_backup_info">O backup guarda os comandos (com textos, botões e configurações) e os administradores deste bot no banco escolhido. As mídias não vão no backup.</string>
+    <string name="storage_backup">Fazer backup</string>
+    <string name="storage_backup_ok">Backup feito: %1$d comando(s) e %2$d administrador(es).</string>
+    <string name="storage_restore">Restaurar</string>
+    <string name="storage_restore_title">Restaurar o último backup?</string>
+    <string name="storage_restore_msg">Os comandos e administradores atuais deste bot serão substituídos pelos do backup. Mídias que não estiverem neste celular precisarão ser anexadas de novo.</string>
+    <string name="storage_restore_ok">Backup de %1$s restaurado: %2$d comando(s) e %3$d administrador(es).</string>
+    <string name="storage_view_users">Ver usuários salvos</string>
+    <string name="storage_users_title">Usuários (%1$d)</string>
+    <string name="storage_users_empty">Ninguém ainda. Os usuários aparecem aqui depois que mandarem mensagem para o bot ligado.</string>
+    <string name="storage_user_line">%1$sID %2$d · %3$d mensagens · última vez %4$s</string>
+    <string name="log_storage_ok">Banco de dados voltou a funcionar.</string>
+
+    <string-array name="storage_firebase_steps">
+        <item>Entre em console.firebase.google.com e crie (ou abra) um projeto.</item>
+        <item>No menu, vá em Criação › Realtime Database › Criar banco de dados.</item>
+        <item>Copie a URL que aparece no topo (termina em firebaseio.com ou firebasedatabase.app) e cole aqui.</item>
+        <item>Segredo: Configurações do projeto (engrenagem) › Contas de serviço › Chaves secretas do banco de dados › Mostrar. Cole no campo “Segredo do banco”.</item>
+        <item>Sem segredo, o banco só funciona se as regras dele permitirem acesso público — não recomendado.</item>
+    </string-array>
+    <string-array name="storage_firestore_steps">
+        <item>No console do Firebase (ou do Google Cloud), abra o projeto e crie o banco em Firestore Database › Criar banco de dados (modo nativo).</item>
+        <item>Vá em Configurações do projeto › Contas de serviço › Gerar nova chave privada. Um arquivo .json será baixado.</item>
+        <item>No Google Cloud, a conta precisa do papel “Usuário do Cloud Datastore” (ou Editor). As contas criadas pelo Firebase já têm.</item>
+        <item>Toque em “Escolher arquivo .json” e selecione o arquivo baixado. Ele fica guardado cifrado neste celular.</item>
+    </string-array>
+    <string-array name="storage_aws_steps">
+        <item>No console da AWS, abra o IAM › Usuários › Criar usuário (ex.: easytelebot).</item>
+        <item>Dê a permissão AmazonDynamoDBFullAccess (ou uma política só para a tabela do bot).</item>
+        <item>No usuário criado, vá em Credenciais de segurança › Criar chave de acesso › “Aplicação executada fora da AWS”.</item>
+        <item>Copie o ID da chave e a chave secreta para os campos acima. A chave secreta só aparece uma vez na AWS.</item>
+        <item>Escolha a região e toque em Testar: se a tabela não existir, o app cria.</item>
+    </string-array>
+
+    <string name="err_storage_config_title">Falta configurar o banco de dados</string>
+    <string name="err_storage_config_msg">Algum campo do banco está vazio ou num formato que não reconhecemos. Confira os dados na tela Banco de dados.</string>
+    <string name="err_storage_auth_title">O banco de dados recusou o acesso</string>
+    <string name="err_storage_auth_msg">A credencial (segredo, conta de serviço ou chave da AWS) está errada, foi revogada ou não tem permissão para esse banco.</string>
+    <string-array name="err_storage_auth_steps">
+        <item>Confira se copiou a credencial inteira, sem espaços.</item>
+        <item>Firebase: confira o segredo do banco ou as regras de acesso.</item>
+        <item>Firestore: confira o papel da conta de serviço e se a API do Firestore está ativada no projeto.</item>
+        <item>AWS: confira se o usuário tem permissão no DynamoDB e se a chave está ativa.</item>
+    </string-array>
+    <string name="err_storage_not_found_title">Banco de dados não encontrado</string>
+    <string name="err_storage_not_found_msg">O endereço, projeto, banco ou tabela informado não existe (ou ainda não foi criado).</string>
+    <string-array name="err_storage_not_found_steps">
+        <item>Firebase: confira a URL do Realtime Database no console.</item>
+        <item>Firestore: crie o banco em Firestore Database › Criar banco de dados.</item>
+        <item>AWS: confira a região; toque em Testar para o app criar a tabela.</item>
+    </string-array>
+    <string name="err_storage_network_title">Sem conexão com o banco de dados</string>
+    <string name="err_storage_network_msg">Não foi possível falar com o banco. Confira a internet e o endereço. O bot continua respondendo normalmente; só os dados desse período não são gravados.</string>
+    <string name="err_storage_permission_title">Sem permissão para gravar na pasta</string>
+    <string name="err_storage_permission_msg">O Android não deixou o app gravar nessa pasta. Libere o “acesso a todos os arquivos” ou escolha outra pasta.</string>
+    <string name="err_storage_unknown_title">Erro no banco de dados</string>
+    <string name="err_storage_unknown_msg">O banco respondeu com um erro que não reconhecemos. O bot continua funcionando.</string>
+    <!-- Mensagens (mensageiro) -->
+    <string name="chats_title">Mensagens</string>
+    <string name="bot_chats_sub">Converse com quem falou com o bot e envie mensagens em nome dele</string>
+    <string name="bot_chats_unread">%1$d mensagem(ns) não lida(s)</string>
+    <string name="chats_search">Buscar conversa</string>
+    <string name="chats_empty">Nenhuma conversa ainda. Quando alguém mandar mensagem para o bot (com ele ligado), a conversa aparece aqui.</string>
+    <string name="chats_history_note">O Telegram não deixa bots lerem mensagens antigas: as conversas aparecem a partir de agora, enquanto o bot estiver ligado. Ficam guardadas só neste celular.</string>
+    <string name="chat_you_prefix">Bot: </string>
+    <string name="chat_bot_name">Bot</string>
+    <string name="chat_group">Grupo</string>
+    <string name="chat_channel">Canal</string>
+    <string name="chat_open_telegram">Abrir no Telegram</string>
+    <string name="chat_clear">Apagar conversa do app</string>
+    <string name="chat_clear_title">Apagar esta conversa do app?</string>
+    <string name="chat_clear_msg">As mensagens somem só deste celular. No Telegram da pessoa, nada muda.</string>
+    <string name="chat_start_note">Início da conversa salva no app.</string>
+    <string name="chat_source_auto">resposta automática</string>
+    <string name="chat_source_manual">enviada pelo app</string>
+    <string name="chat_edited">editada</string>
+    <string name="chat_deleted">apagada</string>
+    <string name="chat_unsupported">Tipo de mensagem que o app ainda não mostra</string>
+    <string name="chat_download_failed">Não foi possível baixar o arquivo. Confira a internet. Arquivos acima de 20 MB não podem ser baixados por bots.</string>
+    <string name="chat_no_app">Nenhum app do celular consegue abrir esse arquivo.</string>
+    <string name="chat_reply">Responder</string>
+    <string name="chat_copy">Copiar texto</string>
+    <string name="chat_copied">Texto copiado</string>
+    <string name="chat_delete_for_all">Apagar para todos</string>
+    <string name="chat_replying_to">Respondendo a %1$s</string>
+    <string name="chat_as_file">Como arquivo</string>
+    <string name="chat_attach_media">Foto ou vídeo</string>
+    <string name="chat_attach_file">Arquivo</string>
+    <string name="chat_attach_sticker">Figurinha</string>
+    <string name="chat_formatting">Formatação</string>
+    <string name="chat_type_message">Mensagem como o bot</string>
+    <string name="chat_send">Enviar</string>
+    <string name="chat_no_stickers">Nenhuma figurinha nas conversas ainda. Quando alguém mandar uma, ela aparece aqui para você reenviar.</string>
+    <string name="chat_stickers_hint">Figurinhas que já apareceram nas conversas do bot. Ou escolha um arquivo .webp (512×512).</string>
+    <string name="chat_sticker_file">Escolher arquivo</string>
+    <string name="media_sticker">Figurinha</string>
+    <string name="media_location">Localização</string>
+    <string name="media_video_note">Vídeo redondo</string>
+    <!-- Publicação em massa -->
+    <string name="broadcast_title">Publicação em massa</string>
+    <string name="bot_broadcast_sub">Mande a mesma mensagem para todos os usuários, grupos e canais do bot</string>
+    <string name="broadcast_intro">Monte as mensagens e escolha para quem enviar. Os textos aceitam formatação e variáveis: {nome} vira o nome de cada pessoa.</string>
+    <string name="broadcast_targets">Para quem</string>
+    <string name="broadcast_users">Usuários (%1$d)</string>
+    <string name="broadcast_groups">Grupos (%1$d)</string>
+    <string name="broadcast_channels">Canais (%1$d)</string>
+    <string name="broadcast_targets_help">O bot só conhece quem já mandou mensagem para ele e os grupos e canais onde ele foi adicionado (a partir desta versão). Canais: adicione o bot como administrador com permissão de publicar. Se ele já estava no canal, remova e adicione de novo para o app descobrir. Quem bloqueou o bot sai da lista sozinho.</string>
+    <string name="broadcast_messages">Mensagens</string>
+    <string name="broadcast_send">Enviar para %1$d chat(s)</string>
+    <string name="broadcast_bad_buttons">Algum botão está sem texto ou com link inválido.</string>
+    <string name="broadcast_confirm_title">Confirmar publicação</string>
+    <string name="broadcast_confirm_msg">%1$d mensagem(ns) serão enviadas para %2$d chat(s). Depois de enviadas, não dá para desfazer.</string>
+    <string name="broadcast_confirm_code">Para confirmar, digite o código:</string>
+    <string name="broadcast_confirm_type">Código</string>
+    <string name="broadcast_confirm_send">Enviar agora</string>
+    <string name="broadcast_job_running">Enviando publicação…</string>
+    <string name="broadcast_job_done">Última publicação concluída</string>
+    <string name="broadcast_job_cancelled">Última publicação interrompida</string>
+    <string name="broadcast_job_interrupted">Última publicação parou no meio (o app foi fechado)</string>
+    <string name="broadcast_job_counts">Entregues: %1$d de %2$d · Falharam: %3$d</string>
+    <string name="broadcast_job_unreachable">%1$d bloquearam o bot ou o removeram; não receberão as próximas.</string>
+    <string name="broadcast_job_from_app">Enviada pelo app em %1$s</string>
+    <string name="broadcast_job_from_telegram">Enviada pelo Telegram (/post) em %1$s</string>
+    <string name="broadcast_keep_open">O envio respeita os limites do Telegram (cerca de 20 por segundo). Deixe o app aberto ou o bot ligado até terminar.</string>
+    <string name="broadcast_stop">Interromper envio</string>
+    <string name="broadcast_telegram">Pelo Telegram</string>
+    <string name="broadcast_telegram_enable">Permitir %1$s</string>
+    <string name="broadcast_telegram_enable_sub">Admins podem montar e enviar publicações direto do Telegram, sem abrir o app</string>
+    <string name="broadcast_level">Quem pode usar</string>
+    <string name="broadcast_level_top">Só admins de classe I.</string>
+    <string name="broadcast_level_explain">Admins das classes %1$s.</string>
+    <string name="broadcast_how_title">Como funciona</string>
+    <string-array name="broadcast_how_steps">
+        <item>Na conversa privada com o bot, o admin manda /post (ou /publi).</item>
+        <item>Manda as mensagens da publicação como quiser: texto formatado, fotos, vídeos, documentos, álbuns, figurinhas… O bot reage com um \"joinha\" a cada uma.</item>
+        <item>Manda /pronto: o bot mostra a prévia exatamente como vai chegar, quantos destinos existem e um código.</item>
+        <item>Manda /confirmar CÓDIGO para todos, ou /confirmar CÓDIGO usuarios (ou grupos, canais; pode combinar).</item>
+        <item>O bot envia sem mostrar quem escreveu e, no fim, manda um resumo. /cancelar desiste ou interrompe o envio.</item>
+    </string-array>
+    <string name="broadcast_buttons_title">Botões pelo Telegram</string>
+    <string name="broadcast_buttons_help">No Telegram comum não dá para mandar botões, então escreva linhas assim no fim do texto ou da legenda: cada linha vira uma fileira de botões e some do texto. Uma mensagem só com essas linhas coloca os botões na mensagem anterior (útil para foto sem legenda). Álbuns não aceitam botões.</string>
+
+    <string name="log_post_started">%1$s começou a montar uma publicação (/post).</string>
+    <string name="log_broadcast_started">Publicação em massa começou: %1$d chat(s).</string>
+    <string name="log_broadcast_done">Publicação em massa terminou: %1$d de %2$d entregues, %3$d falha(s).</string>
+    <string name="log_user_blocked">%1$s bloqueou o bot.</string>
+    <string name="log_user_unblocked">%1$s desbloqueou o bot.</string>
+    <string name="log_added_to">O bot foi adicionado a “%1$s”.</string>
+    <string name="log_removed_from">O bot foi removido de “%1$s”.</string>
+
+    <string name="err_unreachable_title">O bot não alcança mais esse chat</string>
+    <string name="err_unreachable_msg">O bot foi removido do grupo/canal, não tem permissão para publicar nele, ou a conta da pessoa foi apagada.</string>
+    <string name="err_broadcast_empty_title">A publicação está vazia</string>
+    <string name="err_broadcast_empty_msg">Escreva um texto ou anexe uma mídia em pelo menos uma mensagem.</string>
+    <string name="err_broadcast_no_audience_title">Ninguém para receber</string>
+    <string name="err_broadcast_no_audience_msg">Não há usuários, grupos ou canais do tipo escolhido. Eles aparecem quando falam com o bot ou quando o bot é adicionado a um grupo ou canal.</string>
+    <string name="err_broadcast_busy_title">Já tem uma publicação sendo enviada</string>
+    <string name="err_broadcast_busy_msg">Espere a publicação atual terminar (ou interrompa) antes de começar outra.</string>
+
+    <!-- Antispam -->
+    <string name="antispam_title">Antispam</string>
+    <string name="antispam_intro">Quem mandar mensagens demais em pouco tempo, ou repetir a mesma mensagem várias vezes, é bloqueado na hora: o bot passa a ignorar a pessoa. Você e os admins são avisados e decidem se desbloqueiam ou mantêm o bloqueio. Admins nunca são bloqueados.</string>
+    <string name="antispam_pending_title">Esperando análise (%1$d)</string>
+    <string name="antispam_pending_empty">Nenhum caso esperando análise.</string>
+    <string name="antispam_kept_title">Mantidos bloqueados (%1$d)</string>
+    <string name="antispam_settings">Configuração</string>
+    <string name="antispam_enable">Bloqueio automático</string>
+    <string name="antispam_enable_sub">Desligado, ninguém é bloqueado sozinho (os bloqueios que já existem continuam valendo).</string>
+    <string name="antispam_sensitivity">Sensibilidade</string>
+    <string name="antispam_sens_low">Baixa</string>
+    <string name="antispam_sens_medium">Média</string>
+    <string name="antispam_sens_high">Alta</string>
+    <string name="antispam_sens_low_explain">Bloqueia com mais de 15 mensagens em 10 segundos ou a mesma mensagem 6 vezes em 1 minuto. Para bots muito movimentados.</string>
+    <string name="antispam_sens_medium_explain">Bloqueia com mais de 8 mensagens em 10 segundos ou a mesma mensagem 4 vezes em 1 minuto. Recomendado.</string>
+    <string name="antispam_sens_high_explain">Bloqueia com mais de 5 mensagens em 10 segundos ou a mesma mensagem 3 vezes em 1 minuto. Pode pegar gente apressada; fique de olho nos avisos.</string>
+    <string name="antispam_warn_user">Avisar a pessoa bloqueada</string>
+    <string name="antispam_warn_user_sub">Ela recebe: \"Você foi bloqueado automaticamente… Um administrador vai analisar o caso.\" Se for desbloqueada, também é avisada.</string>
+    <string name="antispam_level">Quem recebe o aviso e pode julgar no Telegram</string>
+    <string name="antispam_footer">No Telegram, cada admin recebe o caso com o motivo, as últimas mensagens e os botões Desbloquear e Manter bloqueado. A decisão de um admin aparece para todos e aqui no app. Em grupo, só contam os comandos mandados ao bot (conversa normal não). Um álbum de fotos conta como uma mensagem só, e repetir o mesmo comando (ex.: /start) não conta como mensagem repetida.</string>
+    <string name="antispam_status_pending">Esperando análise</string>
+    <string name="antispam_status_kept">Mantido</string>
+    <string name="antispam_reason_manual">Bloqueado manualmente pelo app</string>
+    <string name="antispam_in_group">no grupo %1$s</string>
+    <string name="antispam_decided_by">Decisão: %1$s</string>
+    <string name="antispam_samples">Últimas mensagens:</string>
+    <string name="antispam_open_chat">Ver conversa</string>
+    <string name="antispam_release">Desbloquear</string>
+    <string name="antispam_keep">Manter bloqueado</string>
+    <string name="antispam_release_title">Desbloquear %1$s?</string>
+    <string name="antispam_release_msg">O bot volta a responder a pessoa, e ela recebe um aviso de que foi desbloqueada. Os avisos dos admins no Telegram são atualizados.</string>
+    <string name="antispam_release_msg_group">O bot volta a responder a pessoa. Os avisos dos admins no Telegram são atualizados.</string>
+    <string name="bot_antispam_on">Ligado: bloqueia quem inunda o bot</string>
+    <string name="bot_antispam_off">Desligado</string>
+    <string name="bot_antispam_pending">%1$d bloqueio(s) esperando sua análise</string>
+    <string name="chat_block">Bloquear</string>
+    <string name="chat_block_title">Bloquear %1$s?</string>
+    <string name="chat_block_msg">O bot passa a ignorar tudo o que essa pessoa mandar (nenhum comando responde). As mensagens dela continuam aparecendo aqui. Dá para desbloquear quando quiser, aqui ou na tela Antispam.</string>
+    <string name="chat_blocked_title">Bloqueado: o bot está ignorando esta pessoa</string>
+    <string name="alerts_channel">Avisos importantes</string>
+    <string name="alerts_channel_desc">Bloqueios do antispam esperando a sua análise.</string>
+    <string name="alert_spam_title">Spam bloqueado em %1$s</string>
+    <string name="alert_spam_text">%1$s foi bloqueado automaticamente (%2$s). Toque para analisar e decidir.</string>
+    <string name="log_spam_blocked">%1$s bloqueado pelo antispam: %2$s. Admins avisados: %3$d.</string>
+    <string name="log_spam_released">%1$s desbloqueado por %2$s.</string>
+    <string name="log_spam_kept">%1$s mantido bloqueado por %2$s.</string>
+
+    <!-- Vendas e assinaturas -->
+    <string name="shop_title">Vendas</string>
+    <string name="bot_shop_off">Catálogo, pagamentos e assinaturas de canais (desligado)</string>
+    <plurals name="bot_shop_products">
+        <item quantity="one">Loja ligada: %d produto</item>
+        <item quantity="other">Loja ligada: %d produtos</item>
+    </plurals>
+    <string name="add_product">Produto</string>
+    <string name="add_product_sub">Algo para vender: arquivo, curso, link, código… A entrega é automática depois do pagamento.</string>
+    <string name="add_subscription">Assinatura de canal</string>
+    <string name="add_subscription_sub">Acesso pago a um canal ou grupo por um período. O bot convida, lembra de renovar e remove quem não renovou.</string>
+    <string name="shop_tab_products">Produtos</string>
+    <string name="shop_tab_orders">Pedidos</string>
+    <string name="shop_tab_subscribers">Assinantes</string>
+    <string name="shop_tab_settings">Configurar</string>
+    <string name="shop_off_banner">A loja está desligada: o bot não mostra os produtos. Toque para ligar e configurar os pagamentos.</string>
+    <string name="shop_products_empty">Nenhum produto ainda. Crie o primeiro abaixo.</string>
+    <string name="shop_new_product">Produto</string>
+    <string name="shop_new_subscription">Assinatura</string>
+    <string name="shop_stars_n">%1$d estrelas</string>
+    <string name="shop_sub_detail">%1$d dias em %2$s</string>
+    <string name="shop_stock_n">%1$d no estoque</string>
+    <string name="shop_inactive">Pausado</string>
+    <string name="shop_stats_title">Vendas dos últimos 30 dias</string>
+    <string name="shop_stats_count">%1$d pedido(s) pago(s)</string>
+    <string name="shop_orders_empty">Nenhum pedido ainda. Eles aparecem aqui assim que alguém comprar pelo bot.</string>
+    <string name="shop_order_n">Pedido %1$s</string>
+    <string name="shop_delivery_problem">A entrega teve problema: %1$s</string>
+    <string name="shop_confirm_manual">Confirmar pagamento</string>
+    <string name="shop_status_paid">Pago</string>
+    <string name="shop_status_pending">Aguardando</string>
+    <string name="shop_status_expired">Expirado</string>
+    <string name="shop_status_cancelled">Cancelado</string>
+    <string name="shop_status_problem">Entrega pendente</string>
+    <string name="shop_gw_mp">Mercado Pago (link)</string>
+    <string name="shop_gw_pix">Pix (Mercado Pago)</string>
+    <string name="shop_gw_btc">Bitcoin Lightning (Blink)</string>
+    <string name="shop_gw_stars">Telegram Stars</string>
+    <string name="shop_gw_manual">Confirmado manualmente</string>
+    <string name="shop_gw_none">Forma de pagamento ainda não escolhida</string>
+    <string name="shop_subs_summary">%1$d ativa(s) · %2$d encerrada(s)</string>
+    <string name="shop_subs_empty">Ninguém assinou ainda.</string>
+    <string name="shop_sub_active">Ativa</string>
+    <string name="shop_sub_ended">Encerrada</string>
+    <string name="shop_sub_until">Até %1$s</string>
+    <string name="shop_sub_ended_on">Terminou em %1$s</string>
+    <string name="shop_sub_extend">30 dias</string>
+    <string name="shop_sub_remove">Remover</string>
+    <string name="shop_sub_remove_title">Remover %1$s?</string>
+    <string name="shop_sub_remove_msg">A pessoa sai de %1$s agora e é avisada. Ela pode voltar se assinar de novo.</string>
+    <string name="shop_enable">Loja ligada</string>
+    <string name="shop_enable_sub">O bot responde a /loja com o catálogo e vende pelos pagamentos configurados abaixo.</string>
+    <string name="shop_currency">Moeda</string>
+    <string name="shop_currency_hint">Use a moeda da sua conta do Mercado Pago (Brasil = BRL). O Bitcoin é convertido na hora pela cotação do Blink.</string>
+    <string name="shop_intro">Texto de abertura da loja</string>
+    <string name="shop_payments">Pagamentos</string>
+    <string name="shop_gw_mp_title">Mercado Pago</string>
+    <string name="shop_gw_mp_sub">Link de pagamento com Pix, cartão e boleto, ou Pix com QR code no chat.</string>
+    <string name="shop_mp_token">Token de acesso de produção (APP_USR-…)</string>
+    <string name="shop_mp_how">No site do Mercado Pago: Seu negócio, Configurações, Suas integrações (ou mercadopago.com.br/developers), crie uma aplicação e copie o Access Token de produção.</string>
+    <string name="shop_pix">Pix com QR code no chat</string>
+    <string name="shop_pix_sub">O bot manda o QR code e o copia e cola direto na conversa. O Mercado Pago exige um e-mail de pagador: use um e-mail seu.</string>
+    <string name="shop_payer_email">E-mail do pagador para o Pix</string>
+    <string name="shop_gw_blink_title">Bitcoin (Lightning) pelo Blink</string>
+    <string name="shop_gw_blink_sub">O bot gera uma fatura Lightning no valor do pedido, convertido pela cotação do momento, e confere sozinho quando é paga.</string>
+    <string name="shop_blink_key">Chave de API do Blink</string>
+    <string name="shop_blink_how">Em dashboard.blink.sv, entre com a sua conta Blink, abra API Keys e crie uma chave com permissão de leitura e recebimento (Read e Receive). Não marque a de envio (Write).</string>
+    <string name="shop_gw_stars_title">Telegram Stars</string>
+    <string name="shop_gw_stars_sub">Pagamento nativo do Telegram, sem cadastro. Só aparece para produtos com preço em estrelas. Para produtos digitais vendidos dentro do Telegram, as regras do Telegram pedem Stars.</string>
+    <string name="shop_test">Testar</string>
+    <string name="shop_testing">Testando…</string>
+    <string name="shop_test_ok">Conectado: %1$s</string>
+    <string name="shop_show_key">Mostrar</string>
+    <string name="shop_save_keys">Salvar credenciais</string>
+    <string name="shop_keys_note">As credenciais ficam cifradas no celular e só são usadas para falar com o Mercado Pago e o Blink. Ao salvar, o bot é reiniciado se estiver ligado.</string>
+    <string name="shop_miniapp">Vitrine (mini app)</string>
+    <string name="shop_miniapp_enable">Botão Abrir loja</string>
+    <string name="shop_miniapp_enable_sub">Além da lista no chat, o bot mostra um botão que abre a vitrine com fotos, carrinho e quantidades, dentro do próprio Telegram.</string>
+    <string name="shop_store_url">Endereço da vitrine</string>
+    <string name="shop_store_url_hint">A vitrine é uma página fixa (docs/loja no repositório do app) que recebe o catálogo pelo próprio link: não precisa de servidor. Use o endereço padrão ou hospede a página onde quiser (precisa ser https).</string>
+    <string name="shop_notifications">Avisos</string>
+    <string name="shop_notify_level">Quem recebe o aviso de cada venda no Telegram</string>
+    <string name="shop_remind">Lembrar o assinante antes de vencer</string>
+    <string name="shop_remind_off">Não lembrar</string>
+    <string name="shop_how_title">Como as pessoas compram</string>
+    <string-array name="shop_how_steps">
+        <item>A pessoa manda /loja para o bot (ou toca em Loja no menu).</item>
+        <item>Escolhe um produto na lista ou monta o carrinho na vitrine.</item>
+        <item>Escolhe como pagar e paga. O bot confere o pagamento sozinho a cada poucos segundos.</item>
+        <item>Pago: a entrega chega na hora. Na assinatura, chega um convite pessoal para o canal, válido por 24 horas.</item>
+        <item>Você recebe uma notificação no celular e os admins recebem o aviso da venda no Telegram.</item>
+    </string-array>
+    <string name="product_edit_title">Editar produto</string>
+    <string name="product_intro_digital">O que você vende e o que a pessoa recebe assim que o pagamento for confirmado.</string>
+    <string name="product_intro_subscription">Acesso pago a um canal ou grupo. O bot precisa ser administrador lá, com permissão para convidar e remover membros.</string>
+    <string name="product_name">Nome</string>
+    <string name="product_description">Descrição</string>
+    <string name="product_price">Preço (%1$s)</string>
+    <string name="product_stars">Preço em estrelas (opcional)</string>
+    <string name="product_stars_hint">Com preço em estrelas, o produto também pode ser pago com Telegram Stars.</string>
+    <string name="product_channel">Canal ou grupo</string>
+    <string name="product_channel_empty">Nenhum canal ou grupo encontrado. Adicione o bot como administrador no canal ou grupo (com permissão para convidar e banir) e volte aqui.</string>
+    <string name="product_channel_current">Atual: %1$s</string>
+    <string name="product_channel_hint">A lista mostra os canais e grupos em que o bot está. Se o bot já estava num canal antes desta versão, remova e adicione de novo para ele aparecer.</string>
+    <string name="product_days">Duração</string>
+    <string name="product_days_n">%1$d dias</string>
+    <string name="product_days_custom">Dias de acesso</string>
+    <string name="product_photo">Imagem</string>
+    <string name="product_photo_pick">Escolher foto</string>
+    <string name="product_photo_change">Trocar foto</string>
+    <string name="product_photo_invalid">Escolha uma imagem JPG ou PNG.</string>
+    <string name="product_image_url">Link da imagem na vitrine (opcional)</string>
+    <string name="product_image_url_hint">A foto acima aparece no chat. A vitrine não tem acesso aos arquivos do celular: para mostrar imagem lá, cole o link público de uma imagem (https).</string>
+    <string name="product_sale">Venda</string>
+    <string name="product_active">À venda</string>
+    <string name="product_active_sub">Desligado, o produto some da loja (os pedidos antigos continuam).</string>
+    <string name="product_limited">Estoque limitado</string>
+    <string name="product_limited_sub">Ao esgotar, o produto sai da loja sozinho.</string>
+    <string name="product_stock">Unidades à venda</string>
+    <string name="product_delivery">Entrega</string>
+    <string name="product_delivery_hint">Mensagem enviada depois do pagamento: texto, link, arquivo, foto, vídeo, botões. Aceita as variáveis, como {nome}.</string>
+    <string name="product_err_name">Dê um nome ao produto.</string>
+    <string name="product_err_price">Informe o preço (ou o preço em estrelas).</string>
+    <string name="product_err_chat">Escolha o canal ou grupo da assinatura.</string>
+    <string name="product_err_days">A duração precisa ser de 1 a 3650 dias.</string>
+    <string name="product_err_stock">Informe quantas unidades estão à venda.</string>
+    <string name="product_err_delivery">Escreva a mensagem de entrega ou anexe o arquivo que a pessoa vai receber.</string>
+    <string name="product_delete_title">Excluir %1$s?</string>
+    <string name="product_delete_msg">O produto sai da loja. Pedidos e assinaturas que já existem não são apagados.</string>
+    <string name="alert_sale_title">Nova venda em %1$s</string>
+    <string name="alert_sale_text">%1$s de %2$s (pedido %3$s).</string>
+    <string name="alert_sale_text_problem">%1$s de %2$s (pedido %3$s). A entrega teve problema: toque para ver.</string>
+    <string name="log_order_created">Pedido %1$s criado por %2$s: %3$s.</string>
+    <string name="log_sale">Venda: pedido %1$s de %2$s, %3$s.</string>
+    <string name="log_sale_problem">Venda com entrega pendente: pedido %1$s de %2$s, %3$s.</string>
+    <string name="log_sub_expired">Assinatura de %1$s em %2$s terminou; a pessoa foi removida.</string>
+    <string name="log_sub_expired_not_removed">Assinatura de %1$s em %2$s terminou, mas o bot não conseguiu remover a pessoa (falta permissão de banir).</string>
+    <string name="err_pay_config_title">Pagamento sem configuração</string>
+    <string name="err_pay_config_msg">Falta alguma informação do gateway de pagamento (token, chave ou e-mail do Pix). Confira em Vendas, Configurar.</string>
+    <string name="err_pay_auth_title">Credencial de pagamento recusada</string>
+    <string name="err_pay_auth_msg">O Mercado Pago ou o Blink recusou o token ou a chave. Ele pode estar errado, ser de teste, ou ter sido apagado.</string>
+    <string-array name="err_pay_auth_steps">
+        <item>Mercado Pago: use o Access Token de produção (começa com APP_USR-), não o de teste.</item>
+        <item>Blink: a chave precisa ter as permissões Read e Receive.</item>
+        <item>Cole de novo em Vendas, Configurar, e toque em Testar.</item>
+    </string-array>
+    <string name="err_pay_network_title">Sem conexão com o pagamento</string>
+    <string name="err_pay_network_msg">Não foi possível falar com o Mercado Pago ou o Blink. Confira a internet; o bot tenta de novo sozinho.</string>
+    <string name="err_pay_rejected_title">Cobrança recusada pelo gateway</string>
+    <string name="err_pay_rejected_msg">O gateway não aceitou criar a cobrança. Confira se a moeda da loja é a da sua conta e se o valor está dentro dos limites.</string>
+    <string name="err_pay_no_gateway_title">Nenhuma forma de pagamento ativa</string>
+    <string name="err_pay_no_gateway_msg">Alguém tentou comprar, mas nenhum pagamento está ligado e configurado. Ligue o Mercado Pago, o Blink ou o Telegram Stars em Vendas, Configurar.</string>
+    <string name="err_pay_already_title">Pedido já resolvido</string>
+    <string name="err_pay_already_msg">Este pedido já está pago (ou não existe mais).</string>
+    <string name="err_pay_not_found_title">Assinatura não encontrada</string>
+    <string name="err_pay_not_found_msg">Essa assinatura não existe mais. Atualize a lista.</string>
+    <string name="err_pay_invite_title">O bot não conseguiu criar o convite</string>
+    <string name="err_pay_invite_msg">Para vender assinaturas, o bot precisa ser administrador do canal ou grupo com permissão para convidar e banir.</string>
+    <string-array name="err_pay_invite_steps">
+        <item>Abra o canal ou grupo no Telegram e vá em Administradores.</item>
+        <item>Adicione o bot (ou edite) e ligue Convidar usuários via link e Banir usuários.</item>
+        <item>Volte aqui e tente de novo.</item>
+    </string-array>
+    <string name="err_pay_unknown_title">Problema no pagamento</string>
+    <string name="err_pay_unknown_msg">Algo inesperado aconteceu na loja. Os detalhes estão abaixo.</string>
+    <string name="close">Fechar</string>
+    <string name="more">Mais opções</string>
+    <string name="chat_attach">Anexar</string>
+    <string name="cmd_move_up">Mover para cima</string>
+    <string name="cmd_move_down">Mover para baixo</string>
+
+    <!-- Termux e scripts -->
+    <string name="termux_title">Termux e scripts</string>
+    <string name="bot_termux_sub">Comandos em qualquer linguagem de programação e API local para bibliotecas de bot</string>
+    <string name="bot_termux_scripts">%1$d comando(s) de script</string>
+    <string name="bot_termux_api_on">API local ligada na porta %1$d</string>
+    <string name="add_script_command">Comando de script</string>
+    <string name="add_script_command_sub">O comando roda um programa seu no Termux (Python, Node, Bash, Ruby…) e responde com o que ele imprimir.</string>
+    <string name="termux_intro">O Termux é um terminal Linux para Android. Com ele, o bot faz o que você programar: consultar sites e APIs, usar banco de dados, gerar imagens, automatizar o celular… Em qualquer linguagem.</string>
+    <string name="termux_setup">1. Preparar o Termux</string>
+    <string name="termux_installed">Termux instalado</string>
+    <string name="termux_not_installed">Termux não encontrado</string>
+    <string-array name="termux_install_steps">
+        <item>Instale o Termux pelo F-Droid ou pelo GitHub oficial (termux/termux-app). A versão antiga da Play Store não serve.</item>
+        <item>Abra o Termux uma vez e espere a instalação terminar.</item>
+        <item>Instale a linguagem que quiser, por exemplo: pkg install python nodejs</item>
+    </string-array>
+    <string name="termux_check_again">Verificar de novo</string>
+    <string name="termux_external_title">Liberar o Termux para outros apps</string>
+    <string name="termux_external_msg">Por segurança, o Termux só aceita comandos de outros apps depois que você permite. Cole este comando no Termux uma vez:</string>
+    <string-array name="termux_external_steps">
+        <item>Abra o Termux e cole: echo \"allow-external-apps = true\" >> ~/.termux/termux.properties</item>
+        <item>Depois rode: termux-reload-settings (ou feche e abra o Termux).</item>
+        <item>Confira em Termux e scripts se a permissão \"Executar comandos no Termux\" está concedida e toque em Testar.</item>
+        <item>Se o Android estiver economizando bateria do Termux, libere: Configurações, Apps, Termux, Bateria, Sem restrições.</item>
+    </string-array>
+    <string name="termux_permitted">Permissão para executar comandos no Termux concedida</string>
+    <string name="termux_not_permitted">Falta a permissão para executar comandos no Termux</string>
+    <string name="termux_allow">Permitir</string>
+    <string name="termux_allow_hint">Se o Android não mostrar o pedido: Configurações, Apps, Easy Telebot, Permissões, Permissões adicionais, Executar comandos no Termux.</string>
+    <string name="termux_test">Testar o Termux</string>
+    <string name="termux_testing">Testando…</string>
+    <string name="termux_scripts">2. Comandos de script</string>
+    <string name="termux_scripts_msg">Crie um comando e escolha Responder com: Script do Termux. Quando alguém usar o comando, o app roda a sua linha de comando no Termux e manda o que o programa imprimir.</string>
+    <string name="termux_scripts_existing">Comandos de script: %1$s</string>
+    <string name="termux_env_title">O que o script recebe (variáveis de ambiente)</string>
+    <string-array name="termux_env_vars">
+        <item>TELEBOT_ARGS: texto depois do comando (/clima São Paulo -> São Paulo)</item>
+        <item>TELEBOT_UPDATE: a mensagem inteira do Telegram, em JSON</item>
+        <item>TELEBOT_USER_ID, TELEBOT_USER_NAME, TELEBOT_CHAT_ID: quem mandou e onde</item>
+        <item>TELEBOT_ADMIN_LEVEL: classe de admin da pessoa (vazio se não for admin)</item>
+        <item>TELEBOT_DATA: o dado do botão apertado (botões com \"data\")</item>
+        <item>TELEBOT_API: endereço da API local, se estiver ligada (para mandar fotos, arquivos etc.)</item>
+    </string-array>
+    <string name="termux_output_title">O que o script responde</string>
+    <string-array name="termux_output_rules">
+        <item>Texto simples: vira uma mensagem, com a mesma formatação dos comandos (*negrito*, _itálico_, [link](site.com)).</item>
+        <item>JSON: {\"text\": \"...\", \"photo\": \"https://...\", \"buttons\": [[{\"text\": \"Site\", \"url\": \"...\"}, {\"text\": \"Mais\", \"data\": \"pagina2\"}]]}. Também aceita video, document, audio, animation e sticker, e uma lista de objetos para várias mensagens.</item>
+        <item>Botão com \"data\" roda o mesmo script de novo com TELEBOT_DATA. Com \"edit\": true, a resposta edita a mensagem do botão.</item>
+        <item>\"html\": true manda o texto como HTML do Telegram, sem conversão.</item>
+        <item>Nada impresso: nenhuma resposta. Erro (código diferente de 0) aparece no registro do bot com o final do stderr.</item>
+    </string-array>
+    <string name="termux_examples">Exemplos</string>
+    <string name="termux_api">3. API local do bot (avançado)</string>
+    <string name="termux_api_enable">Ligar a API local</string>
+    <string name="termux_api_enable_sub">Para bots inteiros feitos com bibliotecas (python-telegram-bot, aiogram, Telegraf…) rodando no Termux. Elas conversam com o app em vez de com o Telegram, e o app repassa.</string>
+    <string name="termux_api_listening">No ar em 127.0.0.1:%1$d</string>
+    <string name="termux_api_starting">Ligando…</string>
+    <string name="termux_api_bot_off">Liga junto com o bot (o bot está desligado)</string>
+    <string name="termux_port">Porta</string>
+    <string name="termux_port_invalid">Use uma porta de 1024 a 65535.</string>
+    <string name="termux_port_taken">Outro bot já usa essa porta.</string>
+    <string name="termux_forward">O que os scripts recebem</string>
+    <string name="termux_forward_unhandled">O que o app não respondeu</string>
+    <string name="termux_forward_all">Tudo</string>
+    <string name="termux_forward_unhandled_sub">Comandos, loja, antispam e publicação continuam no app. Mensagens livres, comandos que o app não conhece, botões dos seus scripts, pesquisas inline e o resto vão para o script.</string>
+    <string name="termux_forward_all_sub">O script recebe tudo, inclusive o que o app já respondeu (bom para registros e estatísticas). Cuidado para não responder duas vezes.</string>
+    <string name="termux_key">Chave (use no lugar do token)</string>
+    <string name="termux_key_new">Gerar outra chave</string>
+    <string name="termux_key_hint">O token de verdade nunca sai do app. A chave só funciona dentro deste celular (127.0.0.1). Gerar outra desliga os scripts que usam a antiga.</string>
+    <string name="termux_libs">Como usar nas bibliotecas</string>
+    <string name="termux_api_notes">Funciona como a API oficial: getUpdates, sendMessage, sendPhoto com arquivo, download de arquivos… O app não deixa os scripts trocarem o webhook (setWebhook) nem desconectar o bot; deleteWebhook é aceito sem efeito. Quem foi bloqueado pelo antispam não chega aos scripts. As mensagens que os scripts mandam aparecem no mensageiro do app.</string>
+    <string name="termux_keep_alive">Comandos de script não precisam do Termux aberto: o app aciona o Termux na hora. Já um bot feito com biblioteca precisa ficar rodando no Termux: use termux-wake-lock e libere o Termux da economia de bateria.</string>
+    <string name="cmd_response_title">Responder com</string>
+    <string name="cmd_response_messages">Mensagens prontas</string>
+    <string name="cmd_response_script">Script do Termux</string>
+    <string name="cmd_script_command">Linha de comando no Termux</string>
+    <string name="cmd_script_timeout">Tempo máximo</string>
+    <string name="cmd_script_seconds">%1$d s</string>
+    <string name="cmd_script_help">Roda na pasta inicial do Termux. O que o programa imprimir vira a resposta: texto simples ou JSON (veja Termux e scripts, na tela do bot). Os dados da mensagem chegam em variáveis como TELEBOT_ARGS e TELEBOT_UPDATE.</string>
+    <string name="cmd_err_no_script">Escreva a linha de comando que o Termux deve rodar.</string>
+    <string name="copy">Copiar</string>
+    <string name="copied">Copiado</string>
+    <string name="log_local_api_on">API local do Termux no ar na porta %1$d.</string>
+    <string name="log_script_done">/%1$s: script respondeu em %2$s s (%3$d mensagem(ns)).</string>
+    <string name="err_termux_missing_title">Termux não instalado</string>
+    <string name="err_termux_missing_msg">Este comando roda um script no Termux, mas o Termux não está instalado neste celular.</string>
+    <string name="err_termux_permission_title">Sem permissão para usar o Termux</string>
+    <string name="err_termux_permission_msg">O Easy Telebot precisa da permissão \"Executar comandos no Termux\". Conceda em Termux e scripts, na tela do bot.</string>
+    <string name="err_termux_no_answer_title">O Termux não respondeu</string>
+    <string name="err_termux_no_answer_msg">O app pediu para o Termux rodar o script, mas não teve resposta. Normalmente falta liberar o Termux para outros apps (allow-external-apps) ou o Android fechou o Termux para economizar bateria.</string>
+    <string name="err_termux_failed_title">O Termux recusou o comando</string>
+    <string name="err_termux_failed_msg">O Termux não conseguiu rodar o script. Veja o motivo abaixo.</string>
+    <string name="err_termux_exit_title">O script deu erro</string>
+    <string name="err_termux_exit_msg">O programa terminou com erro e o bot não respondeu. O final da saída de erro (stderr) está abaixo; teste o comando direto no Termux para ver tudo.</string>
+    <string name="err_termux_timeout_title">O script demorou demais</string>
+    <string name="err_termux_timeout_msg">O script passou do tempo máximo e foi interrompido. Aumente o tempo no comando ou deixe o script mais rápido.</string>
+    <string name="err_termux_port_title">Porta da API local ocupada</string>
+    <string name="err_termux_port_msg">Outro programa (ou outro bot) já usa essa porta neste celular. Escolha outra em Termux e scripts.</string>
+
+    <!-- Vitrine na nuvem -->
+    <string name="storefront_cloud">Fotos na vitrine (catálogo na nuvem)</string>
+    <string name="storefront_cloud_msg">A vitrine não enxerga os arquivos do celular. Para mostrar as fotos, o app publica o catálogo (um arquivo catalogo.json) num Gist secreto do seu GitHub, e a vitrine lê de lá. Só você pode alterar; quem recebe o link da loja pode ler. Ao salvar ou excluir um produto, o app publica de novo sozinho.</string>
+    <string name="storefront_github_token">Token do GitHub (só permissão de Gists)</string>
+    <string-array name="storefront_github_steps">
+        <item>No GitHub: Settings, Developer settings, Personal access tokens, Tokens (classic), Generate new token (classic).</item>
+        <item>Marque só a permissão gist (nenhuma outra) e escolha a validade.</item>
+        <item>Copie o token (começa com ghp_) e cole aqui.</item>
+    </string-array>
+    <string name="storefront_imgbb_key">Chave do imgbb (opcional)</string>
+    <string name="storefront_imgbb_hint">Sem a chave, as fotos vão como miniaturas dentro do próprio catálogo (cerca de 30 KB cada; bom para até umas 30 fotos). Com uma chave grátis do imgbb (api.imgbb.com, Get API key), as fotos ficam hospedadas lá e o catálogo leva só os links: mais leve e sem limite de fotos.</string>
+    <string name="storefront_not_published">Ainda não publicada: a vitrine abre sem as fotos do celular.</string>
+    <string name="storefront_outdated">Desatualizada: os produtos mudaram depois da última publicação.</string>
+    <string name="storefront_published">Publicada: a vitrine mostra os produtos atuais, com fotos.</string>
+    <string name="storefront_result">Publicado: %1$d produto(s), %2$d KB.</string>
+    <string name="storefront_publish">Publicar vitrine agora</string>
+    <string name="storefront_publishing">Publicando…</string>
+    <string name="storefront_unpublish">Parar de usar o catálogo na nuvem</string>
+    <string name="log_storefront_published">Vitrine publicada: %1$d produto(s).</string>
+    <string name="log_storefront_failed">A vitrine não foi publicada</string>
+    <string name="err_host_config_title">Falta configurar a vitrine</string>
+    <string name="err_host_config_msg">Para publicar a vitrine com fotos, cole o token do GitHub em Vendas, Configurar.</string>
+    <string name="err_host_auth_title">Credencial recusada</string>
+    <string name="err_host_auth_msg">O GitHub ou o imgbb recusou o token ou a chave. Ele pode estar errado, vencido, ou sem a permissão gist.</string>
+    <string name="err_host_network_title">Sem conexão para publicar</string>
+    <string name="err_host_network_msg">Não foi possível falar com o GitHub ou o imgbb. Confira a internet e tente de novo.</string>
+    <string name="err_host_rejected_title">Publicação recusada</string>
+    <string name="err_host_rejected_msg">O serviço não aceitou o arquivo (pode ser grande demais). Com muitas fotos, use a chave do imgbb.</string>
+    <string name="err_host_unknown_title">Problema ao publicar a vitrine</string>
+    <string name="err_host_unknown_msg">Algo inesperado aconteceu. Os detalhes estão abaixo.</string>
+
+    <!-- Fluxos e menus -->
+    <string name="flows_title">Fluxos e menus</string>
+    <string name="bot_flows_sub">Conversas em etapas, menus com botões e perguntas</string>
+    <string name="bot_flows_n">%1$d etapa(s)</string>
+    <string name="add_flow_node">Etapa de fluxo ou menu</string>
+    <string name="add_flow_node_sub">Uma tela da conversa: mensagens com botões que levam a outras etapas, sequências automáticas e perguntas.</string>
+    <string name="flows_intro">Cada etapa é uma \"tela\" da conversa. Ligue as etapas com botões Ir para etapa (menus), com Seguir para (mensagens em sequência) ou com uma pergunta, que espera a resposta da pessoa e guarda numa variável. Para começar um fluxo, crie um comando e escolha Responder com: Fluxo.</string>
+    <string-array name="flows_how">
+        <item>Crie a etapa Menu, com o texto e botões do tipo Ir para etapa (crie antes as etapas de destino, ou volte para ligar depois).</item>
+        <item>Crie as outras etapas. Ligue Editar a mensagem do menu para navegar sem encher o chat.</item>
+        <item>Para perguntar algo, use Depois: Esperar resposta. A resposta vira uma variável, como {cidade}, que pode ser usada nos textos seguintes.</item>
+        <item>Crie um comando (ex.: /start) e escolha Responder com: Fluxo, começando pela etapa Menu.</item>
+    </string-array>
+    <string name="flow_via_button">botão \"%1$s\"</string>
+    <string name="flow_via_command">início: %1$s</string>
+    <string name="flow_via_next">em seguida</string>
+    <string name="flow_via_answer">depois da resposta</string>
+    <string name="flow_via_none">sem comando que inicie</string>
+    <string name="flow_back_to">volta para \"%1$s\"</string>
+    <string name="flow_missing_node">leva a uma etapa que não existe mais (%1$s)</string>
+    <string name="flow_n_messages">%1$d mensagens</string>
+    <string name="flow_asks">pergunta {%1$s}</string>
+    <string name="flow_new_node">Nova etapa</string>
+    <string name="flow_edit_node">Editar etapa</string>
+    <string name="flow_this_node">esta etapa</string>
+    <string name="flow_node_title">Nome da etapa</string>
+    <string name="flow_node_title_hint">Só para você se organizar (ex.: Menu, Planos, Pergunta da cidade).</string>
+    <string name="flow_reached_from">Chega aqui por: %1$s</string>
+    <string name="flow_behavior">Comportamento</string>
+    <string name="flow_edit">Editar a mensagem do menu</string>
+    <string name="flow_edit_sub">Quando aberta por um botão, a etapa substitui a mensagem do menu em vez de mandar outra. Vale para etapas com uma mensagem só de texto.</string>
+    <string name="flow_delay">Pausa antes de mandar</string>
+    <string name="flow_delay_none">Nenhuma</string>
+    <string name="flow_delay_n">%1$d s</string>
+    <string name="flow_delay_sub">O bot mostra \"digitando…\" durante a pausa. Bom para mensagens em sequência parecerem uma conversa.</string>
+    <string name="flow_after">Depois de mandar</string>
+    <string name="flow_after_none">Nada</string>
+    <string name="flow_after_goto">Seguir para</string>
+    <string name="flow_after_ask">Esperar resposta</string>
+    <string name="flow_after_none_sub">A etapa termina aqui (os botões dela continuam funcionando).</string>
+    <string name="flow_after_goto_sub">Manda a próxima etapa logo em seguida, sozinha (mensagens consecutivas).</string>
+    <string name="flow_after_ask_sub">O bot espera a próxima mensagem da pessoa e guarda numa variável. Se ela mandar um comando, a pergunta é cancelada.</string>
+    <string name="flow_variable">Nome da variável</string>
+    <string name="flow_variable_hint">Use {%1$s} nos textos das próximas etapas.</string>
+    <string name="flow_validate">Aceitar</string>
+    <string name="flow_validate_text">Qualquer texto</string>
+    <string name="flow_validate_number">Número</string>
+    <string name="flow_validate_email">E-mail</string>
+    <string name="flow_validate_phone">Telefone</string>
+    <string name="flow_invalid">Mensagem se a resposta não servir (opcional)</string>
+    <string name="flow_invalid_hint">Ex.: Mande só o número, tipo 30.</string>
+    <string name="flow_ask_next">Depois da resposta, ir para</string>
+    <string name="flow_no_other_nodes">Crie outra etapa primeiro para poder ligar.</string>
+    <string name="flow_err_title">Dê um nome à etapa.</string>
+    <string name="flow_err_empty">Escreva pelo menos uma mensagem.</string>
+    <string name="flow_err_buttons">Algum botão está sem texto, com valor inválido ou levando a uma etapa que não existe.</string>
+    <string name="flow_err_variable">O nome da variável deve ter só letras minúsculas, números e _ (ex.: cidade).</string>
+    <string name="flow_err_next">Escolha a etapa seguinte.</string>
+    <string name="flow_delete_title">Excluir %1$s?</string>
+    <string name="flow_delete_msg">A etapa será apagada.</string>
+    <string name="flow_delete_msg_refs">Estas partes levam a esta etapa e vão parar de funcionar: %1$s.</string>
+    <string name="cmd_response_flow">Fluxo</string>
+    <string name="cmd_flow_start">Começar pela etapa</string>
+    <string name="cmd_flow_empty">Nenhuma etapa criada ainda. Crie em Fluxos e menus, na tela do bot.</string>
+    <string name="cmd_flow_help">O comando abre esta etapa; dali em diante, os botões e as ligações das etapas conduzem a conversa.</string>
+    <string name="cmd_err_no_flow">Escolha a etapa em que o fluxo começa.</string>
+    <string name="btn_type_url">Link</string>
+    <string name="btn_type_copy">Copiar texto</string>
+    <string name="btn_type_node">Ir para etapa</string>
+    <string name="btn_type_webapp">Mini app</string>
+    <string name="btn_type_callback">Callback</string>
+    <string name="btn_value_copy">Texto que será copiado</string>
+    <string name="btn_value_webapp">Endereço do mini app (https)</string>
+    <string name="btn_value_callback">Texto do callback (identificador)</string>
+    <string name="btn_help_copy">Ao tocar, o texto vai para a área de transferência da pessoa (chave Pix, cupom, endereço…).</string>
+    <string name="btn_help_webapp">Abre a página dentro do Telegram, em conversa privada. Em grupos vira um link comum.</string>
+    <string name="btn_help_callback">Único no bot (ex.: ver_planos). Toque no nome do botão para configurar o que o bot faz. Sem resposta configurada, o toque vai para os scripts do Termux.</string>
+    <string name="btn_err_copy">Escreva o texto (até 256 caracteres).</string>
+    <string name="btn_err_webapp">Precisa ser um endereço https.</string>
+    <string name="btn_err_callback">Escreva um identificador sem espaços (até cerca de 60 caracteres), ex.: ver_planos.</string>
+    <string name="btn_node_pick">Etapa de destino</string>
+    <string name="btn_node_missing">A etapa deste botão não existe mais. Escolha outra.</string>
+    <string name="log_flow_answer">%1$s respondeu {%2$s} na etapa %3$s.</string>
+    <string name="log_custom_callback">Botão personalizado tocado (%1$s), mas a API local do Termux está desligada.</string>
+    <string name="err_flow_missing_title">Etapa não encontrada</string>
+    <string name="err_flow_missing_msg">Um botão ou comando leva a uma etapa que foi apagada. Abra Fluxos e menus e ligue a outra etapa.</string>
+    <string name="err_flow_loop_title">Fluxo em círculo</string>
+    <string name="err_flow_loop_msg">Etapas com Seguir para se chamam em círculo, sem parar. O bot interrompeu depois de várias mensagens. Revise as ligações em Fluxos e menus.</string>
+
+    <!-- Logs -->
+    <string name="log_title_all">Logs de todos os bots</string>
+    <string name="log_intro_full">Tudo o que o bot fez: mensagens recebidas, respostas, avisos e erros explicados. Fica guardado mesmo com o app fechado (as últimas 3.000 entradas por bot).</string>
+    <string name="log_search">Buscar nos logs</string>
+    <string name="log_filter_all">Tudo</string>
+    <string name="log_filter_errors">Erros</string>
+    <string name="log_filter_warnings">Avisos</string>
+    <string name="log_filter_in">Recebidas</string>
+    <string name="log_filter_out">Enviadas</string>
+    <string name="log_filter_system">Sistema</string>
+    <string name="log_no_match">Nada encontrado com esse filtro.</string>
+    <string name="log_export">Exportar logs</string>
+    <string name="log_export_subject">Logs do Easy Telebot</string>
+    <string name="log_clear_title">Apagar os logs?</string>
+    <string name="log_clear_msg">O histórico some deste celular. Isso não afeta o bot nem as conversas.</string>
+    <string name="log_hide">Esconder</string>
+    <string name="log_error_code">código: %1$s</string>
+
+    <!-- Resposta em blocos -->
+    <string name="blocks_empty">Este comando ainda não responde nada. Adicione o que o bot deve fazer.</string>
+    <string name="blocks_add">Adicionar</string>
+    <string name="blocks_add_title">Adicionar à resposta</string>
+    <string name="block_message">Mensagem simples</string>
+    <string name="block_message_sub">Texto, foto, vídeo, áudio ou documento, com ou sem legenda, e botões.</string>
+    <string name="block_termux">Termux</string>
+    <string name="block_termux_sub">Roda um programa seu no Termux (Python, Node, Bash…) e manda o que ele imprimir.</string>
+    <string name="block_termux_help">O que o programa imprimir vira mensagem. Tempo máximo: %1$d s (mude nos três pontinhos).</string>
+    <string name="block_termux_timeout">Tempo máximo: %1$d s</string>
+    <string name="block_flow">Iniciar fluxo</string>
+    <string name="block_duplicate">Duplicar</string>
+    <string name="block_text_hint">Escreva a mensagem…</string>
+    <string name="block_caption_hint">Legenda (opcional)…</string>
+    <string name="block_add_image">Imagem</string>
+    <string name="block_add_video">Vídeo</string>
+    <string name="block_add_audio">Áudio</string>
+    <string name="block_add_file">Documento</string>
+    <string name="block_add_button">Botão</string>
+    <string name="block_preview_on">Mostrar prévia de links</string>
+    <string name="block_preview_off">Esconder prévia de links</string>
+    <string name="block_button_untitled">Sem nome</string>
+    <string name="block_button_settings">Configurar botão</string>
+    <string name="block_button_position">Posição na grade</string>
+    <string name="block_button_position_hint">Lados: troca de lugar na linha. Cima/baixo: muda de linha.</string>
+    <string name="block_button_beside">Botão ao lado</string>
+    <string name="block_move_left">Mover para a esquerda</string>
+    <string name="block_move_right">Mover para a direita</string>
+    <string name="btn_type_user">Usuário</string>
+    <string name="btn_type_channel">Canal</string>
+    <string name="btn_type_group">Grupo</string>
+    <string name="btn_value_user">Usuário (@nome ou t.me/nome)</string>
+    <string name="btn_value_channel">Canal (@canal ou t.me/canal)</string>
+    <string name="btn_value_group">Grupo (@grupo ou link de convite)</string>
+    <string name="fmt_bold">Negrito</string>
+    <string name="fmt_italic">Itálico</string>
+    <string name="fmt_underline">Sublinhado</string>
+    <string name="fmt_strike">Riscado</string>
+    <string name="fmt_code">Código</string>
+    <string name="cmd_err_no_blocks">Adicione pelo menos uma resposta (toque em Adicionar).</string>
+    <string name="cmd_err_block_empty">A mensagem %1$d está vazia: escreva um texto ou anexe uma mídia.</string>
+    <string name="cmd_err_block_script">O bloco Termux %1$d está sem linha de comando.</string>
+    <string name="preview_title">Pré-visualização</string>
+    <string name="preview_empty">Nada para mostrar ainda: adicione uma resposta.</string>
+    <string name="preview_termux">Aqui entra o que o script imprimir (%1$s)</string>
+    <string name="preview_flow">Abre o fluxo: %1$s</string>
+    <string name="preview_args">(texto depois do comando)</string>
+    <string name="preview_note">Variáveis com valores de exemplo ({nome} = Ana). No Telegram, cada pessoa vê os próprios dados.</string>
+
+    <!-- Pastas (botões callback) e Aguardar resposta -->
+    <string name="btn_open_reaction">Configurar o que o bot faz ao tocar</string>
+    <string name="btn_err_callback_taken">Esse texto de callback já é usado em outro botão. Escolha outro.</string>
+    <string name="folder_button_when">Quando tocarem em \"%1$s\"</string>
+    <string name="folder_button_callback">callback: %1$s</string>
+    <string name="folder_edit">Substituir a mensagem do botão</string>
+    <string name="folder_edit_sub">Como num menu: a primeira mensagem daqui troca o texto e os botões da mensagem tocada, em vez de mandar outra. Vale para mensagens só de texto.</string>
+    <string name="folder_rule_when">Resposta da regra %1$d</string>
+    <string name="folder_otherwise">Se nenhuma regra servir</string>
+    <string name="block_wait">Aguardar resposta</string>
+    <string name="block_wait_sub">Espera a próxima mensagem da pessoa e decide o que fazer por regras: se for foto, faça isto; se for texto, aquilo…</string>
+    <string name="block_wait_help">O bot espera a próxima mensagem desta pessoa e usa a primeira regra que servir. Se ela mandar um comando, a espera é cancelada.</string>
+    <string name="rule_if">SE</string>
+    <string name="rule_else_if">SENÃO, SE</string>
+    <string name="rule_otherwise">SENÃO</string>
+    <string name="rule_n">Regra %1$d</string>
+    <string name="rule_add">Regra</string>
+    <string name="rule_title">Regra</string>
+    <string name="rule_when">Quando a mensagem…</string>
+    <string name="rule_reply_n">Resposta: %1$d bloco(s)</string>
+    <string name="rule_reply_empty">Resposta vazia: toque para configurar</string>
+    <string name="rule_keep">Continuar esperando</string>
+    <string name="rule_keep_sub">Depois de responder, o bot segue esperando a próxima mensagem (ex.: \"Erro! Me envie uma foto válida\").</string>
+    <string name="otherwise_keep_sub">Ligado: o bot responde e segue esperando uma mensagem que sirva. Desligado: responde e encerra a espera.</string>
+    <string name="rule_open">Abrir a resposta desta regra</string>
+    <string name="rule_delete">Excluir regra</string>
+    <string name="cond_any">Qualquer mensagem</string>
+    <string name="cond_any_hint">A regra serve para qualquer coisa que a pessoa mandar.</string>
+    <string name="cond_type">Tipo da mensagem</string>
+    <string name="cond_text">Texto</string>
+    <string name="cond_is">é</string>
+    <string name="cond_is_not">não é</string>
+    <string name="cond_type_text">Texto</string>
+    <string name="cond_equals">é igual a</string>
+    <string name="cond_contains">contém</string>
+    <string name="cond_starts">começa com</string>
+    <string name="cond_ends">termina com</string>
+    <string name="cond_number">é um número</string>
+    <string name="cond_email">é um e-mail</string>
+    <string name="cond_phone">é um telefone</string>
+    <string name="cond_value">Valor</string>
+    <string name="cond_value_hint">Não diferencia maiúsculas de minúsculas.</string>
+    <string name="wait_variable">Guardar a resposta em (opcional)</string>
+    <string name="wait_variable_hint">Use {%1$s} nos textos seguintes. Para foto ou arquivo, guarda o identificador do arquivo.</string>
+    <string name="block_flow_open">Abrir as etapas</string>
+    <string name="block_flow_save_first">Salve o comando antes de abrir as etapas.</string>
+    <string name="preview_wait">Espera a próxima mensagem e responde conforme %1$d regra(s)</string>
+    <string name="cmd_err_callback_dup">O callback \"%1$s\" aparece em mais de um botão. Cada botão callback precisa de um texto único.</string>
+    <string name="cmd_err_in_folder">Em \"%1$s\": %2$s</string>
+    <string name="cmd_err_rule_value">A regra %1$d está sem o valor do texto.</string>
+
+    <!-- Python facilitado, idiomas e textos que antes estavam no código -->
+    <string name="log_code_log">/%1$s: o código registrou: %2$s</string>
+    <string name="log_code_error">/%1$s: erro no Python facilitado. %2$s</string>
+    <string name="block_code">Python facilitado</string>
+    <string name="block_code_sub">Um código curto decide o que responder (if, else, termux()…)</string>
+    <string name="block_code_help">Roda quando o comando é usado. parar() encerra os blocos seguintes.</string>
+    <string name="block_wait_code_help">O código roda a cada mensagem recebida (ou botão apertado) até chamar parar().</string>
+    <string name="wait_use_code">Usar Python facilitado</string>
+    <string name="wait_use_rules">Usar regras em blocos</string>
+    <string name="preview_code">Roda o código em Python facilitado</string>
+    <string name="preview_wait_code">Espera as próximas mensagens e roda o código em cada uma</string>
+    <string name="code_indent">Recuo</string>
+    <string name="code_help">Ajuda</string>
+    <string name="code_ok">Código sem erros</string>
+    <string name="code_help_body">Escreva em Python simples: if/elif/else, for, while, variáveis, textos, listas e f-strings. O código roda no próprio celular com limites de segurança: não acessa arquivos nem a internet (só pelo termux()). Os nomes valem em português, inglês, espanhol, francês e russo. Num \"Aguardar resposta\", o código roda a cada mensagem até chamar parar(). O guia completo está na pasta docs do projeto.</string>
+    <string name="code_help_reference">"mensagem.tipo == texto / foto / video / audio / voz / documento / botao\nmensagem.texto  mensagem.foto  mensagem.arquivo  mensagem.dado\narquivo.baixar()   base64(arquivo)\nusuario.nome  usuario.id  usuario.arroba  usuario.admin\nchat.id  chat.privado  argumentos  variaveis[\"x\"]\nenviar_texto(texto, botoes=[...])   responder(texto)\nenviar_foto(foto, legenda=\"\")   enviar_arquivo(caminho)\nbotao(\"Texto\", link=..., dado=..., copiar=...)\nr = termux(\"cmd\", arg, arquivo, tempo=30, esperar=True, ambiente={...})\nr.ok  r.saida  r.erro  r.codigo  r.tempo_esgotado\nparar()  pausa(seg)  registrar(...)  aleatorio(1, 6)  escolher(lista)  agora()"</string>
+    <string name="code_sample">"# Python facilitado: roda quando o comando é usado.\nif argumentos:\n    enviar_texto(f\"Você escreveu: {argumentos}\")\nelse:\n    enviar_texto(f\"Olá, {usuario.nome}! Escreva algo depois do comando.\")\n"</string>
+    <string name="code_sample_wait">"# Roda a cada mensagem recebida, até parar().\nif mensagem.tipo == foto:\n    enviar_texto(\"Foto recebida, obrigado!\")\n    parar()\nelse:\n    enviar_texto(\"Isso não é uma foto. Envie uma imagem, por favor.\")\n"</string>
+    <string-array name="code_snippets">
+        <item>if mensagem.tipo == foto:</item>
+        <item>else:</item>
+        <item>enviar_texto(\"\")</item>
+        <item>parar()</item>
+        <item>termux(\"\")</item>
+        <item>variaveis[\"\"]</item>
+    </string-array>
+    <string name="cmd_err_block_code">O bloco %1$d (Python facilitado) está vazio.</string>
+    <string name="wait_variable_placeholder">foto</string>
+    <string name="wait_variable_generic">variavel</string>
+    <string name="block_termux_placeholder">python ~/bot/clima.py</string>
+    <string name="bot_language">Idioma das mensagens automáticas</string>
+    <string name="bot_language_sub">Loja, antispam, publicação e outras mensagens que o próprio app escreve para quem usa o bot.</string>
+    <string name="bot_language_app">Igual ao idioma do app</string>
+    <string name="app_language">Idioma do app</string>
+    <string name="app_language_system">Igual ao do sistema</string>
+    <string name="default_start_description">Começar</string>
+    <string name="default_start_text">Olá, *{nome}*! Eu sou o {bot}. Use o menu para ver o que sei fazer.</string>
+    <string-array name="template_variables">
+        <item>nome</item>
+        <item>sobrenome</item>
+        <item>usuario</item>
+        <item>id</item>
+        <item>grupo</item>
+        <item>args</item>
+        <item>data</item>
+        <item>hora</item>
+        <item>bot</item>
+    </string-array>
+    <string name="command_placeholder">comando</string>
+    <string name="btn_hint_user">\@usuario</string>
+    <string name="btn_hint_channel">"\@meucanal  ·  t.me/meucanal"</string>
+    <string name="btn_hint_group">"t.me/+convite  ·  @meugrupo"</string>
+    <string name="btn_hint_copy">chave-pix@exemplo.com</string>
+    <string name="broadcast_buttons_example">"[Site | https://exemplo.com] [Canal | @meucanal]\n[Grupo | t.me/meugrupo]"</string>
+    <string name="variable_name_example">{nome}</string>
+    <string name="shop_host_missing_token">falta o token do GitHub</string>
+    <string name="pattern_time_seconds">HH:mm:ss</string>
+    <string name="pattern_date_time_seconds">dd/MM/yyyy HH:mm:ss</string>
+    <string name="storage_rtdb_placeholder">https://meu-projeto-default-rtdb.firebaseio.com</string>
+    <string name="termux_curl_your_id">SEU_ID</string>
+    <string name="termux_curl_hi">Oi</string>
+    <string name="preview_sample_first">Ana</string>
+    <string name="preview_sample_last">Silva</string>
+    <string name="preview_sample_bot">\@seu_bot</string>
+</resources>

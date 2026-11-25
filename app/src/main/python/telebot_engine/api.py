@@ -15,6 +15,8 @@ import threading
 import urllib.parse
 import uuid
 
+from . import i18n
+
 HOST = "api.telegram.org"
 
 
@@ -142,7 +144,7 @@ class TelegramApi:
             data = json.loads(raw.decode("utf-8"))
         except ValueError:
             self._drop()
-            raise TelegramError(method, resp.status, "resposta inválida (HTTP %s)" % resp.status)
+            raise TelegramError(method, resp.status, i18n.t("detail.bad_response", None, resp.status))
 
         if not data.get("ok"):
             params_ = data.get("parameters") or {}

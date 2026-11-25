@@ -14,6 +14,7 @@ import time
 import uuid
 
 from ..storage import http
+from .. import i18n
 
 # Códigos que o app sabe explicar (ErrorExplainer.kt).
 CONFIG = "pay_config"      # faltou configurar algo
@@ -90,7 +91,7 @@ class MercadoPago:
             "expiration_date_to": expires,
         }) or {}
         if not data.get("init_point"):
-            raise PaymentError(UNKNOWN, "o Mercado Pago não devolveu o link de pagamento")
+            raise PaymentError(UNKNOWN, i18n.t("detail.mp_no_link"))
         return data.get("id"), data["init_point"]
 
     def pix(self, order, title, payer_email, minutes=30):
@@ -108,7 +109,7 @@ class MercadoPago:
         }, idempotent=True) or {}
         tx = ((data.get("point_of_interaction") or {}).get("transaction_data") or {})
         if not tx.get("qr_code"):
-            raise PaymentError(UNKNOWN, "o Mercado Pago não devolveu o código Pix")
+            raise PaymentError(UNKNOWN, i18n.t("detail.mp_no_pix"))
         png = base64.b64decode(tx["qr_code_base64"]) if tx.get("qr_code_base64") else None
         return data.get("id"), tx["qr_code"], png
 
@@ -157,7 +158,7 @@ class Blink:
         wallets = account.get("wallets") or []
         btc = next((w for w in wallets if w.get("walletCurrency") == "BTC"), None)
         if btc is None:
-            raise PaymentError(CONFIG, "a conta Blink não tem carteira em BTC")
+            raise PaymentError(CONFIG, i18n.t("detail.blink_no_wallet"))
         return btc["id"], btc.get("balance") or 0, (me.get("me") or {}).get("username") or ""
 
     def sats_for(self, cents, currency):
@@ -165,7 +166,7 @@ class Blink:
                          "currency: $c) { btcSatAmount } }", {"a": cents / 100.0, "c": currency}, auth=False)
         sats = int((data.get("currencyConversionEstimation") or {}).get("btcSatAmount") or 0)
         if sats <= 0:
-            raise PaymentError(REJECTED, "não foi possível converter %s para satoshis" % currency)
+            raise PaymentError(REJECTED, i18n.t("detail.blink_convert", None, currency))
         return sats
 
     def invoice(self, sats, memo, minutes=60):
@@ -180,7 +181,7 @@ class Blink:
             raise PaymentError(REJECTED, payload["errors"][0].get("message", ""))
         inv = payload.get("invoice") or {}
         if not inv.get("paymentRequest"):
-            raise PaymentError(UNKNOWN, "o Blink não devolveu a fatura")
+            raise PaymentError(UNKNOWN, i18n.t("detail.blink_no_invoice"))
         return inv["paymentRequest"], inv.get("paymentHash") or ""
 
     def status(self, payment_request):

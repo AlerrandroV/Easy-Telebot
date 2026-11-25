@@ -1,5 +1,8 @@
 package io.github.alerrandrov.easytelebot.data
 
+import android.content.Context
+import io.github.alerrandrov.easytelebot.R
+
 import io.github.alerrandrov.easytelebot.engine.BotRuntime
 import org.json.JSONArray
 import org.json.JSONObject
@@ -171,8 +174,15 @@ sealed interface CommandBlock {
         val otherwiseKeep: Boolean = true,
         /** Guarda a resposta em {variavel} (opcional). */
         val variable: String = "",
+        /** Python facilitado no lugar das regras: roda a cada mensagem até chamar parar(). */
+        val code: String = "",
         override val key: String = newKey(),
-    ) : CommandBlock
+    ) : CommandBlock {
+        val usesCode get() = code.isNotBlank()
+    }
+
+    /** Python facilitado: um pequeno código que decide o que responder. */
+    data class Code(val code: String, override val key: String = newKey()) : CommandBlock
 
     companion object {
         fun newKey() = UUID.randomUUID().toString()
@@ -186,8 +196,10 @@ sealed interface CommandBlock {
             is Message -> BotConfig.messageJson(b.msg).put("type", "message")
             is Termux -> JSONObject().put("type", "termux").put("command", b.script.command).put("timeout", b.script.timeout)
             is Flow -> JSONObject().put("type", "flow").put("node", b.node)
+            is Code -> JSONObject().put("type", "code").put("code", b.code)
             is Wait -> JSONObject().put("type", "wait")
                 .put("variable", b.variable)
+                .put("code", b.code)
                 .put("otherwise_keep", b.otherwiseKeep)
                 .put("otherwise", listJson(b.otherwise))
                 .put("rules", JSONArray().apply {
@@ -204,6 +216,7 @@ sealed interface CommandBlock {
             "message" -> Message(BotConfig.parseMessage(o))
             "termux" -> Termux(CommandScript(o.optString("command"), o.optInt("timeout", 30).coerceIn(1, 300)))
             "flow" -> o.optString("node").takeIf { it.isNotBlank() }?.let { Flow(it) }
+            "code" -> Code(o.optString("code"))
             "wait" -> {
                 val rules = o.optJSONArray("rules") ?: JSONArray()
                 Wait(
@@ -219,6 +232,7 @@ sealed interface CommandBlock {
                     otherwise = parseList(o.optJSONArray("otherwise")),
                     otherwiseKeep = o.optBoolean("otherwise_keep", true),
                     variable = o.optString("variable"),
+                    code = o.optString("code"),
                 )
             }
             else -> null
@@ -382,6 +396,8 @@ data class BotConfig(
     val shop: ShopSettings = ShopSettings(),
     val termux: TermuxSettings = TermuxSettings(),
     val flows: List<FlowNode> = emptyList(),
+    /** Idioma das mensagens automáticas do bot (loja, antispam...). Vazio = idioma do app. */
+    val language: String = "",
 ) {
     /** Variáveis criadas pelas perguntas dos fluxos (ex.: {cidade}). */
     fun flowVariables(): Set<String> =
@@ -390,6 +406,7 @@ data class BotConfig(
     fun toJson(): JSONObject = JSONObject().apply {
         put("version", VERSION)
         put("auto_menu", autoMenu)
+        put("language", language)
         put("commands", JSONArray().apply {
             commands.forEach { c ->
                 put(JSONObject().apply {
@@ -447,15 +464,17 @@ data class BotConfig(
     companion object {
         const val VERSION = 2
 
-        fun default() = BotConfig(
-            commands = listOf(
-                SimpleCommand(
-                    triggers = listOf("start"),
-                    description = "Começar",
-                    blocks = listOf(CommandBlock.Message(BotMessage("Olá, *{nome}*! Eu sou o {bot}. Use o menu para ver o que sei fazer."))),
-                ),
+        /** Bot novo: um /start de boas-vindas (textos no idioma do app). */
+        fun default(description: String = "Começar", text: String = "Olá, *{nome}*! Eu sou o {bot}. Use o menu para ver o que sei fazer.") =
+            BotConfig(
+                commands = listOf(
+                    SimpleCommand(
+                        triggers = listOf("start"),
+                        description = description,
+                        blocks = listOf(CommandBlock.Message(BotMessage(text))),
+                    ),
+                )
             )
-        )
 
         /** Comandos de antes dos blocos: fluxo, script ou lista de mensagens. */
         private fun legacyBlocks(o: JSONObject, messages: JSONArray): List<CommandBlock> {
@@ -566,19 +585,28 @@ data class BotConfig(
                 )
             }
             return BotConfig(json.optBoolean("auto_menu", true), list, broadcast, antispam,
-                ShopSettings.fromJson(json.optJSONObject("shop")), termux, nodes)
+                ShopSettings.fromJson(json.optJSONObject("shop")), termux, nodes, json.optString("language"))
         }
     }
 }
 
 object ConfigRepository {
+    private var app: Context? = null
+
+    fun init(context: Context) {
+        app = context.applicationContext
+    }
+
+    private fun newDefault(): BotConfig = app?.let {
+        BotConfig.default(it.getString(R.string.default_start_description), it.getString(R.string.default_start_text))
+    } ?: BotConfig.default()
     fun load(botId: Long): BotConfig {
         val f = BotRepository.configFile(botId)
-        if (!f.exists()) return BotConfig.default().also { save(botId, it) }
+        if (!f.exists()) return newDefault().also { save(botId, it) }
         return try {
             BotConfig.fromJson(JSONObject(f.readText()))
         } catch (e: Exception) {
-            BotConfig.default()
+            newDefault()
         }
     }
 
@@ -622,7 +650,12 @@ object AdminLevels {
 
 /** Mesmas regras do motor Python (template.py). */
 object Variables {
-    val KNOWN = listOf("nome", "sobrenome", "usuario", "id", "grupo", "args", "data", "hora", "bot")
+    /** Nomes aceitos pelo motor (português e inglês valem nos dois idiomas do app). */
+    val KNOWN = listOf("nome", "sobrenome", "usuario", "id", "grupo", "args", "data", "hora", "bot",
+        "name", "last_name", "username", "group", "date", "time")
+
+    /** Os que o editor mostra, no idioma do app (`R.array.template_variables`). */
+    fun shown(context: Context): List<String> = context.resources.getStringArray(R.array.template_variables).toList()
     private val PATTERN = Regex("""\{([A-Za-z_][A-Za-z0-9_]*)\}""")
     val COMMAND_NAME = Regex("^[a-z0-9_]{1,32}$")
 

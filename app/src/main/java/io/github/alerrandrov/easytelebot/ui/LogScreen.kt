@@ -84,8 +84,8 @@ fun LogScreen(botId: Long?, onBack: () -> Unit) {
     var query by rememberSaveable { mutableStateOf("") }
     var expanded by remember { mutableStateOf<LogLine?>(null) }
     var confirmClear by remember { mutableStateOf(false) }
-    val time = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }
-    val full = remember { SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()) }
+    val time = remember { SimpleDateFormat(context.getString(R.string.pattern_time_seconds), Locale.getDefault()) }
+    val full = remember { SimpleDateFormat(context.getString(R.string.pattern_date_time_seconds), Locale.getDefault()) }
 
     val all = remember(logs, botId) {
         val ids = if (botId != null) listOf(botId) else logs.keys

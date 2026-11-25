@@ -10,7 +10,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "..", "main", "python"))
 sys.path.insert(0, HERE)
 
-from telebot_engine import admins, antispam, chats, engine  # noqa: E402
+from telebot_engine import admins, antispam, chats, engine, i18n  # noqa: E402
 from test_engine import Callbacks, FakeApi, msg  # noqa: E402
 
 
@@ -93,8 +93,8 @@ class EngineSpamTests(unittest.TestCase):
         eng.run()
         to_user = [p["text"] for p in api.sent if p["chat_id"] == 42]
         self.assertEqual(to_user.count("olá"), 9)  # 8 respostas antes do bloqueio + 1 depois de liberado
-        self.assertIn(antispam.BLOCK_NOTICE, to_user)
-        self.assertIn(antispam.RELEASE_NOTICE, to_user)
+        self.assertIn(i18n.t("antispam.blocked_notice", "pt"), to_user)
+        self.assertIn(i18n.t("antispam.released_notice", "pt"), to_user)
         notices = [p for p in api.sent if p["chat_id"] in (500, 600)]
         self.assertEqual([p["chat_id"] for p in notices], [500])  # só a classe I recebe
         self.assertIn("9 mensagens em 10 segundos", notices[0]["text"])

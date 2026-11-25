@@ -204,7 +204,7 @@ fun StorageScreen(botId: Long, onBack: () -> Unit) {
                                 value = settings.firebaseUrl,
                                 onValueChange = { settings = settings.copy(firebaseUrl = it.trim()) },
                                 label = { Text(stringResource(R.string.storage_firebase_url)) },
-                                placeholder = { Text("https://meu-projeto-default-rtdb.firebaseio.com") },
+                                placeholder = { Text(stringResource(R.string.storage_rtdb_placeholder)) },
                                 singleLine = true,
                                 modifier = Modifier.fillMaxWidth(),
                             )

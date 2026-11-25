@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.background
@@ -68,6 +69,7 @@ fun HomeScreen(onAddBot: () -> Unit, onOpenBot: (Long) -> Unit, onBattery: () ->
     Scaffold(
         topBar = {
             AppBar(stringResource(R.string.app_name)) {
+                AppLanguageButton()
                 if (bots.isNotEmpty()) {
                     androidx.compose.material3.IconButton(onClick = onLogs) {
                         AppIcon(R.drawable.ic_list_alt, description = stringResource(R.string.log_title_all))
@@ -177,6 +179,34 @@ private fun BotListCard(meta: BotMeta, status: BotStatus, now: Long, onClick: ()
                 StatusLine(status, now)
             }
             Text("›", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+
+/** Botão do idioma do app (pt-BR / en-US / igual ao sistema). */
+@Composable
+private fun AppLanguageButton() {
+    val context = LocalContext.current
+    var open by remember { mutableStateOf(false) }
+    val current = remember(open) { AppLanguages.current(context) }
+    androidx.compose.foundation.layout.Box {
+        androidx.compose.material3.IconButton(onClick = { open = true }) {
+            AppIcon(R.drawable.ic_translate, description = stringResource(R.string.app_language))
+        }
+        androidx.compose.material3.DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            val options = listOf("" to stringResource(R.string.app_language_system)) +
+                AppLanguages.ALL.map { it.code to stringResource(it.label) }
+            options.forEach { (tag, label) ->
+                androidx.compose.material3.DropdownMenuItem(
+                    text = { Text(label) },
+                    leadingIcon = { if (tag.equals(current, ignoreCase = true)) AppIcon(R.drawable.ic_check) },
+                    onClick = {
+                        open = false
+                        (context as? android.app.Activity)?.let { AppLanguages.set(it, tag) }
+                    },
+                )
+            }
         }
     }
 }

@@ -76,6 +76,19 @@
   };
   var state = { data: null, cart: {} };
 
+  // Textos da vitrine (idioma do Telegram de quem abre; o que não for pt usa inglês).
+  var STRINGS = {
+    pt: { shop: "Loja", checkout: "Finalizar pedido", sub: "Assinatura de %s dias", empty: "Nenhum produto à venda no momento.",
+          one: " produto", many: " produtos", dec: ",", thou: ".",
+          fail: "Não foi possível abrir o catálogo. Feche e toque em Abrir loja de novo no chat do bot. Se continuar, atualize o Telegram." },
+    en: { shop: "Shop", checkout: "Checkout", sub: "%s-day subscription", empty: "No products for sale right now.",
+          one: " product", many: " products", dec: ".", thou: ",",
+          fail: "Couldn't open the catalog. Close it and tap Open shop again in the bot chat. If it keeps happening, update Telegram." }
+  };
+  var lang = ((tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.language_code)
+              || navigator.language || "pt").toLowerCase().slice(0, 2);
+  var T = STRINGS[lang] || STRINGS.en;
+
   function el(tag, cls, html) {
     var e = document.createElement(tag);
     if (cls) e.className = cls;
@@ -86,8 +99,8 @@
 
   function money(cents) {
     var d = state.data, noCents = d.c === "CLP" || d.c === "COP";
-    var whole = Math.floor(cents / 100).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-    return d.s + " " + whole + (noCents ? "" : "," + String(cents % 100).padStart(2, "0"));
+    var whole = Math.floor(cents / 100).toString().replace(/\B(?=(\d{3})+(?!\d))/g, T.thou);
+    return d.s + " " + whole + (noCents ? "" : T.dec + String(cents % 100).padStart(2, "0"));
   }
 
   // Catálogo publicado pelo app (Gist): só https (ou localhost, para testes).
@@ -139,7 +152,7 @@
   }
 
   function updateBar() {
-    var t = total(), label = t.count ? "Finalizar pedido · " + money(t.sum) : "";
+    var t = total(), label = t.count ? T.checkout + " · " + money(t.sum) : "";
     if (tg && tg.MainButton) {
       if (t.count) { tg.MainButton.setText(label); tg.MainButton.show(); } else tg.MainButton.hide();
     } else {
@@ -156,7 +169,7 @@
     c.appendChild(img);
     var body = el("div", "body");
     body.appendChild(text("div", "name", p.n));
-    if (p.k === "subscription") body.appendChild(el("div", "tag", ICONS.clock + " Assinatura de " + p.y + " dias"));
+    if (p.k === "subscription") body.appendChild(el("div", "tag", ICONS.clock + " " + T.sub.replace("%s", p.y)));
     if (p.d) body.appendChild(text("div", "desc", p.d));
     body.appendChild(text("div", "price", p.f));
     var row = el("div", "row"), q = state.cart[p.i] || 0;
@@ -184,7 +197,7 @@
   function render() {
     var list = document.getElementById("list");
     list.innerHTML = "";
-    if (!state.data.p.length) list.appendChild(text("div", "empty", "Nenhum produto à venda no momento."));
+    if (!state.data.p.length) list.appendChild(text("div", "empty", T.empty));
     state.data.p.forEach(function (p) { list.appendChild(card(p)); });
     updateBar();
   }
@@ -202,13 +215,12 @@
 
   decode().then(function (data) {
     state.data = data;
-    document.title = data.t || "Loja";
-    document.getElementById("title").textContent = data.t || "Loja";
-    document.getElementById("subtitle").textContent = data.p.length + (data.p.length === 1 ? " produto" : " produtos");
+    document.title = data.t || T.shop;
+    document.getElementById("title").textContent = data.t || T.shop;
+    document.getElementById("subtitle").textContent = data.p.length + (data.p.length === 1 ? T.one : T.many);
     render();
   }).catch(function () {
-    fail("Não foi possível abrir o catálogo. Feche e toque em Abrir loja de novo no chat do bot. "
-       + "Se continuar, atualize o Telegram.");
+    fail(T.fail);
   });
 })();
 </script>

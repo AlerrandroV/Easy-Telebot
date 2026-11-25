@@ -1,0 +1,3 @@
+// ~/bot/hora.js  ->  comando: node ~/bot/hora.js
+const nome = process.env.TELEBOT_USER_NAME;
+console.log(`Agora são ${new Date().toLocaleTimeString('pt-BR')}, ${nome}.`);

@@ -68,31 +68,9 @@ import org.json.JSONObject
 private const val ALLOW_EXTERNAL =
     "mkdir -p ~/.termux && echo \"allow-external-apps = true\" >> ~/.termux/termux.properties && termux-reload-settings"
 
-private val SAMPLE_PYTHON = """
-    #!/usr/bin/env python3
-    # ~/bot/ola.py  ->  comando: python ~/bot/ola.py
-    import json, os
-
-    update = json.loads(os.environ["TELEBOT_UPDATE"])
-    nome = os.environ["TELEBOT_USER_NAME"]
-    args = os.environ["TELEBOT_ARGS"]
-
-    print(json.dumps({
-        "text": f"Olá, *{nome}*! Você mandou: {args or 'nada'}",
-        "buttons": [[{"text": "De novo", "data": "repetir"}]],
-    }))
-""".trimIndent()
-
-private val SAMPLE_NODE = """
-    // ~/bot/hora.js  ->  comando: node ~/bot/hora.js
-    const nome = process.env.TELEBOT_USER_NAME;
-    console.log(`Agora são ${'$'}{new Date().toLocaleTimeString('pt-BR')}, ${'$'}{nome}.`);
-""".trimIndent()
-
-private val SAMPLE_BASH = """
-    # comando direto, sem arquivo:
-    echo "Bateria: ${'$'}(termux-battery-status | jq .percentage)%"
-""".trimIndent()
+/** Exemplos de script no idioma do app (`res/raw` = inglês, `res/raw-pt` = português). */
+private fun sample(context: android.content.Context, id: Int): String =
+    context.resources.openRawResource(id).bufferedReader().use { it.readText() }.trimEnd()
 
 /**
  * Integração com o Termux: comandos que rodam scripts (qualquer linguagem) e a API
@@ -221,9 +199,10 @@ fun TermuxScreen(botId: Long, onNewScriptCommand: () -> Unit, onBack: () -> Unit
                         Text(stringResource(R.string.termux_output_title), style = MaterialTheme.typography.titleSmall)
                         StepList(stringArrayResource(R.array.termux_output_rules).toList())
                         Text(stringResource(R.string.termux_examples), style = MaterialTheme.typography.titleSmall)
-                        CodeBlock(SAMPLE_PYTHON)
-                        CodeBlock(SAMPLE_NODE)
-                        CodeBlock(SAMPLE_BASH)
+                        val ctx = LocalContext.current
+                        CodeBlock(remember { sample(ctx, R.raw.termux_sample_python) })
+                        CodeBlock(remember { sample(ctx, R.raw.termux_sample_node) })
+                        CodeBlock(remember { sample(ctx, R.raw.termux_sample_bash) })
                     }
                 }
             }
@@ -322,7 +301,7 @@ fun TermuxScreen(botId: Long, onNewScriptCommand: () -> Unit, onBack: () -> Unit
                                 Text("pyTelegramBotAPI", style = MaterialTheme.typography.labelLarge)
                                 CodeBlock("telebot.apihelper.API_URL = \"$base/bot{0}/{1}\"\nbot = telebot.TeleBot(\"${t.key}\")")
                                 Text("curl", style = MaterialTheme.typography.labelLarge)
-                                CodeBlock("curl \"$base/bot${t.key}/sendMessage\" -d chat_id=SEU_ID -d text=Oi")
+                                CodeBlock("curl \"$base/bot${t.key}/sendMessage\" -d chat_id=${stringResource(R.string.termux_curl_your_id)} -d text=${stringResource(R.string.termux_curl_hi)}")
                                 Text(stringResource(R.string.termux_api_notes), style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }

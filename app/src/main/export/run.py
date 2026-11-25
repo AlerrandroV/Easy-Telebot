@@ -15,17 +15,19 @@ no celular antes de ligar aqui.
 """
 
 import json
+import shutil
 import os
 import signal
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-from telebot_engine import admins  # noqa: E402
+from telebot_engine import admins, i18n  # noqa: E402
 from telebot_engine.engine import Engine  # noqa: E402
 
 
@@ -51,13 +53,23 @@ class ConsoleCallbacks:
         """Comandos de script: aqui (PC ou dentro do próprio Termux) rodam direto no bash."""
         env = dict(os.environ)
         env.update(json.loads(env_json))
+        # Arquivos do Python facilitado (termux("cmd", arquivo)): copiados para uma pasta temporária.
+        files = json.loads(env.pop("TELEBOT_FILES", "") or "[]")
+        folder = tempfile.mkdtemp(prefix="telebot-") if files else None
+        if folder:
+            env["TELEBOT_FILES_DIR"] = folder
+            for f in files:
+                shutil.copy(f["src"], os.path.join(folder, os.path.basename(f["name"])))
         try:
             proc = subprocess.run(["bash", "-c", command], env=env, capture_output=True, text=True,
                                   timeout=timeout, cwd=os.path.expanduser("~"))
         except subprocess.TimeoutExpired:
-            return json.dumps({"ok": True, "stdout": "", "stderr": "tempo esgotado", "exit_code": 124})
+            return json.dumps({"ok": True, "stdout": "", "stderr": "timeout", "exit_code": 124})
         except OSError as exc:
             return json.dumps({"ok": False, "error": {"code": "termux_failed", "detail": str(exc)}})
+        finally:
+            if folder:
+                shutil.rmtree(folder, ignore_errors=True)
         return json.dumps({"ok": True, "stdout": proc.stdout, "stderr": proc.stderr, "exit_code": proc.returncode})
 
 
@@ -113,7 +125,13 @@ def read_payments():
         return fh.read()
 
 
+def _language():
+    """Idioma dos detalhes de erro e padrão das mensagens do bot: o do sistema (LANG), se houver."""
+    i18n.set_app_language(os.environ.get("LANG", "").split(".")[0])
+
+
 def main():
+    _language()
     if len(sys.argv) > 1 and sys.argv[1] == "newadmin":
         new_admin_code(sys.argv[2] if len(sys.argv) > 2 else 1)
         return

@@ -1,0 +1,12 @@
+#!/usr/bin/env python3
+# ~/bot/hello.py  ->  command: python ~/bot/hello.py
+import json, os
+
+update = json.loads(os.environ["TELEBOT_UPDATE"])
+name = os.environ["TELEBOT_USER_NAME"]
+args = os.environ["TELEBOT_ARGS"]
+
+print(json.dumps({
+    "text": f"Hello, *{name}*! You sent: {args or 'nothing'}",
+    "buttons": [[{"text": "Again", "data": "repeat"}]],
+}))

@@ -139,6 +139,7 @@ fun ResponseBlocksEditor(env: BlockEditorEnv, blocks: List<CommandBlock>, onChan
             is CommandBlock.Message -> b.copy(key = CommandBlock.newKey())
             is CommandBlock.Termux -> b.copy(key = CommandBlock.newKey())
             is CommandBlock.Flow -> b.copy(key = CommandBlock.newKey())
+            is CommandBlock.Code -> b.copy(key = CommandBlock.newKey())
             is CommandBlock.Wait -> b.copy(key = CommandBlock.newKey())
         })
     })
@@ -170,6 +171,7 @@ fun ResponseBlocksEditor(env: BlockEditorEnv, blocks: List<CommandBlock>, onChan
                 is CommandBlock.Termux -> TermuxBlockCard(block.script, { replace(i, block.copy(script = it)) }, actions)
                 is CommandBlock.Flow -> FlowBlockCard(block.node, nodes, { replace(i, block.copy(node = it)) }, actions, env.onOpenFlows)
                 is CommandBlock.Wait -> WaitBlockCard(env, block, { replace(i, it) }, actions)
+                is CommandBlock.Code -> CodeBlockCard(block.code, { replace(i, block.copy(code = it)) }, actions)
             }
         }
         if (blocks.isNotEmpty()) {
@@ -194,6 +196,13 @@ fun ResponseBlocksEditor(env: BlockEditorEnv, blocks: List<CommandBlock>, onChan
                     title = stringResource(R.string.block_termux),
                     subtitle = stringResource(R.string.block_termux_sub),
                     onClick = { add(CommandBlock.Termux(CommandScript())); showAdd = false },
+                )
+                val sample = stringResource(R.string.code_sample)
+                SectionCard(
+                    icon = R.drawable.ic_code,
+                    title = stringResource(R.string.block_code),
+                    subtitle = stringResource(R.string.block_code_sub),
+                    onClick = { add(CommandBlock.Code(sample)); showAdd = false },
                 )
                 if (!hasWait) SectionCard(
                     icon = R.drawable.ic_hearing,
@@ -361,7 +370,7 @@ private fun MessageBlockCard(
                             Text("{ }", fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
                         }
                         DropdownMenu(expanded = varsMenu, onDismissRequest = { varsMenu = false }) {
-                            (Variables.KNOWN + extraVariables).forEach { v ->
+                            (Variables.shown(LocalContext.current) + extraVariables).forEach { v ->
                                 DropdownMenuItem(
                                     text = { Text("{$v}", fontFamily = FontFamily.Monospace) },
                                     onClick = { varsMenu = false; setText(insert(field, "{$v}")) },
@@ -696,8 +705,20 @@ private fun WaitBlockCard(env: BlockEditorEnv, block: CommandBlock.Wait, onChang
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
     ) {
         Column(Modifier.padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            BlockHeader(R.drawable.ic_hearing, stringResource(R.string.block_wait), actions)
-            Column(Modifier.padding(end = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            val waitSample = stringResource(R.string.code_sample_wait)
+            BlockHeader(R.drawable.ic_hearing, stringResource(R.string.block_wait), actions) { dismiss ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(if (block.usesCode) R.string.wait_use_rules else R.string.wait_use_code)) },
+                    leadingIcon = { AppIcon(if (block.usesCode) R.drawable.ic_hearing else R.drawable.ic_code) },
+                    onClick = { dismiss(); onChange(block.copy(code = if (block.usesCode) "" else waitSample)) },
+                )
+                HorizontalDivider()
+            }
+            if (block.usesCode) Column(Modifier.padding(end = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(stringResource(R.string.block_wait_code_help), style = MaterialTheme.typography.bodySmall)
+                CodeEditor(block.code, { onChange(block.copy(code = it)) })
+                WaitVariableField(block, onChange)
+            } else Column(Modifier.padding(end = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(stringResource(R.string.block_wait_help), style = MaterialTheme.typography.bodySmall)
                 block.rules.forEachIndexed { i, rule ->
                     RuleRow(
@@ -722,15 +743,7 @@ private fun WaitBlockCard(env: BlockEditorEnv, block: CommandBlock.Wait, onChang
                         ButtonLabel(R.drawable.ic_add, stringResource(R.string.rule_add))
                     }
                 }
-                OutlinedTextField(
-                    value = block.variable,
-                    onValueChange = { onChange(block.copy(variable = it.lowercase().replace(' ', '_').filter { c -> c.isLetterOrDigit() || c == '_' }.take(32))) },
-                    label = { Text(stringResource(R.string.wait_variable)) },
-                    placeholder = { Text("foto") },
-                    supportingText = { Text(stringResource(R.string.wait_variable_hint, block.variable.ifBlank { "variavel" })) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                WaitVariableField(block, onChange)
             }
         }
     }
@@ -744,6 +757,37 @@ private fun WaitBlockCard(env: BlockEditorEnv, block: CommandBlock.Wait, onChang
             onOpen = { editingRule = null; env.onOpen(TreeStep.Rule(block.key, i)) },
             onDismiss = { editingRule = null },
         )
+    }
+}
+
+@Composable
+private fun WaitVariableField(block: CommandBlock.Wait, onChange: (CommandBlock.Wait) -> Unit) {
+    OutlinedTextField(
+        value = block.variable,
+        onValueChange = { onChange(block.copy(variable = it.lowercase().replace(' ', '_').filter { c -> c.isLetterOrDigit() || c == '_' }.take(32))) },
+        label = { Text(stringResource(R.string.wait_variable)) },
+        placeholder = { Text(stringResource(R.string.wait_variable_placeholder)) },
+        supportingText = {
+            Text(stringResource(R.string.wait_variable_hint, block.variable.ifBlank { stringResource(R.string.wait_variable_generic) }))
+        },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
+
+// -- Bloco: Python facilitado ------------------------------------------------------------------------
+
+@Composable
+private fun CodeBlockCard(code: String, onChange: (String) -> Unit, actions: BlockActions) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            BlockHeader(R.drawable.ic_code, stringResource(R.string.block_code), actions)
+            Column(Modifier.padding(end = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(stringResource(R.string.block_code_help), style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                CodeEditor(code, onChange)
+            }
+        }
     }
 }
 
@@ -923,7 +967,7 @@ private fun TermuxBlockCard(script: CommandScript, onChange: (CommandScript) -> 
                 TextField(
                     value = script.command,
                     onValueChange = { onChange(script.copy(command = it.take(2000))) },
-                    placeholder = { Text("python ~/bot/clima.py", fontFamily = FontFamily.Monospace) },
+                    placeholder = { Text(stringResource(R.string.block_termux_placeholder), fontFamily = FontFamily.Monospace) },
                     textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
                     shape = RoundedCornerShape(12.dp),
                     colors = TextFieldDefaults.colors(focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent),
@@ -965,12 +1009,21 @@ private fun FlowBlockCard(node: String, nodes: List<FlowNode>, onChange: (String
 @Composable
 fun CommandPreviewDialog(trigger: String, blocks: List<CommandBlock>, botId: Long, nodes: List<FlowNode>, onDismiss: () -> Unit) {
     val now = remember { Date() }
-    val sample = mapOf(
-        "nome" to "Ana", "sobrenome" to "Silva", "usuario" to "@ana", "id" to "123456789", "grupo" to "",
-        "args" to stringResource(R.string.preview_args), "bot" to "@seu_bot",
-        "data" to SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(now),
-        "hora" to SimpleDateFormat("HH:mm", Locale.getDefault()).format(now),
-    )
+    val first = stringResource(R.string.preview_sample_first)
+    val last = stringResource(R.string.preview_sample_last)
+    val bot = stringResource(R.string.preview_sample_bot)
+    val args = stringResource(R.string.preview_args)
+    val sample = remember(first, last, bot, args) {
+        // Mesmo formato do motor: data dd/mm/aaaa e hora hh:mm (variáveis em português e inglês).
+        val date = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(now)
+        val time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(now)
+        val user = "@" + first.lowercase()
+        mapOf(
+            "nome" to first, "sobrenome" to last, "usuario" to user, "id" to "123456789", "grupo" to "",
+            "args" to args, "bot" to bot, "data" to date, "hora" to time,
+            "name" to first, "last_name" to last, "username" to user, "group" to "", "date" to date, "time" to time,
+        )
+    }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxWidth(0.95f), shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceContainerLow) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -987,7 +1040,7 @@ fun CommandPreviewDialog(trigger: String, blocks: List<CommandBlock>, botId: Lon
                     // Mensagem da pessoa
                     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
                         Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.primary) {
-                            Text("/" + trigger.ifBlank { "comando" }, color = MaterialTheme.colorScheme.onPrimary,
+                            Text("/" + trigger.ifBlank { stringResource(R.string.command_placeholder) }, color = MaterialTheme.colorScheme.onPrimary,
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
                         }
                     }
@@ -1002,7 +1055,9 @@ fun CommandPreviewDialog(trigger: String, blocks: List<CommandBlock>, botId: Lon
                                 stringResource(R.string.preview_termux, b.script.command.ifBlank { "…" }))
                             is CommandBlock.Flow -> PreviewNote(R.drawable.ic_account_tree,
                                 stringResource(R.string.preview_flow, nodes.firstOrNull { it.id == b.node }?.title ?: b.node))
-                            is CommandBlock.Wait -> PreviewNote(R.drawable.ic_hearing, stringResource(R.string.preview_wait, b.rules.size))
+                            is CommandBlock.Wait -> PreviewNote(R.drawable.ic_hearing,
+                                if (b.usesCode) stringResource(R.string.preview_wait_code) else stringResource(R.string.preview_wait, b.rules.size))
+                            is CommandBlock.Code -> PreviewNote(R.drawable.ic_code, stringResource(R.string.preview_code))
                         }
                     }
                 }

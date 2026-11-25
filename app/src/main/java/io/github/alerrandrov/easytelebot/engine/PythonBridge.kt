@@ -10,9 +10,18 @@ import org.json.JSONObject
 /** Funções expostas pelo motor Python (pacote `telebot_engine`). Todas bloqueiam: use fora da thread principal. */
 object PythonBridge {
 
+    @Volatile private var languageTag: String? = null
+
     private fun python(context: Context): Python {
         if (!Python.isStarted()) Python.start(AndroidPlatform(context.applicationContext))
-        return Python.getInstance()
+        val py = Python.getInstance()
+        // Idioma do app para os detalhes de erro gerados no Python (pode mudar com o app aberto).
+        val tag = context.resources.configuration.locales[0].toLanguageTag()
+        if (tag != languageTag) {
+            py.getModule("telebot_engine.i18n").callAttr("set_app_language", tag)
+            languageTag = tag
+        }
+        return py
     }
 
     internal fun module(context: Context, name: String): PyObject =
@@ -157,6 +166,24 @@ object PythonBridge {
 
     fun storageList(context: Context, settingsJson: String, botDir: String, botId: Long, collection: String, limit: Int = 100) =
         storageCall(context, "list_docs", settingsJson, botDir, botId.toString(), collection, limit)
+
+    // --- Python facilitado (pyfacil.py) ---
+
+    data class CodeIssue(val line: Int, val message: String)
+    data class CodeCheck(val ok: Boolean, val lang: String, val errors: List<CodeIssue>)
+
+    /** Confere o código sem rodar (erros explicados, no idioma em que o código foi escrito). */
+    fun checkCode(context: Context, code: String): CodeCheck = try {
+        val appLang = context.resources.configuration.locales[0].language
+        val json = parse(module(context, "code_runner").callAttr("check", code, null, appLang))
+        val arr = json.optJSONArray("errors") ?: org.json.JSONArray()
+        CodeCheck(
+            json.optBoolean("ok"), json.optString("lang"),
+            (0 until arr.length()).map { i -> arr.getJSONObject(i).let { CodeIssue(it.optInt("line"), it.optString("message")) } },
+        )
+    } catch (e: Exception) {
+        CodeCheck(false, "", listOf(CodeIssue(0, e.message ?: e.toString())))
+    }
 
     /** Cria o motor de um bot. Chame `run` numa thread própria; `stop`/`wake`/`request_reload` de qualquer thread. */
     fun createEngine(

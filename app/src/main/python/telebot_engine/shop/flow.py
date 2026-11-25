@@ -19,7 +19,7 @@ import threading
 import time
 
 from .. import admins as admins_mod
-from .. import errors, template
+from .. import errors, i18n, template
 from ..api import Aborted, TelegramApi, TelegramError
 from . import catalog, db
 from .gateways import EXPIRED, PAID, Blink, MercadoPago, PaymentError
@@ -29,12 +29,7 @@ ORDER_TTL = 60 * 60       # pedido sem pagamento expira em 1 h
 CHECK_EVERY = 15          # segundos entre verificações de pagamento
 SUBS_EVERY = 5 * 60       # segundos entre verificações de assinaturas
 MAX_QTY = 20
-GATEWAY_LABELS = {
-    "pix": "Pix (QR code aqui no chat)",
-    "mp": "Mercado Pago (Pix, cartão, boleto)",
-    "btc": "Bitcoin (Lightning)",
-    "xtr": "Telegram Stars",
-}
+GATEWAYS = ("pix", "mp", "btc", "xtr")  # nomes na tela: i18n "shop.gw_<código>"
 
 
 def parse_payments(payments):
@@ -45,10 +40,6 @@ def parse_payments(payments):
             payments = {}
     payments = payments if isinstance(payments, dict) else {}
     return {"mp_token": str(payments.get("mp_token") or ""), "blink_key": str(payments.get("blink_key") or "")}
-
-
-def _date(ts):
-    return time.strftime("%d/%m/%Y", time.localtime(ts))
 
 
 def _name(user):
@@ -85,7 +76,14 @@ class ShopFlow:
 
     def title(self):
         bot = self.engine.bot or {}
-        return bot.get("first_name") or bot.get("username") or "Loja"
+        return bot.get("first_name") or bot.get("username") or self.t("shop.default_title")
+
+    def t(self, key, *args):
+        """Texto no idioma do bot."""
+        return i18n.t(key, self.engine.lang, *args)
+
+    def date(self, ts):
+        return time.strftime(self.t("fmt.date"), time.localtime(ts))
 
     def _context(self, user, chat_id):
         stamp = self.engine._now()
@@ -188,15 +186,15 @@ class ShopFlow:
         elif action in ("g", "c", "x"):
             order = db.get_order(self.base_dir, arg)
             if order is None or order["user_id"] != user.get("id"):
-                self._answer(query, "Pedido não encontrado.")
+                self._answer(query, self.t("shop.order_not_found"))
             elif action == "x":
                 if order["status"] == "pending":
                     db.set_status(self.base_dir, order["id"], "cancelled")
-                self._answer(query, "Pedido cancelado.")
+                self._answer(query, self.t("shop.order_cancelled"))
             elif order["status"] == "paid":
-                self._answer(query, "Este pedido já está pago.")
+                self._answer(query, self.t("shop.order_paid"))
             elif order["status"] != "pending":
-                self._answer(query, "Este pedido expirou. Faça um novo pela loja.", alert=True)
+                self._answer(query, self.t("shop.order_expired"), alert=True)
             elif action == "g":
                 self._answer(query)
                 self.charge(order, parts[2] if len(parts) > 2 else "", self.engine)
@@ -213,7 +211,7 @@ class ShopFlow:
               and int(query.get("total_amount") or 0) == (order.get("stars") or -1))
         params = {"pre_checkout_query_id": query.get("id"), "ok": ok}
         if not ok:
-            params["error_message"] = "Este pedido não está mais disponível. Faça um novo pela loja."
+            params["error_message"] = self.t("shop.order_unavailable")
         self.engine._try_call("answerPreCheckoutQuery", params)
 
     def on_stars_paid(self, message):
@@ -227,29 +225,29 @@ class ShopFlow:
         user = message.get("from") or {}
         if chat.get("type") != "private":
             username = (self.engine.bot or {}).get("username", "")
-            self._send(self.engine, chat.get("id"), "A loja abre na conversa privada com o bot.",
-                       [[{"text": "Abrir loja", "url": "https://t.me/%s?start=loja" % username}]] if username else None)
+            self._send(self.engine, chat.get("id"), self.t("shop.private_only"),
+                       [[{"text": self.t("shop.open"), "url": "https://t.me/%s?start=loja" % username}]] if username else None)
             return
         products = self.for_sale()
         if not products:
-            self._send(self.engine, chat["id"], "A loja está sem produtos no momento. Volte em breve!")
+            self._send(self.engine, chat["id"], self.t("shop.empty"))
             return
-        intro = template.render(self.shop["intro"], self._context(user, chat["id"]))
+        intro = template.render(self.shop["intro"] or self.t("shop.intro"), self._context(user, chat["id"]))
         keyboard = [[{"text": "%s · %s" % (p["name"], self.price(p["price"])), "callback_data": CB + "p:" + p["id"]}]
                     for p in products[:50]]
         self._send(self.engine, chat["id"], intro, keyboard)
         if self.shop["miniapp"] and self.shop["store_url"].startswith("https://"):
             self.engine._call_send("sendMessage", {
                 "chat_id": chat["id"],
-                "text": "Prefere a vitrine completa, com carrinho? Toque em Abrir loja, aqui embaixo.",
-                "reply_markup": {"keyboard": [[{"text": "Abrir loja", "web_app": {
+                "text": self.t("shop.storefront_hint"),
+                "reply_markup": {"keyboard": [[{"text": self.t("shop.open"), "web_app": {
                     "url": catalog.miniapp_url(self.shop, self.title(), self.sold())}}]], "resize_keyboard": True},
             }, "loja")
 
     def show_product(self, chat_id, product_id):
         p = catalog.find(self.shop, product_id)
         if p is None or p not in self.for_sale():
-            self._send(self.engine, chat_id, "Este produto não está mais à venda.")
+            self._send(self.engine, chat_id, self.t("shop.product_gone"))
             return
         lines = ["<b>%s</b>" % template.escape(p["name"])]
         if p["description"]:
@@ -277,17 +275,17 @@ class ShopFlow:
         chat_id = (message.get("chat") or {}).get("id")
         subs = db.user_subscriptions(self.base_dir, user.get("id"))
         if not subs:
-            self._send(self.engine, chat_id, "Você ainda não tem assinaturas. Veja as opções em /%s."
-                       % self.shop["triggers"][0])
+            self._send(self.engine, chat_id, self.t("shop.no_subscriptions", self.shop["triggers"][0]))
             return
-        lines, keyboard, now = ["<b>Suas assinaturas</b>", ""], [], time.time()
+        lines, keyboard, now = [self.t("shop.your_subscriptions"), ""], [], time.time()
         for s in subs:
             active = s["status"] == "active" and s["expires_at"] > now
-            lines.append("%s: %s %s" % (template.escape(s["chat_title"] or "Canal"),
-                                        "ativa até" if active else "venceu em", _date(s["expires_at"])))
+            lines.append("%s: %s %s" % (template.escape(s["chat_title"] or self.t("shop.channel")),
+                                        self.t("shop.active_until" if active else "shop.expired_on"),
+                                        self.date(s["expires_at"])))
             p = catalog.find(self.shop, s["product_id"])
             if p and p in self.for_sale():
-                keyboard.append([{"text": "Renovar %s" % (s["chat_title"] or p["name"]),
+                keyboard.append([{"text": self.t("shop.renew_named", s["chat_title"] or p["name"]),
                                   "callback_data": CB + "b:" + p["id"]}])
         self._send(self.engine, chat_id, "\n".join(lines), keyboard)
 
@@ -302,7 +300,7 @@ class ShopFlow:
         cart = data.get("cart") if isinstance(data, dict) else None
         chat_id = (message.get("chat") or {}).get("id")
         if not isinstance(cart, list) or not cart:
-            self._send(self.engine, chat_id, "O carrinho chegou vazio. Tente de novo pela loja.")
+            self._send(self.engine, chat_id, self.t("shop.cart_empty"))
             return
         self.buy(message.get("from") or {}, chat_id, cart)
 
@@ -325,7 +323,7 @@ class ShopFlow:
                           "type": p["type"], "chat_id": p["chat_id"], "chat_title": p["chat_title"],
                           "days": p["days"]})
         if not items:
-            self._send(self.engine, chat_id, "Esses produtos não estão mais disponíveis.")
+            self._send(self.engine, chat_id, self.t("shop.products_gone"))
             return None
         order = db.create_order(self.base_dir, user, chat_id, items, self.shop["currency"])
         self._mirror(order)
@@ -335,75 +333,69 @@ class ShopFlow:
         return order
 
     def summary(self, order):
-        lines = ["<b>Pedido %s</b>" % order["id"]]
+        lines = [self.t("shop.order_title", order["id"])]
         for i in order["items"]:
             lines.append("%s%s · %s" % ("%dx " % i["qty"] if i["qty"] > 1 else "", template.escape(i["name"]),
                                         self.price(i["price"] * i["qty"])))
-        lines.append("<b>Total: %s</b>" % self.price(order["total"]))
+        lines.append(self.t("shop.total_bold", self.price(order["total"])))
         return "\n".join(lines)
 
     def offer_payment(self, order):
         options = self.gateways(order)
         chat_id = order["chat_id"]
         if not options:
-            self._send(self.engine, chat_id, self.summary(order) + "\n\nOs pagamentos ainda não foram configurados."
-                       " Um administrador foi avisado.")
+            self._send(self.engine, chat_id, self.summary(order) + "\n\n" + self.t("shop.no_payments"))
             self.engine.emit("error", context="shop", command="loja", retry_in=None, fatal=False,
                              code="pay_no_gateway", detail="", retry_after=None)
             return
         if len(options) == 1:
             self.charge(order, options[0], self.engine)
             return
-        keyboard = [[{"text": GATEWAY_LABELS[g] if g != "xtr" else "Telegram Stars (%d estrelas)" % order["stars"],
+        keyboard = [[{"text": self.t("shop.gw_" + g) if g != "xtr" else self.t("shop.gw_xtr_n", order["stars"]),
                       "callback_data": "%sg:%s:%s" % (CB, order["id"], g)}] for g in options]
-        keyboard.append([{"text": "Cancelar pedido", "callback_data": "%sx:%s" % (CB, order["id"])}])
-        self._send(self.engine, chat_id, self.summary(order) + "\n\nComo você prefere pagar?", keyboard)
+        keyboard.append([{"text": self.t("shop.cancel_order"), "callback_data": "%sx:%s" % (CB, order["id"])}])
+        self._send(self.engine, chat_id, self.summary(order) + "\n\n" + self.t("shop.how_to_pay"), keyboard)
 
     def charge(self, order, gateway, sender):
         chat_id = order["chat_id"]
         if gateway not in self.gateways(order):
-            self._send(sender, chat_id, "Essa forma de pagamento não está disponível agora.")
+            self._send(sender, chat_id, self.t("shop.gateway_unavailable"))
             return
-        paid_btn = [{"text": "Já paguei", "callback_data": "%sc:%s" % (CB, order["id"])}]
+        paid_btn = [{"text": self.t("shop.already_paid"), "callback_data": "%sc:%s" % (CB, order["id"])}]
         try:
             if gateway == "mp":
                 ref, url = MercadoPago(self.secrets["mp_token"]).checkout(order, self.title())
                 db.set_payment(self.base_dir, order["id"], "mp", ref, url)
-                self._send(sender, chat_id, self.summary(order) + "\n\nPague pelo Mercado Pago: Pix, cartão ou boleto."
-                           " Assim que o pagamento for aprovado, a entrega chega aqui.",
-                           [[{"text": "Pagar %s" % self.price(order["total"]), "url": url}], paid_btn])
+                self._send(sender, chat_id, self.summary(order) + "\n\n" + self.t("shop.pay_mp"),
+                           [[{"text": self.t("shop.pay_amount", self.price(order["total"])), "url": url}], paid_btn])
             elif gateway == "pix":
                 mp = self.shop["gateways"]["mercadopago"]
                 ref, code, png = MercadoPago(self.secrets["mp_token"]).pix(order, self.title(), mp["payer_email"])
                 db.set_payment(self.base_dir, order["id"], "pix", ref)
                 if png:
                     self._send_png(sender, chat_id, png, order)
-                self._send(sender, chat_id, "Pix copia e cola (toque para copiar):\n\n<code>%s</code>\n\n"
-                           "O código vale 30 minutos. A confirmação chega aqui sozinha." % template.escape(code),
-                           [paid_btn])
+                self._send(sender, chat_id, self.t("shop.pix_code", template.escape(code)), [paid_btn])
             elif gateway == "btc":
                 blink = Blink(self.secrets["blink_key"])
                 sats = blink.sats_for(order["total"], order["currency"])
-                pr, _ = blink.invoice(sats, "%s - pedido %s" % (self.title(), order["id"]))
+                pr, _ = blink.invoice(sats, self.t("shop.invoice_memo", self.title(), order["id"]))
                 db.set_payment(self.base_dir, order["id"], "btc", pr)
-                self._send(sender, chat_id, self.summary(order) +
-                           "\n\nPague <b>%s sats</b> pela Lightning com a fatura abaixo (toque para copiar). "
-                           "Ela vale 1 hora.\n\n<code>%s</code>" % ("{:,}".format(sats).replace(",", "."),
-                                                                   template.escape(pr)), [paid_btn])
+                self._send(sender, chat_id, self.summary(order) + "\n\n" + self.t(
+                    "shop.pay_btc", "{:,}".format(sats).replace(",", self.t("shop.thousands_sep")),
+                    template.escape(pr)), [paid_btn])
             elif gateway == "xtr":
                 db.set_payment(self.base_dir, order["id"], "xtr", "")
-                title = order["items"][0]["name"] if len(order["items"]) == 1 else "Pedido %s" % order["id"]
+                title = order["items"][0]["name"] if len(order["items"]) == 1 else self.t("shop.order_plain", order["id"])
                 sender._call_send("sendInvoice", {
                     "chat_id": chat_id, "title": title[:32],
-                    "description": ("%s - pedido %s" % (", ".join(i["name"] for i in order["items"]),
-                                                         order["id"]))[:255],
+                    "description": self.t("shop.invoice_memo", ", ".join(i["name"] for i in order["items"]),
+                                          order["id"])[:255],
                     "payload": order["id"], "currency": "XTR",
                     "prices": [{"label": title[:32], "amount": int(order["stars"])}],
                 }, "loja")
         except PaymentError as exc:
             sender.emit("error", context="shop", command="loja", retry_in=None, fatal=False, **exc.to_dict())
-            self._send(sender, chat_id, "Não foi possível gerar a cobrança agora. Tente outra forma de pagamento"
-                       " ou daqui a pouco.")
+            self._send(sender, chat_id, self.t("shop.charge_failed"))
 
     def _send_png(self, sender, chat_id, png, order):
         folder = os.path.join(self.base_dir, "shop_tmp")
@@ -412,7 +404,7 @@ class ShopFlow:
         try:
             with open(path, "wb") as fh:
                 fh.write(png)
-            sender._call_send("sendPhoto", {"chat_id": chat_id, "caption": "Pix · %s · pedido %s" % (
+            sender._call_send("sendPhoto", {"chat_id": chat_id, "caption": self.t("shop.pix_caption",
                 self.price(order["total"]), order["id"])}, "loja", files={"photo": path})
         finally:
             try:
@@ -435,13 +427,12 @@ class ShopFlow:
             self.engine.emit("error", context="shop", command="loja", retry_in=None, fatal=False, **exc.to_dict())
             status = None
         if status == PAID:
-            self._answer(query, "Pagamento confirmado!")
+            self._answer(query, self.t("shop.payment_confirmed"))
             self.complete(order["id"], self.engine)
         elif order.get("gateway") == "xtr":
             self._answer(query)
         else:
-            self._answer(query, "Ainda não identificamos o pagamento. Pode levar alguns segundos; "
-                                "a confirmação chega aqui sozinha.", alert=True)
+            self._answer(query, self.t("shop.payment_not_yet"), alert=True)
 
     # -- pagamento confirmado -----------------------------------------------------------------
 
@@ -463,7 +454,7 @@ class ShopFlow:
         user = {"id": order["user_id"], "first_name": order["first_name"], "last_name": order["last_name"],
                 "username": order["username"]}
         chat_id = order["chat_id"]
-        self._send(sender, chat_id, "Pagamento confirmado! Obrigado pela compra.\n\n" + self.summary(order))
+        self._send(sender, chat_id, self.t("shop.thanks") + "\n\n" + self.summary(order))
         problems = []
         context = self._context(user, chat_id)
         for item in order["items"]:
@@ -478,13 +469,12 @@ class ShopFlow:
                 continue
             for _ in range(item["qty"] if delivery.get("media") is None else 1):
                 if not sender.send_message(chat_id, delivery, context, "loja"):
-                    problems.append("entrega de %s falhou" % item["name"])
+                    problems.append(self.t("shop.problem_delivery", item["name"]))
                     break
                 if item["qty"] > 1 and delivery.get("media") is None and "{" not in delivery.get("text", ""):
                     break  # mesma mensagem: uma basta
         if problems:
-            self._send(sender, chat_id, "Tivemos um problema na entrega. Um administrador já foi avisado e vai "
-                                        "resolver. Seu pedido é o %s." % order["id"])
+            self._send(sender, chat_id, self.t("shop.delivery_problem", order["id"]))
         return problems
 
     def grant(self, sender, user, item):
@@ -492,33 +482,32 @@ class ShopFlow:
         chat_id = item.get("chat_id")
         title = item.get("chat_title") or item["name"]
         if not chat_id:
-            return "%s sem canal/grupo configurado" % item["name"]
+            return self.t("shop.problem_no_chat", item["name"])
         expires, renewed = db.extend_subscription(self.base_dir, user, chat_id, title, item["id"], item["days"])
         if renewed:
-            self._send(sender, user["id"], "Assinatura de <b>%s</b> renovada até <b>%s</b>."
-                       % (template.escape(title), _date(expires)))
+            self._send(sender, user["id"], self.t("shop.sub_renewed", template.escape(title), self.date(expires)))
             return None
         self._raw(sender, "unbanChatMember", {"chat_id": chat_id, "user_id": user["id"], "only_if_banned": True})
         link = self._raw(sender, "createChatInviteLink", {
             "chat_id": chat_id, "member_limit": 1, "expire_date": int(time.time()) + 86400,
-            "name": ("Assinatura %s" % user["id"])[:32]})
+            "name": self.t("shop.invite_name", user["id"])[:32]})
         url = (link or {}).get("invite_link") if isinstance(link, dict) else None
         if not url:
-            return "sem permissão para criar convite em %s (o bot precisa ser admin com 'convidar usuários')" % title
-        self._send(sender, user["id"], "Assinatura de <b>%s</b> ativa até <b>%s</b>.\n\nEntre pelo botão abaixo. "
-                   "O convite é pessoal e vale 24 horas." % (template.escape(title), _date(expires)),
-                   [[{"text": "Entrar em %s" % title[:40], "url": url}]])
+            return self.t("shop.problem_invite", title)
+        self._send(sender, user["id"], self.t("shop.sub_active", template.escape(title), self.date(expires)),
+                   [[{"text": self.t("shop.join", title[:40]), "url": url}]])
         return None
 
     def notify_admins(self, order, problems, sender):
-        lines = ["Nova venda: pedido %s" % order["id"], "Comprador: %s · ID %s" % (_name(order), order["user_id"])]
+        lines = [self.t("shop.admin_new_sale", order["id"]), self.t("shop.admin_buyer", _name(order), order["user_id"])]
         lines += ["%dx %s" % (i["qty"], i["name"]) for i in order["items"]]
         if order["gateway"] == "xtr":
-            lines.append("Total: %d estrelas (Telegram Stars)" % (order["stars"] or 0))
+            lines.append(self.t("shop.admin_total_stars", order["stars"] or 0))
         else:
-            lines.append("Total: %s (%s)" % (self.price(order["total"]), GATEWAY_LABELS.get(order["gateway"], "")))
+            gw = order["gateway"]
+            lines.append(self.t("shop.admin_total", self.price(order["total"]), self.t("shop.gw_" + gw) if gw in GATEWAYS else ""))
         if problems:
-            lines += ["", "ATENÇÃO, entrega com problema:"] + problems
+            lines += ["", self.t("shop.admin_problem")] + problems
         text = "\n".join(lines)
         level = self.shop["notify_level"]
         for admin_id, admin in sorted(self.engine.admins.items()):
@@ -587,21 +576,19 @@ class ShopFlow:
                 self._raw(sender, "unbanChatMember", {"chat_id": s["chat_id"], "user_id": s["user_id"],
                                                       "only_if_banned": True})
             db.set_subscription(self.base_dir, s["user_id"], s["chat_id"], status="expired")
-            self._send(sender, s["user_id"], "Sua assinatura de <b>%s</b> terminou e o acesso foi encerrado."
-                       % template.escape(title), self._renew_button(s))
+            self._send(sender, s["user_id"], self.t("shop.sub_ended", template.escape(title)), self._renew_button(s))
             sender.emit("subscription_expired", user=_name(s), chat=title, removed=bool(kicked))
         days = self.shop["remind_days"]
         if days:
             for s in db.reminders_due(self.base_dir, days, now):
                 db.set_subscription(self.base_dir, s["user_id"], s["chat_id"], reminded=1)
-                self._send(sender, s["user_id"], "Sua assinatura de <b>%s</b> vence em <b>%s</b>. Renove para não "
-                           "perder o acesso." % (template.escape(s["chat_title"] or "canal"),
-                                                 _date(s["expires_at"])), self._renew_button(s))
+                self._send(sender, s["user_id"], self.t("shop.sub_reminder", template.escape(s["chat_title"] or self.t("shop.channel")),
+                                                        self.date(s["expires_at"])), self._renew_button(s))
 
     def _renew_button(self, sub):
         p = catalog.find(self.shop, sub["product_id"])
         if p and p in self.for_sale():
-            return [[{"text": "Renovar · %s" % self.price(p["price"]), "callback_data": CB + "b:" + p["id"]}]]
+            return [[{"text": self.t("shop.renew_price", self.price(p["price"])), "callback_data": CB + "b:" + p["id"]}]]
         return None
 
 
@@ -682,7 +669,6 @@ def app_subscription(token, bot_dir, user_id, chat_id, action, days=0):
             shop._raw(eng, "unbanChatMember", {"chat_id": sub["chat_id"], "user_id": sub["user_id"],
                                                "only_if_banned": True})
         db.set_subscription(bot_dir, sub["user_id"], sub["chat_id"], status="removed", expires_at=now)
-        shop._send(eng, sub["user_id"], "Seu acesso a <b>%s</b> foi encerrado por um administrador."
-                   % template.escape(title))
+        shop._send(eng, sub["user_id"], shop.t("shop.sub_removed", template.escape(title)))
         return {"removed": bool(kicked)}
     return _app_result(run)

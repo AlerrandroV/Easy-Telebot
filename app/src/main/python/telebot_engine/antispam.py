@@ -25,7 +25,7 @@ import os
 import threading
 import time
 
-from . import admins, chats
+from . import admins, chats, i18n
 
 BANS_FILE = "bans.json"
 CALLBACK_PREFIX = "as:"
@@ -40,9 +40,6 @@ LEVELS = {
 }
 DEFAULT_LEVEL = "media"
 
-BLOCK_NOTICE = ("⛔ Você foi bloqueado automaticamente por enviar mensagens demais em pouco tempo.\n\n"
-                "Um administrador vai analisar o caso. Até lá, o bot não vai responder.")
-RELEASE_NOTICE = "✅ Um administrador analisou o caso e desbloqueou você. Pode voltar a usar o bot."
 
 _lock = threading.RLock()
 
@@ -63,15 +60,16 @@ def normalize_settings(data):
 
 # -- detecção (em memória, por pessoa) -----------------------------------------------
 
-_LABELS = {"photo": "[foto]", "video": "[vídeo]", "animation": "[GIF]", "document": "[documento]",
-           "audio": "[áudio]", "voice": "[mensagem de voz]", "video_note": "[vídeo redondo]",
-           "contact": "[contato]", "location": "[localização]", "poll": "[enquete]"}
+_LABELS = ("photo", "video", "animation", "document", "audio", "voice", "video_note", "contact", "location", "poll")
 
 
-def _sample(message):
+def _sample(message, lang=None):
     p = chats.parse_message(message)
-    label = "[figurinha %s]" % (p["emoji"] or "") if p["kind"] == "sticker" else _LABELS.get(p["kind"], "")
-    return (label + " " + p["text"]).strip()[:200] or "[mensagem]"
+    if p["kind"] == "sticker":
+        label = i18n.t("kind.sticker", lang, p["emoji"] or "")
+    else:
+        label = i18n.t("kind." + p["kind"], lang) if p["kind"] in _LABELS else ""
+    return (label + " " + p["text"]).strip()[:200] or i18n.t("kind.message", lang)
 
 
 def _key(message):
@@ -104,7 +102,7 @@ class Detector:
         for uid in [u for u, q in self.times.items() if not q or now - q[-1] > 120]:
             self.reset(uid)
 
-    def check(self, message, sensitivity=DEFAULT_LEVEL, now=None):
+    def check(self, message, sensitivity=DEFAULT_LEVEL, now=None, lang=None):
         """Registra a mensagem; devolve ``{"reason", "count", "window"}`` se passou do limite."""
         now = now or time.time()
         uid = (message.get("from") or {}).get("id")
@@ -112,7 +110,7 @@ class Detector:
             return None
         max_msgs, window, max_rep, rep_window = LEVELS.get(sensitivity, LEVELS[DEFAULT_LEVEL])
         self._gc(now)
-        self.samples.setdefault(uid, collections.deque(maxlen=6)).append(_sample(message))
+        self.samples.setdefault(uid, collections.deque(maxlen=6)).append(_sample(message, lang))
 
         group = message.get("media_group_id")
         if group and self.groups.get(uid) == group:
@@ -225,51 +223,53 @@ def public(record):
 
 # -- texto do aviso para os admins -----------------------------------------------------
 
-def reason_text(record):
+def reason_text(record, lang=None):
     count, window = record.get("count") or 0, record.get("window") or 0
     if record.get("reason") == "flood":
-        return "%d mensagens em %d segundos" % (count, window)
+        return i18n.t("antispam.reason_flood", lang, count, window)
     if record.get("reason") == "repeat":
-        return "a mesma mensagem %d vezes em %s" % (count, "1 minuto" if window == 60 else "%d segundos" % window)
-    return "bloqueado manualmente"
+        span = i18n.t("antispam.one_minute", lang) if window == 60 else i18n.t("antispam.seconds", lang, window)
+        return i18n.t("antispam.reason_repeat", lang, count, span)
+    return i18n.t("antispam.reason_manual", lang)
 
 
-def notice_text(record):
+def notice_text(record, lang=None):
     e = html.escape
+    t = lambda key, *a: i18n.t(key, lang, *a)  # noqa: E731
     stamp = record.get("stamp") or ""
-    name = chats._full_name(record) or "Sem nome"
+    name = chats._full_name(record) or t("antispam.no_name")
     who = '<a href="tg://user?id=%d">%s</a>' % (int(record["id"]), e(name))
     if record.get("username"):
         who += " (@%s)" % e(record["username"])
-    where = "Conversa privada" if record.get("chat_type", "private") == "private" \
-        else "Grupo %s" % e(record.get("chat_title") or "")
+    where = t("antispam.private") if record.get("chat_type", "private") == "private" \
+        else t("antispam.group", e(record.get("chat_title") or ""))
     lines = [
-        "🚨 <b>Bloqueio automático (antispam)</b>",
+        t("antispam.notice_title"),
         "",
         "👤 %s · ID <code>%d</code>" % (who, int(record["id"])),
         "📍 %s" % where,
-        "⚠️ %s" % e(reason_text(record)),
+        "⚠️ %s" % e(reason_text(record, lang)),
     ]
     if stamp:
         lines.append("🕒 %s" % e(stamp))
     samples = record.get("samples") or []
     if samples:
-        lines += ["", "<b>Últimas mensagens:</b>"] + ["• " + e(s[:120]) for s in samples]
-    lines += ["", "O bot está ignorando esta pessoa até um admin decidir. Se foi engano, desbloqueie."]
+        lines += ["", t("antispam.samples")] + ["• " + e(s[:120]) for s in samples]
+    lines += ["", t("antispam.notice_footer")]
     return "\n".join(lines)
 
 
-def decision_line(record, action):
-    by = record.get("decided_by") or "pelo app"
+def decision_line(record, action, lang=None):
+    by = record.get("decided_by") or i18n.t("antispam.by_app", lang)
     if action == RELEASE:
-        return "✅ <b>Desbloqueado</b> por %s." % html.escape(by)
-    return "🚫 <b>Mantido bloqueado</b> por %s. Ainda dá para desbloquear depois." % html.escape(by)
+        return i18n.t("antispam.released_by", lang, html.escape(by))
+    return i18n.t("antispam.kept_by", lang, html.escape(by))
 
 
-def keyboard(uid, pending=True):
-    row = [{"text": "✅ Desbloquear", "callback_data": "%s%s:%d" % (CALLBACK_PREFIX, RELEASE, int(uid))}]
+def keyboard(uid, pending=True, lang=None):
+    row = [{"text": i18n.t("antispam.btn_release", lang), "callback_data": "%s%s:%d" % (CALLBACK_PREFIX, RELEASE, int(uid))}]
     if pending:
-        row.append({"text": "🚫 Manter bloqueado", "callback_data": "%s%s:%d" % (CALLBACK_PREFIX, KEEP, int(uid))})
+        row.append({"text": i18n.t("antispam.btn_keep", lang), "callback_data": "%s%s:%d" % (CALLBACK_PREFIX, KEEP, int(uid))})
     return {"inline_keyboard": [row]}
 
 
@@ -286,26 +286,26 @@ def parse_callback(data):
         return None
 
 
-def update_notices(api, record, action):
+def update_notices(api, record, action, lang=None):
     """Edita o aviso de cada admin com a decisão (e tira os botões, se desbloqueou)."""
-    text = notice_text(record) + "\n\n" + decision_line(record, action)
+    text = notice_text(record, lang) + "\n\n" + decision_line(record, action, lang)
     for chat_id, message_id in record.get("notices") or []:
         params = {"chat_id": chat_id, "message_id": message_id, "text": text, "parse_mode": "HTML",
                   "link_preview_options": {"is_disabled": True}}
         if action == KEEP:
-            params["reply_markup"] = keyboard(record["id"], pending=False)
+            params["reply_markup"] = keyboard(record["id"], pending=False, lang=lang)
         try:
             api.call("editMessageText", params, timeout=20)
         except Exception:  # noqa: BLE001 - aviso apagado pelo admin etc.
             pass
 
 
-def finish_decision(api, record, action, send_notice):
+def finish_decision(api, record, action, send_notice, lang=None):
     """Depois de ``decide``: atualiza os avisos dos admins e, se desbloqueou alguém em conversa
     privada, chama ``send_notice(chat_id, texto)``."""
-    update_notices(api, record, action)
+    update_notices(api, record, action, lang)
     if action == RELEASE and record.get("chat_type", "private") == "private":
-        send_notice(int(record["id"]), RELEASE_NOTICE)
+        send_notice(int(record["id"]), i18n.t("antispam.released_notice", lang))
 
 
 # -- funções chamadas pelo app (Kotlin) -------------------------------------------------
@@ -332,7 +332,8 @@ def decide_app(token, bot_dir, user_id, action):
     """Decisão tomada no app: grava, atualiza os avisos no Telegram e, se desbloqueou, avisa a pessoa."""
     from .api import TelegramApi
 
-    record = decide(bot_dir, user_id, action, "o dono do bot (pelo app)")
+    lang = i18n.bot_language(bot_dir)
+    record = decide(bot_dir, user_id, action, i18n.t("antispam.by_owner", lang))
     if record is None or not token:
         return json.dumps({"ok": True})
     api = TelegramApi(token)
@@ -344,7 +345,7 @@ def decide_app(token, bot_dir, user_id, action):
         except Exception:  # noqa: BLE001 - a pessoa pode ter bloqueado o bot
             pass
 
-    finish_decision(api, record, action, send_notice)
+    finish_decision(api, record, action, send_notice, lang)
     return json.dumps({"ok": True})
 
 
@@ -353,6 +354,6 @@ def block_app(bot_dir, user_json):
     user = json.loads(user_json) if isinstance(user_json, str) else dict(user_json)
     record = build_record(user, {"id": user.get("id"), "type": "private"},
                           {"reason": "manual", "count": 0, "window": 0}, [], source="manual")
-    record["decided_by"] = "o dono do bot (pelo app)"
+    record["decided_by"] = i18n.t("antispam.by_owner", i18n.bot_language(bot_dir))
     add(bot_dir, record)
     return json.dumps({"ok": True})

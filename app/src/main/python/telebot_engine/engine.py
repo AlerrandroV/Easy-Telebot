@@ -28,7 +28,7 @@ from .termux import TermuxBridge
 from .flows import FlowRunner
 from . import termux as termux_mod
 from . import config as config_mod
-from . import errors, template
+from . import code_runner, errors, i18n, template
 from .api import Aborted, NetworkError, TelegramApi, TelegramError
 
 POLL_TIMEOUT = 50  # segundos que o Telegram segura a conexão esperando mensagens
@@ -38,7 +38,6 @@ MAX_BACKOFF = 60
 TEXT_LIMIT = 4096
 CAPTION_LIMIT = 1024
 NEWADMIN_COMMAND = "newadmin"  # comando secreto: só responde com um código válido
-NEWADMIN_REPLY = "Parabéns! Agora você é um administrador!"
 BLOCKED = "blocked"  # update de alguém bloqueado pelo antispam: nem o app nem os scripts respondem
 
 MEDIA_METHODS = {
@@ -88,7 +87,7 @@ def check_token(token, photo_path):
     """
     token = (token or "").strip()
     if not TOKEN_RE.match(token):
-        return _json({"ok": False, "error": _format_error("formato inválido")})
+        return _json({"ok": False, "error": _format_error(i18n.t("token.bad_format"))})
     api = TelegramApi(token)
     try:
         me = api.call("getMe", timeout=20)
@@ -210,6 +209,11 @@ class Engine:
             from .storage.worker import StorageWorker
             self.storage = StorageWorker(storage, self.base_dir, self.token.split(":")[0], self.emit)
         self._media_cache = self._load_cache()
+
+    @property
+    def lang(self):
+        """Idioma das mensagens automáticas do bot (configuração do bot ou idioma do app)."""
+        return i18n.pick(self.config.get("language"))
 
     # -- controle (chamado de outras threads) ---------------------------------
 
@@ -341,7 +345,7 @@ class Engine:
                 items.append({"command": "assinaturas", "description": "Minhas assinaturas"})
         b = self.config.get("broadcast") or {}
         if admin_level is not None and b.get("enabled") and admins_mod.can_use(admin_level, b.get("admin_level", 1)):
-            items.append({"command": b["triggers"][0], "description": "Publicação em massa"})
+            items.append({"command": b["triggers"][0], "description": i18n.t("post.menu_description", self.lang)})
         return items[:100]
 
     def publish_commands(self):
@@ -588,7 +592,7 @@ class Engine:
     def start_blocks(self, blocks, name, chat_id, user, args="", reply_to=None, update=None, edit_message=None):
         """Executa uma resposta (comando, botão callback ou regra de espera)."""
         job = (blocks, name, chat_id, user, args, reply_to, update, edit_message)
-        if any(b["type"] == "termux" for b in blocks) and not self.termux.sync_scripts:
+        if any(b["type"] in ("termux", "code") for b in blocks) and not self.termux.sync_scripts:
             # Script no meio: roda numa thread com conexão própria (o bot segue respondendo).
             threading.Thread(target=self.run_blocks, args=job, kwargs={"sender": self.termux._sender()},
                              name="blocks", daemon=True).start()
@@ -619,6 +623,15 @@ class Engine:
                 if n > 0:
                     sent += n
                     reply_to = None
+            elif kind == "code":
+                out = code_runner.run(self, block["code"], name, chat_id, user, args, update, sender=sender)
+                if out["sent"]:
+                    sent += out["sent"]
+                    reply_to = None
+                if out["stopped"]:
+                    if block.get("listener"):  # parar() dentro de "Aguardar resposta": acabou a espera
+                        self.flows.end_wait(user)
+                    break
             elif kind == "flow":
                 self.flows.start(block["node"], chat_id, user, args, reply_to=reply_to)
                 sent += 1
@@ -648,7 +661,7 @@ class Engine:
         settings = self.config.get("antispam") or {}
         if not settings.get("enabled", True):
             return False
-        hit = self.spam.check(message, settings.get("sensitivity", antispam.DEFAULT_LEVEL))
+        hit = self.spam.check(message, settings.get("sensitivity", antispam.DEFAULT_LEVEL), lang=self.lang)
         if not hit:
             return False
         self.auto_block(message, hit, settings)
@@ -662,18 +675,18 @@ class Engine:
         record["stamp"] = self._now()
 
         if settings.get("warn_user", True) and chat.get("type") == "private":
-            self._call_send("sendMessage", {"chat_id": chat.get("id"), "text": antispam.BLOCK_NOTICE}, "antispam")
+            self._call_send("sendMessage", {"chat_id": chat.get("id"), "text": i18n.t("antispam.blocked_notice", self.lang)}, "antispam")
 
         # Avisa os admins com classe para julgar o caso.
         required = settings.get("admin_level", 1)
-        text = antispam.notice_text(record)
+        text = antispam.notice_text(record, self.lang)
         for admin_id, admin in sorted(self.admins.items()):
             if not admins_mod.can_use(admin.get("level"), required):
                 continue
             sent = self._call_send("sendMessage", {
                 "chat_id": admin_id, "text": text, "parse_mode": "HTML",
                 "link_preview_options": {"is_disabled": True},
-                "reply_markup": antispam.keyboard(uid),
+                "reply_markup": antispam.keyboard(uid, lang=self.lang),
             }, "antispam")
             if isinstance(sent, dict) and sent.get("message_id"):
                 record["notices"].append([admin_id, sent["message_id"]])
@@ -712,13 +725,13 @@ class Engine:
         required = (self.config.get("antispam") or {}).get("admin_level", 1)
         if admin is None or not admins_mod.can_use(admin.get("level"), required):
             self._try_call("answerCallbackQuery", {"callback_query_id": query.get("id"),
-                                                   "text": "Só admins podem decidir bloqueios."})
+                                                   "text": i18n.t("antispam.only_admins", self.lang)})
             return
         by = _display_name(user)
         record = antispam.decide(self.base_dir, target, action, by)
         if record is None:
             self._try_call("answerCallbackQuery", {"callback_query_id": query.get("id"),
-                                                   "text": "Esse caso já foi resolvido por outro admin."})
+                                                   "text": i18n.t("antispam.already_decided", self.lang)})
             msg = query.get("message") or {}  # tira os botões do aviso antigo
             self._try_call("editMessageReplyMarkup", {"chat_id": (msg.get("chat") or {}).get("id"),
                                                       "message_id": msg.get("message_id")})
@@ -726,10 +739,10 @@ class Engine:
         # Responde ao toque antes de editar os avisos de todos os admins.
         released = action == antispam.RELEASE
         self._try_call("answerCallbackQuery", {"callback_query_id": query.get("id"),
-                                               "text": "Desbloqueado." if released else "Mantido bloqueado."})
+                                               "text": i18n.t("antispam.toast_released" if released else "antispam.toast_kept", self.lang)})
         self.maybe_reload_bans()
         antispam.finish_decision(self.api, record, action, lambda chat_id, text: self._call_send(
-            "sendMessage", {"chat_id": chat_id, "text": text}, "antispam"))
+            "sendMessage", {"chat_id": chat_id, "text": text}, "antispam"), self.lang)
         self.emit("spam_decided", user_id=target, action=action, by=by, name=_display_name(record))
 
     def handle_script_callback(self, query):
@@ -768,7 +781,7 @@ class Engine:
                       private=chat.get("type") == "private", had_code=bool(code))
             return
         self.admins[admin["id"]] = admin
-        self._call_send("sendMessage", {"chat_id": chat.get("id"), "text": NEWADMIN_REPLY}, NEWADMIN_COMMAND)
+        self._call_send("sendMessage", {"chat_id": chat.get("id"), "text": i18n.t("admin.welcome", self.lang)}, NEWADMIN_COMMAND)
         # Tira o código da conversa (se o Telegram deixar).
         try:
             self.api.call("deleteMessage", {"chat_id": chat.get("id"), "message_id": message.get("message_id")})

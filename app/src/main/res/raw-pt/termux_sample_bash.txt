@@ -1,0 +1,2 @@
+# comando direto, sem arquivo:
+echo "Bateria: $(termux-battery-status | jq .percentage)%"
