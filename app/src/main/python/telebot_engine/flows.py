@@ -27,7 +27,8 @@ import re
 import threading
 import time
 
-from . import template
+from . import admins as admins_mod
+from . import chats, template
 
 CALLBACK = "fl:"
 CUSTOM_CALLBACK = "cb:"
@@ -119,6 +120,34 @@ def _update(bot_dir, user_id, change):
         _save(bot_dir, data)
 
 
+MESSAGE_KINDS = {"text", "photo", "video", "animation", "video_note", "sticker", "voice", "audio", "document",
+                 "location", "contact", "poll"}
+
+
+def matches(cond, message):
+    """Condição de uma regra do Aguardar resposta. Ex.: tipo é foto; texto contém "sim"."""
+    field, op, value = cond.get("field"), cond.get("op"), (cond.get("value") or "")
+    if field == "any":
+        return True
+    if field == "type":
+        kind = chats.parse_message(message)["kind"]
+        same = kind == value or (value == "video" and kind in ("video", "video_note"))
+        return not same if op == "is_not" else same
+    text = (message.get("text") or message.get("caption") or "").strip()
+    low, val = text.casefold(), value.strip().casefold()
+    if op == "equals":
+        return low == val
+    if op == "contains":
+        return bool(val) and val in low
+    if op == "starts":
+        return bool(val) and low.startswith(val)
+    if op == "ends":
+        return bool(val) and low.endswith(val)
+    if op in ("number", "email", "phone"):
+        return valid_answer(text, op)
+    return False
+
+
 def valid_answer(text, kind):
     rule = VALIDATIONS.get(kind) or VALIDATIONS["text"]
     return bool(text) and bool(rule[0].search(text))
@@ -138,6 +167,10 @@ class FlowRunner:
     def handle_callback(self, query):
         """Botões ``fl:`` (ir para etapa) e ``cb:`` (personalizado). ``True`` se tratou."""
         data = query.get("data") or ""
+        reaction = (self.engine.config.get("callbacks") or {}).get(data[len(CUSTOM_CALLBACK):]) \
+            if data.startswith(CUSTOM_CALLBACK) else None
+        if reaction is not None:
+            return self._react(query, reaction)
         if data.startswith(CUSTOM_CALLBACK):
             if self.engine.termux.api is not None:
                 return False  # os scripts da API local recebem e respondem
@@ -154,6 +187,59 @@ class FlowRunner:
         self.start(data[len(CALLBACK):], chat.get("id") or user.get("id"), user, edit_message=editable)
         return True
 
+    def _react(self, query, reaction):
+        """Botão callback com resposta configurada no app (uma "pasta" do comando)."""
+        eng = self.engine
+        eng._try_call("answerCallbackQuery", {"callback_query_id": query.get("id")})
+        user = query.get("from") or {}
+        msg = query.get("message") or {}
+        level = reaction.get("admin_level")
+        if level is not None:
+            eng.maybe_reload_admins()
+            admin = eng.admins.get(user.get("id"))
+            if not admins_mod.can_use(admin and admin.get("level"), level):
+                return True  # botão de comando de admin: quem não pode, não usa
+        chat_id = (msg.get("chat") or {}).get("id") or user.get("id")
+        editable = msg.get("message_id") if reaction.get("edit") and msg.get("text") is not None else None
+        eng.emit("callback_reaction", button=reaction.get("text") or "")
+        eng.start_blocks(reaction["blocks"], reaction.get("text") or "botão", chat_id, user,
+                         update={"callback_query": query}, edit_message=editable)
+        return True
+
+    # -- Aguardar resposta (bloco com regras) -----------------------------------------------
+
+    def wait_for(self, block, chat_id, user, name):
+        waiting = {"wait": block.get("id"), "chat_id": chat_id, "since": int(time.time()), "name": name}
+        _update(self.engine.base_dir, user.get("id"), lambda st: st.__setitem__("waiting", waiting))
+
+    def _handle_wait(self, waiting, message, user, chat):
+        eng = self.engine
+        uid = user.get("id")
+        block = (eng.config.get("waits") or {}).get(waiting.get("wait"))
+        if block is None:  # a configuração mudou: esquece a espera
+            _update(eng.base_dir, uid, lambda st: st.pop("waiting", None))
+            return False
+        index = next((i for i, r in enumerate(block["rules"]) if matches(r["condition"], message)), None)
+        if index is not None:
+            rule = block["rules"][index]
+            blocks, keep = rule["blocks"], rule["keep"]
+        else:
+            blocks, keep = block["otherwise"], block["otherwise_keep"]
+        text = (message.get("text") or message.get("caption") or "").strip()
+        value = text or chats.parse_message(message).get("file_id") or ""
+
+        def save(st):
+            if not keep:
+                st.pop("waiting", None)
+            if block["variable"] and (index is not None or not block["rules"]):
+                st.setdefault("vars", {})[block["variable"]] = value[:1000]
+                st["vars"]["resposta"] = value[:1000]
+        _update(eng.base_dir, uid, save)
+        eng.emit("wait_answer", rule=index, name=waiting.get("name") or "", user=user.get("first_name") or "")
+        eng.start_blocks(blocks, waiting.get("name") or "resposta", chat.get("id"), user, text,
+                         update={"message": message})
+        return True
+
     def handle_message(self, message, parsed):
         """Resposta a uma pergunta de fluxo. Um comando cancela a pergunta (e segue normal)."""
         user = message.get("from") or {}
@@ -168,6 +254,8 @@ class FlowRunner:
         if parsed is not None or time.time() - waiting.get("since", 0) > WAIT_TTL:
             _update(self.engine.base_dir, uid, lambda st: st.pop("waiting", None))
             return False
+        if waiting.get("wait"):
+            return self._handle_wait(waiting, message, user, chat)
         node = self.nodes.get(waiting.get("node"))
         if node is None or node["after"]["type"] != "ask":
             _update(self.engine.base_dir, uid, lambda st: st.pop("waiting", None))
@@ -215,11 +303,11 @@ class FlowRunner:
         sender.api = TelegramApi(self.engine.token)
         return sender
 
-    def _context(self, user, chat_id, args):
+    def _context(self, user, chat_id, args, message=None):
         eng = self.engine
         stamp = eng._now()
         date, _, hour = stamp.partition(" ")
-        ctx = template.build_context({"from": user, "chat": {"id": chat_id}}, args,
+        ctx = template.build_context(message or {"from": user, "chat": {"id": chat_id}}, args,
                                      (eng.bot or {}).get("username", ""), date, hour)
         for k, v in (user_state(eng.base_dir, user.get("id")).get("vars") or {}).items():
             if VAR_NAME.match(k) and k not in ctx:
@@ -258,23 +346,30 @@ class FlowRunner:
                 return
             node_id = after["node"] if after["type"] == "goto" else None
 
+    @staticmethod
+    def edit_text(sender, chat_id, message_id, msg, context):
+        """Troca o texto e os botões de uma mensagem (menu). ``False`` se não deu (mídia,
+        mensagem antiga...): aí quem chamou manda uma mensagem nova."""
+        if msg.get("media") or not msg.get("text", "").strip():
+            return False
+        from .engine import build_keyboard
+        params = {"chat_id": chat_id, "message_id": message_id, "parse_mode": "HTML",
+                  "text": template.render(msg["text"], context),
+                  "link_preview_options": {"is_disabled": not msg.get("link_preview")}}
+        kb = build_keyboard(msg["buttons"], private=int(chat_id) > 0)
+        if kb:
+            params["reply_markup"] = kb
+        try:
+            sender.api.call("editMessageText", params, timeout=30)
+            return True
+        except Exception as exc:  # noqa: BLE001
+            return "not modified" in str(exc)
+
     def send_node(self, sender, node, chat_id, context, reply_to=None, edit_message=None):
         msgs = node["messages"]
-        if edit_message and node["edit"] and len(msgs) == 1 and not msgs[0].get("media"):
-            from .engine import build_keyboard
-            params = {"chat_id": chat_id, "message_id": edit_message, "parse_mode": "HTML",
-                      "text": template.render(msgs[0]["text"], context),
-                      "link_preview_options": {"is_disabled": not msgs[0].get("link_preview")}}
-            kb = build_keyboard(msgs[0]["buttons"], private=int(chat_id) > 0)
-            if kb:
-                params["reply_markup"] = kb
-            try:
-                sender.api.call("editMessageText", params, timeout=30)
-                return 1
-            except Exception as exc:  # noqa: BLE001
-                if "not modified" in str(exc):
-                    return 1
-                # mensagem antiga demais, com mídia etc.: manda uma nova
+        if edit_message and node["edit"] and len(msgs) == 1 and self.edit_text(sender, chat_id, edit_message,
+                                                                                msgs[0], context):
+            return 1
         sent = 0
         for msg in msgs:
             if sender.send_message(chat_id, msg, context, "fluxo", reply_to):

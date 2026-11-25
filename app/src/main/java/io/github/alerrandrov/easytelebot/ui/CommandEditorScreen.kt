@@ -37,10 +37,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.FilterChip
 import androidx.compose.runtime.mutableIntStateOf
 import io.github.alerrandrov.easytelebot.data.CommandBlock
+import io.github.alerrandrov.easytelebot.data.WaitCondition
+import io.github.alerrandrov.easytelebot.data.Reaction
+import io.github.alerrandrov.easytelebot.data.TreeStep
+import io.github.alerrandrov.easytelebot.data.BlockTree
 import io.github.alerrandrov.easytelebot.data.CommandScript
 import io.github.alerrandrov.easytelebot.data.FlowNode
 import io.github.alerrandrov.easytelebot.data.ButtonTypes
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -95,6 +100,8 @@ fun CommandEditorScreen(
     commandId: String?,
     newAsAdmin: Boolean = false,
     newAsScript: Boolean = false,
+    /** Etapas de fluxo antigas (comandos que já iniciavam um fluxo). */
+    onOpenFlows: () -> Unit = {},
     onDone: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -132,7 +139,9 @@ fun CommandEditorScreen(
     )
     val changed = current() != start
 
-    val errors = validate(context, triggers, blocks, otherTriggers, nodeIds)
+    val callbackCounts = (config.commands.filter { it.id != start.id }.flatMap { CommandBlock.callbackValues(it.blocks) } +
+        CommandBlock.callbackValues(blocks)).groupingBy { it }.eachCount()
+    val errors = validate(context, triggers, blocks, otherTriggers, nodeIds, callbackCounts)
 
     fun addTrigger() {
         val parts = triggerInput.split(' ', ',', ';').map { it.trim().removePrefix("/").lowercase() }.filter { it.isNotEmpty() }
@@ -144,7 +153,7 @@ fun CommandEditorScreen(
 
     fun save() {
         if (triggerInput.isNotBlank()) addTrigger()
-        if (validate(context, triggers, blocks, otherTriggers, nodeIds).isNotEmpty()) {
+        if (validate(context, triggers, blocks, otherTriggers, nodeIds, callbackCounts).isNotEmpty()) {
             showErrors = true
             return
         }
@@ -157,21 +166,53 @@ fun CommandEditorScreen(
         onDone()
     }
 
-    BackHandler { if (changed) confirmDiscard = true else onDone() }
+    /** Pasta aberta: caminho a partir da resposta do comando (vazio = a página do comando). */
+    var path by remember { mutableStateOf(listOf<TreeStep>()) }
+    val folderBlocks = if (path.isEmpty()) blocks else BlockTree.get(blocks, path)
+    LaunchedEffect(folderBlocks == null) { if (folderBlocks == null) path = emptyList() } // pasta apagada
+    val env = BlockEditorEnv(
+        botId = botId,
+        nodes = config.flows,
+        extraVariables = config.flowVariables() + config.commands.flatMap { CommandBlock.waitVariables(it.blocks) } +
+            CommandBlock.waitVariables(blocks),
+        callbackCounts = callbackCounts,
+        onOpen = { path = path + it },
+        onOpenFlows = if (config.flows.isEmpty()) null else ({
+            // Sair do editor descartaria o que não foi salvo.
+            if (changed) Toast.makeText(context, context.getString(R.string.block_flow_save_first), Toast.LENGTH_LONG).show()
+            else onOpenFlows()
+        }),
+    )
+    val rootName = "/" + (triggers.firstOrNull() ?: triggerInput.trim().removePrefix("/").ifBlank { "comando" })
+    val crumbs = folderCrumbs(blocks, path, rootName)
+
+    BackHandler {
+        when {
+            path.isNotEmpty() -> path = path.dropLast(1)
+            changed -> confirmDiscard = true
+            else -> onDone()
+        }
+    }
 
     Scaffold(
         topBar = {
             AppBar(
-                stringResource(
+                if (path.isNotEmpty()) crumbs.last() else stringResource(
                     when {
                         original != null -> R.string.cmd_edit
                         newAsAdmin -> R.string.cmd_new_admin
                         else -> R.string.cmd_new
                     }
                 ),
-                onBack = { if (changed) confirmDiscard = true else onDone() },
+                onBack = {
+                    when {
+                        path.isNotEmpty() -> path = path.dropLast(1)
+                        changed -> confirmDiscard = true
+                        else -> onDone()
+                    }
+                },
             ) {
-                if (original != null) {
+                if (original != null && path.isEmpty()) {
                     TextButton(onClick = { confirmDelete = true }) {
                         Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
                     }
@@ -203,6 +244,21 @@ fun CommandEditorScreen(
                         }
                     }
                 }
+            }
+
+            if (path.isNotEmpty()) {
+                item { FolderPath(crumbs) { depth -> path = path.take(depth) } }
+                item {
+                    FolderHeader(
+                        blocks = blocks,
+                        path = path,
+                        onChange = { blocks = it },
+                    )
+                }
+                item {
+                    ResponseBlocksEditor(env, folderBlocks.orEmpty()) { blocks = BlockTree.set(blocks, path, it) }
+                }
+                return@LazyColumn
             }
 
             item {
@@ -270,13 +326,7 @@ fun CommandEditorScreen(
 
             item { SectionTitle(stringResource(R.string.cmd_response_title)) }
             item {
-                ResponseBlocksEditor(
-                    botId = botId,
-                    blocks = blocks,
-                    onChange = { blocks = it },
-                    nodes = config.flows,
-                    extraVariables = config.flowVariables(),
-                )
+                ResponseBlocksEditor(env, blocks) { blocks = it }
             }
         }
     }
@@ -320,11 +370,25 @@ private fun validate(
     blocks: List<CommandBlock>,
     otherTriggers: Set<String>,
     nodeIds: Set<String>,
+    callbackCounts: Map<String, Int>,
 ): List<String> = buildList {
     if (triggers.isEmpty()) add(context.getString(R.string.cmd_err_no_trigger))
     triggers.filter { it in AdminLevels.RESERVED }.forEach { add(context.getString(R.string.cmd_err_reserved, it)) }
     triggers.filter { it in otherTriggers }.forEach { add(context.getString(R.string.cmd_err_trigger_taken, it)) }
     if (blocks.isEmpty()) add(context.getString(R.string.cmd_err_no_blocks))
+    validateBlocks(context, blocks, null, nodeIds, this)
+    callbackCounts.filter { it.value > 1 && it.key.isNotBlank() }.keys.forEach { add(context.getString(R.string.cmd_err_callback_dup, it)) }
+}
+
+/** Confere uma lista de blocos e as pastas dentro dela. `where` = nome da pasta (null = o comando). */
+private fun validateBlocks(
+    context: android.content.Context,
+    blocks: List<CommandBlock>,
+    where: String?,
+    nodeIds: Set<String>,
+    out: MutableList<String>,
+) {
+    fun add(msg: String) { out += if (where == null) msg else context.getString(R.string.cmd_err_in_folder, where, msg) }
     blocks.forEachIndexed { i, b ->
         val n = i + 1
         when (b) {
@@ -333,9 +397,21 @@ private fun validate(
                 if (m.text.isBlank() && m.media == null) add(context.getString(R.string.cmd_err_block_empty, n))
                 if (m.text.length > (if (m.media != null) CAPTION_LIMIT else TEXT_LIMIT)) add(context.getString(R.string.cmd_err_too_long, n))
                 if (m.buttons.flatten().any { !ButtonTypes.isValid(it, nodeIds) }) add(context.getString(R.string.cmd_err_button, n))
+                m.buttons.flatten().filter { it.type == ButtonTypes.CALLBACK }.forEach { btn ->
+                    validateBlocks(context, btn.reaction?.blocks.orEmpty(), btn.text.ifBlank { btn.url }, nodeIds, out)
+                }
             }
             is CommandBlock.Termux -> if (b.script.command.isBlank()) add(context.getString(R.string.cmd_err_block_script, n))
             is CommandBlock.Flow -> if (b.node !in nodeIds) add(context.getString(R.string.cmd_err_no_flow))
+            is CommandBlock.Wait -> {
+                b.rules.forEachIndexed { j, r ->
+                    if (r.condition.field == "text" && r.condition.op !in WaitCondition.NO_VALUE && r.condition.value.isBlank()) {
+                        add(context.getString(R.string.cmd_err_rule_value, j + 1))
+                    }
+                    validateBlocks(context, r.blocks, context.getString(R.string.rule_n, j + 1), nodeIds, out)
+                }
+                validateBlocks(context, b.otherwise, context.getString(R.string.rule_otherwise), nodeIds, out)
+            }
         }
     }
 }
@@ -780,5 +856,100 @@ internal fun FormatButton(
             textDecoration = decoration,
             fontFamily = if (mono) FontFamily.Monospace else null,
         )
+    }
+}
+
+/** Nomes do caminho até a pasta aberta: /start › Planos › Premium. */
+@Composable
+private fun folderCrumbs(blocks: List<CommandBlock>, path: List<TreeStep>, root: String): List<String> {
+    val names = mutableListOf(root)
+    var current: List<CommandBlock> = blocks
+    path.forEach { step ->
+        names += when (step) {
+            is TreeStep.Button -> BlockTree.button(current, step)?.text?.ifBlank { null } ?: stringResource(R.string.block_button_untitled)
+            is TreeStep.Rule -> stringResource(R.string.rule_n, step.rule + 1)
+            is TreeStep.Otherwise -> stringResource(R.string.rule_otherwise)
+        }
+        current = BlockTree.get(current, listOf(step)) ?: emptyList()
+    }
+    return names
+}
+
+/** Caminho clicável, como num gerenciador de arquivos. */
+@Composable
+private fun FolderPath(crumbs: List<String>, onJump: (Int) -> Unit) {
+    androidx.compose.foundation.lazy.LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        crumbs.forEachIndexed { i, name ->
+            item {
+                if (i > 0) AppIcon(R.drawable.ic_chevron_right, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            item {
+                val last = i == crumbs.lastIndex
+                TextButton(onClick = { onJump(i) }, enabled = !last, contentPadding = PaddingValues(horizontal = 6.dp)) {
+                    if (i == 0) {
+                        AppIcon(R.drawable.ic_chat, Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                    } else {
+                        AppIcon(R.drawable.ic_folder_open, Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                    }
+                    Text(name, maxLines = 1, fontWeight = if (last) FontWeight.Bold else null)
+                }
+            }
+        }
+    }
+}
+
+/** O que abre esta pasta (botão ou regra) e as opções dela. */
+@Composable
+private fun FolderHeader(blocks: List<CommandBlock>, path: List<TreeStep>, onChange: (List<CommandBlock>) -> Unit) {
+    val parentPath = path.dropLast(1)
+    val parent = BlockTree.get(blocks, parentPath) ?: return
+    val step = path.last()
+    fun setParent(list: List<CommandBlock>) = onChange(BlockTree.set(blocks, parentPath, list))
+    Card(
+        Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+    ) {
+        Column(Modifier.padding(vertical = 8.dp)) {
+            when (step) {
+                is TreeStep.Button -> {
+                    val btn = BlockTree.button(parent, step) ?: return@Column
+                    Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        IconLabel(R.drawable.ic_smart_button, stringResource(R.string.folder_button_when, btn.text.ifBlank { "?" }),
+                            style = MaterialTheme.typography.titleSmall)
+                        Text(stringResource(R.string.folder_button_callback, btn.url.ifBlank { "?" }),
+                            style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
+                    }
+                    SwitchRow(
+                        stringResource(R.string.folder_edit),
+                        stringResource(R.string.folder_edit_sub),
+                        btn.reaction?.edit ?: true,
+                    ) { v -> setParent(BlockTree.updateButton(parent, step) { it.copy(reaction = (it.reaction ?: Reaction()).copy(edit = v)) }) }
+                }
+                is TreeStep.Rule -> {
+                    val wait = BlockTree.wait(parent, step.block) ?: return@Column
+                    val rule = wait.rules.getOrNull(step.rule) ?: return@Column
+                    Text(stringResource(R.string.folder_rule_when, step.rule + 1), style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.padding(horizontal = 16.dp))
+                    SwitchRow(stringResource(R.string.rule_keep), stringResource(R.string.rule_keep_sub), rule.keep) { v ->
+                        setParent(BlockTree.updateWait(parent, step.block) { w ->
+                            w.copy(rules = w.rules.mapIndexed { i, r -> if (i == step.rule) r.copy(keep = v) else r })
+                        })
+                    }
+                }
+                is TreeStep.Otherwise -> {
+                    val wait = BlockTree.wait(parent, step.block) ?: return@Column
+                    Text(stringResource(R.string.folder_otherwise), style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.padding(horizontal = 16.dp))
+                    SwitchRow(stringResource(R.string.rule_keep), stringResource(R.string.otherwise_keep_sub), wait.otherwiseKeep) { v ->
+                        setParent(BlockTree.updateWait(parent, step.block) { it.copy(otherwiseKeep = v) })
+                    }
+                }
+            }
+        }
     }
 }

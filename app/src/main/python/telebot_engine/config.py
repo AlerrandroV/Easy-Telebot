@@ -57,6 +57,10 @@ def normalize_button(b):
     out = {"text": str(b["text"]), "type": kind, "value": value}
     if kind in LINK_TYPES:
         out["url"] = value  # compatibilidade com quem lê "url"
+    if kind == "callback" and isinstance(b.get("reaction"), dict):
+        # Botão "pasta": o que o bot faz quando tocam nele (blocos, inclusive outros botões).
+        r = b["reaction"]
+        out["reaction"] = {"blocks": _block_list(r.get("blocks")), "edit": bool(r.get("edit", True))}
     return out
 
 
@@ -94,6 +98,77 @@ def _message(item):
 BLOCK_TYPES = ("message", "termux", "flow")
 
 
+WAIT_FIELDS = ("any", "type", "text")
+WAIT_OPS = ("is", "is_not", "equals", "contains", "starts", "ends", "number", "email", "phone")
+
+
+def _condition(c):
+    c = c if isinstance(c, dict) else {}
+    field = c.get("field") if c.get("field") in WAIT_FIELDS else "any"
+    op = c.get("op") if c.get("op") in WAIT_OPS else ("is" if field == "type" else "contains")
+    return {"field": field, "op": op, "value": str(c.get("value") or "")[:200]}
+
+
+def _block_list(raw):
+    """Lista de blocos (recursiva: botões callback e regras de espera têm os seus)."""
+    out = []
+    for b in raw if isinstance(raw, list) else []:
+        if not isinstance(b, dict):
+            continue
+        kind = b.get("type")
+        if kind == "message":
+            m = _message(b)
+            if m:
+                out.append({"type": "message", "message": m})
+        elif kind == "termux":
+            sc = termux.normalize_script(b)
+            if sc:
+                out.append({"type": "termux", "script": sc})
+        elif kind == "flow" and b.get("node"):
+            out.append({"type": "flow", "node": str(b["node"])})
+        elif kind == "wait":
+            var = str(b.get("variable") or "").strip().lower()
+            out.append({
+                "type": "wait",
+                "variable": var if flows.VAR_NAME.match(var) else "",
+                "rules": [{"condition": _condition(r.get("condition")), "blocks": _block_list(r.get("blocks")),
+                           "keep": bool(r.get("keep", False))}
+                          for r in b.get("rules") or [] if isinstance(r, dict)],
+                "otherwise": _block_list(b.get("otherwise")),
+                "otherwise_keep": bool(b.get("otherwise_keep", True)),
+            })
+    return out
+
+
+def _index(commands):
+    """Botões callback e esperas de todos os comandos, para o motor achar na hora.
+
+    Cada espera ganha um id pelo caminho (``comando/0/r1/2``); cada callback leva a classe
+    de admin do comando de origem (quem não pode usar o comando também não usa os botões).
+    """
+    callbacks, waits = {}, {}
+
+    def walk(blocks, path, level):
+        for i, b in enumerate(blocks):
+            here = "%s/%d" % (path, i)
+            if b["type"] == "message":
+                for row in b["message"]["buttons"]:
+                    for btn in row:
+                        if btn["type"] == "callback" and "reaction" in btn and btn["value"] not in callbacks:
+                            callbacks[btn["value"]] = dict(btn["reaction"], admin_level=level, text=btn["text"])
+                            walk(btn["reaction"]["blocks"], "%s/cb:%s" % (here, btn["value"]), level)
+            elif b["type"] == "wait":
+                b["id"] = here
+                waits[here] = dict(b, admin_level=level)
+                for j, r in enumerate(b["rules"]):
+                    walk(r["blocks"], "%s/r%d" % (here, j), level)
+                walk(b["otherwise"], here + "/else", level)
+
+    for c in commands:
+        walk(c["blocks"], c["id"], c["admin_level"])
+    return callbacks, waits
+
+
 def _blocks(item, legacy_messages):
     """A resposta do comando: blocos executados em ordem.
 
@@ -101,24 +176,8 @@ def _blocks(item, legacy_messages):
     {"type": "flow", "node"}]``. Comandos antigos (``messages``/``script``/``flow``)
     viram blocos equivalentes.
     """
-    raw = item.get("blocks")
-    out = []
-    if isinstance(raw, list):
-        for b in raw:
-            if not isinstance(b, dict):
-                continue
-            kind = b.get("type")
-            if kind == "message":
-                m = _message(b)
-                if m:
-                    out.append({"type": "message", "message": m})
-            elif kind == "termux":
-                sc = termux.normalize_script(b)
-                if sc:
-                    out.append({"type": "termux", "script": sc})
-            elif kind == "flow" and b.get("node"):
-                out.append({"type": "flow", "node": str(b["node"])})
-        return out
+    if isinstance(item.get("blocks"), list):
+        return _block_list(item["blocks"])
     if item.get("flow"):
         return [{"type": "flow", "node": str(item["flow"])}]
     script = termux.normalize_script(item.get("script"))
@@ -165,6 +224,7 @@ def normalize(data):
             "script": next((b["script"] for b in blocks if b["type"] == "termux"), None),
             "flow": next((b["node"] for b in blocks if b["type"] == "flow"), None),
         })
+    callbacks, waits = _index(commands)
     b = data.get("broadcast") if isinstance(data.get("broadcast"), dict) else {}
     try:
         b_level = max(1, min(10, int(b.get("admin_level", 1))))
@@ -176,6 +236,8 @@ def normalize(data):
         "antispam": antispam.normalize_settings(data.get("antispam")),
         "termux": termux.normalize_settings(data.get("termux")),
         "flows": flows.normalize(data.get("flows"), _message),
+        "callbacks": callbacks,
+        "waits": waits,
         "shop": shop_catalog.normalize(data.get("shop"), _message),
         "auto_menu": bool(data.get("auto_menu", True)),
         "commands": commands,

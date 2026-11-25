@@ -11,18 +11,60 @@ import java.util.UUID
  * link (url), texto a copiar (copy), id da etapa (node), endereço do mini app (webapp)
  * ou o dado entregue aos scripts (callback).
  */
-data class LinkButton(val text: String, val url: String, val type: String = ButtonTypes.URL) {
+data class LinkButton(
+    val text: String,
+    val url: String,
+    val type: String = ButtonTypes.URL,
+    /** Botão callback: o que o bot faz quando tocam nele (uma "pasta" do comando). */
+    val reaction: Reaction? = null,
+) {
     fun toJson(): JSONObject = JSONObject().put("text", text).put("type", type).put("value", url).apply {
         if (type in ButtonTypes.LINKS) put("url", url)
+        if (type == ButtonTypes.CALLBACK && reaction != null) put("reaction", reaction.toJson())
     }
 
     companion object {
         fun fromJson(o: JSONObject): LinkButton {
             val type = o.optString("type", ButtonTypes.URL).takeIf { it in ButtonTypes.ALL } ?: ButtonTypes.URL
-            return LinkButton(o.optString("text"), o.optString("value").ifEmpty { o.optString("url") }, type)
+            return LinkButton(
+                o.optString("text"), o.optString("value").ifEmpty { o.optString("url") }, type,
+                o.optJSONObject("reaction")?.let { Reaction.fromJson(it) },
+            )
         }
     }
 }
+
+/** Reação a um botão callback: blocos (como a resposta de um comando) e se edita o menu. */
+data class Reaction(val blocks: List<CommandBlock> = emptyList(), val edit: Boolean = true) {
+    fun toJson(): JSONObject = JSONObject().put("edit", edit).put("blocks", CommandBlock.listJson(blocks))
+
+    companion object {
+        fun fromJson(o: JSONObject) = Reaction(CommandBlock.parseList(o.optJSONArray("blocks")), o.optBoolean("edit", true))
+    }
+}
+
+/** Condição de uma regra do Aguardar resposta (mesmos nomes de `flows.matches`). */
+data class WaitCondition(
+    /** "any" (qualquer mensagem), "type" (tipo da mensagem) ou "text" (texto). */
+    val field: String = "type",
+    /** type: "is" / "is_not"; text: "equals", "contains", "starts", "ends", "number", "email", "phone". */
+    val op: String = "is",
+    val value: String = "photo",
+) {
+    companion object {
+        val TYPES = listOf("text", "photo", "video", "document", "audio", "voice", "sticker", "location", "contact", "animation")
+        val TEXT_OPS = listOf("equals", "contains", "starts", "ends", "number", "email", "phone")
+        /** Operadores de texto que não precisam de valor. */
+        val NO_VALUE = setOf("number", "email", "phone")
+    }
+}
+
+data class WaitRule(
+    val condition: WaitCondition = WaitCondition(),
+    val blocks: List<CommandBlock> = emptyList(),
+    /** Depois de responder, continua esperando (ex.: "mande uma foto válida"). */
+    val keep: Boolean = false,
+)
 
 /** Tipos de botão (mesmos nomes do motor, `engine.build_button`). */
 object ButtonTypes {
@@ -43,7 +85,7 @@ object ButtonTypes {
         COPY -> b.url.isNotBlank() && b.url.length <= 256
         NODE -> b.url.isNotBlank() && (nodeIds == null || b.url in nodeIds)
         WEBAPP -> Variables.normalizeUrl(b.url)?.startsWith("https://") == true
-        CALLBACK -> b.url.isNotBlank() && b.url.toByteArray().size <= 61
+        CALLBACK -> b.url.isNotBlank() && b.url.none { it.isWhitespace() } && b.url.toByteArray().size <= 61
         else -> Variables.normalizeUrl(b.url) != null
     }
 }
@@ -121,22 +163,163 @@ sealed interface CommandBlock {
     data class Termux(val script: CommandScript, override val key: String = newKey()) : CommandBlock
     data class Flow(val node: String, override val key: String = newKey()) : CommandBlock
 
+    /** Aguardar resposta: espera a próxima mensagem e decide pelas regras (a primeira que servir). */
+    data class Wait(
+        val rules: List<WaitRule> = listOf(WaitRule()),
+        val otherwise: List<CommandBlock> = emptyList(),
+        /** Se nenhuma regra servir: responde o "senão" e continua esperando. */
+        val otherwiseKeep: Boolean = true,
+        /** Guarda a resposta em {variavel} (opcional). */
+        val variable: String = "",
+        override val key: String = newKey(),
+    ) : CommandBlock
+
     companion object {
         fun newKey() = UUID.randomUUID().toString()
+
+        fun listJson(blocks: List<CommandBlock>) = JSONArray().apply { blocks.forEach { put(toJson(it)) } }
+
+        fun parseList(arr: JSONArray?): List<CommandBlock> =
+            if (arr == null) emptyList() else (0 until arr.length()).mapNotNull { i -> arr.optJSONObject(i)?.let(::fromJson) }
 
         fun toJson(b: CommandBlock): JSONObject = when (b) {
             is Message -> BotConfig.messageJson(b.msg).put("type", "message")
             is Termux -> JSONObject().put("type", "termux").put("command", b.script.command).put("timeout", b.script.timeout)
             is Flow -> JSONObject().put("type", "flow").put("node", b.node)
+            is Wait -> JSONObject().put("type", "wait")
+                .put("variable", b.variable)
+                .put("otherwise_keep", b.otherwiseKeep)
+                .put("otherwise", listJson(b.otherwise))
+                .put("rules", JSONArray().apply {
+                    b.rules.forEach { r ->
+                        put(JSONObject()
+                            .put("condition", JSONObject().put("field", r.condition.field).put("op", r.condition.op).put("value", r.condition.value))
+                            .put("keep", r.keep)
+                            .put("blocks", listJson(r.blocks)))
+                    }
+                })
         }
 
         fun fromJson(o: JSONObject): CommandBlock? = when (o.optString("type")) {
             "message" -> Message(BotConfig.parseMessage(o))
             "termux" -> Termux(CommandScript(o.optString("command"), o.optInt("timeout", 30).coerceIn(1, 300)))
             "flow" -> o.optString("node").takeIf { it.isNotBlank() }?.let { Flow(it) }
+            "wait" -> {
+                val rules = o.optJSONArray("rules") ?: JSONArray()
+                Wait(
+                    rules = (0 until rules.length()).mapNotNull { i ->
+                        val r = rules.optJSONObject(i) ?: return@mapNotNull null
+                        val c = r.optJSONObject("condition") ?: JSONObject()
+                        WaitRule(
+                            WaitCondition(c.optString("field", "type"), c.optString("op", "is"), c.optString("value")),
+                            parseList(r.optJSONArray("blocks")),
+                            r.optBoolean("keep", false),
+                        )
+                    },
+                    otherwise = parseList(o.optJSONArray("otherwise")),
+                    otherwiseKeep = o.optBoolean("otherwise_keep", true),
+                    variable = o.optString("variable"),
+                )
+            }
             else -> null
         }
+
+        /** Todas as mensagens, inclusive dentro das pastas (botões callback e regras). */
+        fun allMessages(blocks: List<CommandBlock>): List<BotMessage> = blocks.flatMap { b ->
+            when (b) {
+                is Message -> listOf(b.msg) + b.msg.buttons.flatten().flatMap { allMessages(it.reaction?.blocks.orEmpty()) }
+                is Wait -> b.rules.flatMap { allMessages(it.blocks) } + allMessages(b.otherwise)
+                else -> emptyList()
+            }
+        }
+
+        /** Variáveis criadas pelos blocos Aguardar resposta (em qualquer pasta). */
+        fun waitVariables(blocks: List<CommandBlock>): Set<String> {
+            val out = mutableSetOf<String>()
+            fun walk(list: List<CommandBlock>) {
+                list.forEach { b ->
+                    when (b) {
+                        is Wait -> {
+                            if (b.variable.isNotBlank()) { out += b.variable; out += "resposta" }
+                            b.rules.forEach { walk(it.blocks) }
+                            walk(b.otherwise)
+                        }
+                        is Message -> b.msg.buttons.flatten().forEach { walk(it.reaction?.blocks.orEmpty()) }
+                        else -> {}
+                    }
+                }
+            }
+            walk(blocks)
+            return out
+        }
+
+        /** Textos de callback usados (para não repetir: cada um precisa ser único no bot). */
+        fun callbackValues(blocks: List<CommandBlock>): List<String> =
+            allMessages(blocks).flatMap { m -> m.buttons.flatten().filter { it.type == ButtonTypes.CALLBACK }.map { it.url } }
     }
+}
+
+/** Um passo do caminho até uma "pasta" (a resposta de um botão callback ou de uma regra). */
+sealed interface TreeStep {
+    data class Button(val block: String, val row: Int, val col: Int) : TreeStep
+    data class Rule(val block: String, val rule: Int) : TreeStep
+    data class Otherwise(val block: String) : TreeStep
+}
+
+/** Ler e trocar a lista de blocos de uma pasta, dado o caminho a partir da resposta do comando. */
+object BlockTree {
+    fun get(blocks: List<CommandBlock>, path: List<TreeStep>): List<CommandBlock>? {
+        var current = blocks
+        for (step in path) current = child(current, step) ?: return null
+        return current
+    }
+
+    private fun child(blocks: List<CommandBlock>, step: TreeStep): List<CommandBlock>? = when (step) {
+        is TreeStep.Button -> (blocks.firstOrNull { it.key == step.block } as? CommandBlock.Message)
+            ?.msg?.buttons?.getOrNull(step.row)?.getOrNull(step.col)?.let { it.reaction?.blocks ?: emptyList() }
+        is TreeStep.Rule -> (blocks.firstOrNull { it.key == step.block } as? CommandBlock.Wait)?.rules?.getOrNull(step.rule)?.blocks
+        is TreeStep.Otherwise -> (blocks.firstOrNull { it.key == step.block } as? CommandBlock.Wait)?.otherwise
+    }
+
+    fun set(blocks: List<CommandBlock>, path: List<TreeStep>, value: List<CommandBlock>): List<CommandBlock> {
+        if (path.isEmpty()) return value
+        val step = path.first()
+        val inner = get(blocks, listOf(step)) ?: return blocks
+        return replaceChild(blocks, step, set(inner, path.drop(1), value))
+    }
+
+    private fun replaceChild(blocks: List<CommandBlock>, step: TreeStep, value: List<CommandBlock>): List<CommandBlock> = blocks.map { b ->
+        when {
+            step is TreeStep.Button && b is CommandBlock.Message && b.key == step.block -> b.copy(
+                msg = b.msg.copy(buttons = b.msg.buttons.mapIndexed { r, row ->
+                    row.mapIndexed { c, btn ->
+                        if (r == step.row && c == step.col) btn.copy(reaction = (btn.reaction ?: Reaction()).copy(blocks = value)) else btn
+                    }
+                }),
+            )
+            step is TreeStep.Rule && b is CommandBlock.Wait && b.key == step.block ->
+                b.copy(rules = b.rules.mapIndexed { i, r -> if (i == step.rule) r.copy(blocks = value) else r })
+            step is TreeStep.Otherwise && b is CommandBlock.Wait && b.key == step.block -> b.copy(otherwise = value)
+            else -> b
+        }
+    }
+
+    /** O botão de um passo (para mostrar o nome e o callback no topo da pasta). */
+    fun button(blocks: List<CommandBlock>, step: TreeStep.Button): LinkButton? =
+        (blocks.firstOrNull { it.key == step.block } as? CommandBlock.Message)?.msg?.buttons?.getOrNull(step.row)?.getOrNull(step.col)
+
+    fun updateButton(blocks: List<CommandBlock>, step: TreeStep.Button, change: (LinkButton) -> LinkButton) = blocks.map { b ->
+        if (b is CommandBlock.Message && b.key == step.block) b.copy(
+            msg = b.msg.copy(buttons = b.msg.buttons.mapIndexed { r, row ->
+                row.mapIndexed { c, btn -> if (r == step.row && c == step.col) change(btn) else btn }
+            }),
+        ) else b
+    }
+
+    fun wait(blocks: List<CommandBlock>, key: String) = blocks.firstOrNull { it.key == key } as? CommandBlock.Wait
+
+    fun updateWait(blocks: List<CommandBlock>, key: String, change: (CommandBlock.Wait) -> CommandBlock.Wait) =
+        blocks.map { if (it is CommandBlock.Wait && it.key == key) change(it) else it }
 }
 
 /** Linha de comando rodada no Termux (ex.: `python ~/bot/clima.py`) e o tempo máximo em segundos. */
@@ -258,7 +441,7 @@ data class BotConfig(
 
     /** Arquivos de mídia usados (caminhos relativos à pasta do bot). */
     fun mediaFiles(): Set<String> =
-        commands.flatMap { c -> c.messages.mapNotNull { it.media?.file } }.toSet() + shop.mediaFiles() +
+        commands.flatMap { c -> CommandBlock.allMessages(c.blocks).mapNotNull { it.media?.file } }.toSet() + shop.mediaFiles() +
             flows.flatMap { n -> n.messages.mapNotNull { it.media?.file } }
 
     companion object {

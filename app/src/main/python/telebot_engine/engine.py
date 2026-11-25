@@ -581,42 +581,53 @@ class Engine:
         reply_to = None
         if chat.get("type") != "private":
             reply_to = {"message_id": message.get("message_id"), "allow_sending_without_reply": True}
-        job = (command, name, message, chat, user, args, reply_to)
-        if any(b["type"] == "termux" for b in command["blocks"]) and not self.termux.sync_scripts:
+        self.start_blocks(command["blocks"], name, chat.get("id"), user, args, reply_to=reply_to,
+                          update={"message": message})
+        return True
+
+    def start_blocks(self, blocks, name, chat_id, user, args="", reply_to=None, update=None, edit_message=None):
+        """Executa uma resposta (comando, botão callback ou regra de espera)."""
+        job = (blocks, name, chat_id, user, args, reply_to, update, edit_message)
+        if any(b["type"] == "termux" for b in blocks) and not self.termux.sync_scripts:
             # Script no meio: roda numa thread com conexão própria (o bot segue respondendo).
             threading.Thread(target=self.run_blocks, args=job, kwargs={"sender": self.termux._sender()},
                              name="blocks", daemon=True).start()
         else:
             self.run_blocks(*job)
-        return True
 
-    def run_blocks(self, command, name, message, chat, user, args, reply_to, sender=None):
-        """Executa a resposta do comando, bloco por bloco, na ordem."""
+    def run_blocks(self, blocks, name, chat_id, user, args="", reply_to=None, update=None, edit_message=None,
+                   sender=None):
+        """Bloco por bloco, na ordem. ``Aguardar resposta`` encerra: o resto vem da próxima mensagem."""
         sender = sender or self
-        bot_username = (self.bot or {}).get("username", "")
-        stamp = self._now()
-        date, _, hour = stamp.partition(" ")
-        context = template.build_context(message, args, bot_username, date, hour)
+        update = update or {}
+        context = self.flows._context(user, chat_id, args, update.get("message"))
         sent = 0
-        for block in command["blocks"]:
+        for i, block in enumerate(blocks):
             if self.stopping:
                 break
-            if block["type"] == "message":
-                if sender.send_message(chat.get("id"), block["message"], context, name, reply_to):
+            kind = block["type"]
+            if kind == "message":
+                msg = block["message"]
+                if i == 0 and edit_message and self.flows.edit_text(sender, chat_id, edit_message, msg, context):
+                    sent += 1  # menu: a mensagem do botão foi substituída
+                elif sender.send_message(chat_id, msg, context, name, reply_to):
                     sent += 1
                     reply_to = None  # só a primeira mensagem responde à do usuário
-            elif block["type"] == "termux":
-                n = self.termux.execute(block["script"], name, {"message": message}, chat.get("id"), user, args,
+            elif kind == "termux":
+                n = self.termux.execute(block["script"], name, update, chat_id, user, args,
                                         reply_to=reply_to, sender=sender if sender is not self else None)
                 if n > 0:
                     sent += n
                     reply_to = None
-            elif block["type"] == "flow":
-                self.flows.start(block["node"], chat.get("id"), user, args, reply_to=reply_to)
+            elif kind == "flow":
+                self.flows.start(block["node"], chat_id, user, args, reply_to=reply_to)
                 sent += 1
                 reply_to = None
+            elif kind == "wait":
+                self.flows.wait_for(block, chat_id, user, name)
+                break
         if sent:
-            self.emit("replied", command=name, chat=chat.get("id"), messages=sent)
+            self.emit("replied", command=name, chat=chat_id, messages=sent)
 
     # -- antispam ----------------------------------------------------------------
 

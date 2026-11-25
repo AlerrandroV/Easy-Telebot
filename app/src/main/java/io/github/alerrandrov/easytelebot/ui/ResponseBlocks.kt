@@ -83,6 +83,9 @@ import io.github.alerrandrov.easytelebot.data.FlowNode
 import io.github.alerrandrov.easytelebot.data.LinkButton
 import io.github.alerrandrov.easytelebot.data.MediaImporter
 import io.github.alerrandrov.easytelebot.data.Variables
+import io.github.alerrandrov.easytelebot.data.WaitRule
+import io.github.alerrandrov.easytelebot.data.WaitCondition
+import io.github.alerrandrov.easytelebot.data.TreeStep
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -93,20 +96,37 @@ private const val CAPTION_MAX = 1024
 
 // -- Lista de blocos ---------------------------------------------------------------------------
 
+/** O que os cards de bloco precisam saber do comando inteiro. */
+class BlockEditorEnv(
+    val botId: Long,
+    val nodes: List<FlowNode>,
+    val extraVariables: Set<String>,
+    /** Quantas vezes cada texto de callback aparece no bot (precisa ser 1). */
+    val callbackCounts: Map<String, Int>,
+    /** Abre a "pasta" de um botão callback ou de uma regra do Aguardar resposta. */
+    val onOpen: (TreeStep) -> Unit,
+    /** Etapas de fluxo antigas (só para comandos que já iniciavam um fluxo). */
+    val onOpenFlows: (() -> Unit)? = null,
+)
+
 /**
- * Resposta de um comando em blocos. Começa vazia, com o botão Adicionar
- * (Mensagem simples ou Termux); cada bloco é um card compacto.
+ * Resposta em blocos (de um comando ou de uma pasta). Começa vazia, com o botão Adicionar
+ * (Mensagem simples, Termux, Aguardar resposta); cada bloco é um card compacto.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ResponseBlocksEditor(
-    botId: Long,
-    blocks: List<CommandBlock>,
-    onChange: (List<CommandBlock>) -> Unit,
-    nodes: List<FlowNode>,
-    extraVariables: Set<String>,
-) {
+fun ResponseBlocksEditor(env: BlockEditorEnv, blocks: List<CommandBlock>, onChange: (List<CommandBlock>) -> Unit) {
     var showAdd by remember { mutableStateOf(false) }
+    val botId = env.botId
+    val nodes = env.nodes
+    val extraVariables = env.extraVariables
+    val hasWait = blocks.any { it is CommandBlock.Wait }
+
+    /** Novos blocos entram antes do Aguardar resposta (ele sempre fecha a lista). */
+    fun add(b: CommandBlock) {
+        val w = blocks.indexOfFirst { it is CommandBlock.Wait }
+        onChange(if (w < 0 || b is CommandBlock.Wait) blocks + b else blocks.toMutableList().apply { add(w, b) })
+    }
 
     fun replace(i: Int, b: CommandBlock) = onChange(blocks.mapIndexed { j, x -> if (j == i) b else x })
     fun move(i: Int, delta: Int) {
@@ -119,6 +139,7 @@ fun ResponseBlocksEditor(
             is CommandBlock.Message -> b.copy(key = CommandBlock.newKey())
             is CommandBlock.Termux -> b.copy(key = CommandBlock.newKey())
             is CommandBlock.Flow -> b.copy(key = CommandBlock.newKey())
+            is CommandBlock.Wait -> b.copy(key = CommandBlock.newKey())
         })
     })
     fun remove(i: Int) = onChange(blocks.filterIndexed { j, _ -> j != i })
@@ -138,17 +159,17 @@ fun ResponseBlocksEditor(
             }
         }
         blocks.forEachIndexed { i, block ->
+            val isWait = block is CommandBlock.Wait
             val actions = BlockActions(
-                canUp = i > 0, canDown = i < blocks.lastIndex,
+                canUp = i > 0 && !isWait, canDown = i < blocks.lastIndex && blocks[i + 1] !is CommandBlock.Wait && !isWait,
                 onUp = { move(i, -1) }, onDown = { move(i, 1) },
-                onDuplicate = { duplicate(i) }, onDelete = { remove(i) },
+                onDuplicate = if (isWait) null else ({ duplicate(i) }), onDelete = { remove(i) },
             )
             when (block) {
-                is CommandBlock.Message -> MessageBlockCard(
-                    botId, block.key, block.msg, { replace(i, block.copy(msg = it)) }, actions, nodes, extraVariables,
-                )
+                is CommandBlock.Message -> MessageBlockCard(env, block.key, block.msg, { replace(i, block.copy(msg = it)) }, actions)
                 is CommandBlock.Termux -> TermuxBlockCard(block.script, { replace(i, block.copy(script = it)) }, actions)
-                is CommandBlock.Flow -> FlowBlockCard(block.node, nodes, { replace(i, block.copy(node = it)) }, actions)
+                is CommandBlock.Flow -> FlowBlockCard(block.node, nodes, { replace(i, block.copy(node = it)) }, actions, env.onOpenFlows)
+                is CommandBlock.Wait -> WaitBlockCard(env, block, { replace(i, it) }, actions)
             }
         }
         if (blocks.isNotEmpty()) {
@@ -166,13 +187,19 @@ fun ResponseBlocksEditor(
                     icon = R.drawable.ic_chat,
                     title = stringResource(R.string.block_message),
                     subtitle = stringResource(R.string.block_message_sub),
-                    onClick = { onChange(blocks + CommandBlock.Message(BotMessage())); showAdd = false },
+                    onClick = { add(CommandBlock.Message(BotMessage())); showAdd = false },
                 )
                 SectionCard(
                     icon = R.drawable.ic_terminal,
                     title = stringResource(R.string.block_termux),
                     subtitle = stringResource(R.string.block_termux_sub),
-                    onClick = { onChange(blocks + CommandBlock.Termux(CommandScript())); showAdd = false },
+                    onClick = { add(CommandBlock.Termux(CommandScript())); showAdd = false },
+                )
+                if (!hasWait) SectionCard(
+                    icon = R.drawable.ic_hearing,
+                    title = stringResource(R.string.block_wait),
+                    subtitle = stringResource(R.string.block_wait_sub),
+                    onClick = { add(CommandBlock.Wait()); showAdd = false },
                 )
             }
         }
@@ -185,7 +212,7 @@ private class BlockActions(
     val canDown: Boolean,
     val onUp: () -> Unit,
     val onDown: () -> Unit,
-    val onDuplicate: () -> Unit,
+    val onDuplicate: (() -> Unit)?,
     val onDelete: () -> Unit,
 )
 
@@ -212,11 +239,13 @@ private fun BlockHeader(icon: Int, title: String, actions: BlockActions, extra: 
                     leadingIcon = { AppIcon(R.drawable.ic_arrow_downward) },
                     onClick = { menu = false; actions.onDown() },
                 )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.block_duplicate)) },
-                    leadingIcon = { AppIcon(R.drawable.ic_content_copy) },
-                    onClick = { menu = false; actions.onDuplicate() },
-                )
+                actions.onDuplicate?.let { dup ->
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.block_duplicate)) },
+                        leadingIcon = { AppIcon(R.drawable.ic_content_copy) },
+                        onClick = { menu = false; dup() },
+                    )
+                }
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) },
                     leadingIcon = { AppIcon(R.drawable.ic_delete, tint = MaterialTheme.colorScheme.error) },
@@ -231,14 +260,15 @@ private fun BlockHeader(icon: Int, title: String, actions: BlockActions, extra: 
 
 @Composable
 private fun MessageBlockCard(
-    botId: Long,
+    env: BlockEditorEnv,
     key: String,
     msg: BotMessage,
     onChange: (BotMessage) -> Unit,
     actions: BlockActions,
-    nodes: List<FlowNode>,
-    extraVariables: Set<String>,
 ) {
+    val botId = env.botId
+    val nodes = env.nodes
+    val extraVariables = env.extraVariables
     val context = LocalContext.current
     var field by remember(key) { mutableStateOf(TextFieldValue(msg.text)) }
     var editing by remember(key) { mutableStateOf<Pair<Int, Int>?>(null) }
@@ -345,7 +375,10 @@ private fun MessageBlockCard(
                 }
 
                 if (msg.buttons.isNotEmpty()) {
-                    ButtonGrid(msg.buttons, nodes.map { it.id }.toSet()) { r, c -> editing = r to c }
+                    ButtonGrid(
+                        msg.buttons, nodes.map { it.id }.toSet(), env.callbackCounts,
+                        onOpen = { r, c -> env.onOpen(TreeStep.Button(key, r, c)) },
+                    ) { r, c -> editing = r to c }
                 }
             }
         }
@@ -360,6 +393,8 @@ private fun MessageBlockCard(
                 button = button,
                 rowSize = msg.buttons[r].size,
                 nodes = nodes,
+                duplicateCallback = button.type == ButtonTypes.CALLBACK && (env.callbackCounts[button.url] ?: 0) > 1,
+                onOpenReaction = { editing = null; env.onOpen(TreeStep.Button(key, r, c)) },
                 onUpdate = { nb -> onChange(msg.copy(text = field.text, buttons = GridOps.update(msg.buttons, r, c, nb))) },
                 onMove = { dir ->
                     val (rows, pos) = GridOps.move(msg.buttons, r, c, dir)
@@ -426,21 +461,33 @@ private fun MediaChip(botId: Long, type: String, file: String, name: String, onR
 
 /** Botões na mesma grade que a pessoa vai ver no Telegram. */
 @Composable
-private fun ButtonGrid(rows: List<List<LinkButton>>, nodeIds: Set<String>, onEdit: (Int, Int) -> Unit) {
+private fun ButtonGrid(
+    rows: List<List<LinkButton>>,
+    nodeIds: Set<String>,
+    callbackCounts: Map<String, Int>,
+    onOpen: (Int, Int) -> Unit,
+    onEdit: (Int, Int) -> Unit,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         rows.forEachIndexed { r, row ->
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 row.forEachIndexed { c, b ->
-                    val ok = ButtonTypes.isValid(b, nodeIds)
+                    val isCallback = b.type == ButtonTypes.CALLBACK
+                    val ok = ButtonTypes.isValid(b, nodeIds) && (!isCallback || (callbackCounts[b.url] ?: 0) <= 1)
                     Surface(
                         shape = RoundedCornerShape(8.dp),
                         color = MaterialTheme.colorScheme.secondaryContainer,
                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                         border = if (ok) null else BorderStroke(1.5.dp, MaterialTheme.colorScheme.error),
-                        modifier = Modifier.weight(1f).clickable { onEdit(r, c) },
+                        // Callback: tocar no nome abre a pasta com a reação; os três pontinhos, as configurações.
+                        modifier = Modifier.weight(1f).clickable { if (isCallback) onOpen(r, c) else onEdit(r, c) },
                     ) {
                         Row(Modifier.padding(start = 8.dp).height(40.dp), verticalAlignment = Alignment.CenterVertically) {
-                            AppIcon(buttonTypeIcon(b.type), Modifier.size(16.dp))
+                            AppIcon(
+                                if (isCallback) (if (b.reaction?.blocks.isNullOrEmpty()) R.drawable.ic_folder else R.drawable.ic_folder_open)
+                                else buttonTypeIcon(b.type),
+                                Modifier.size(16.dp),
+                            )
                             Text(
                                 b.text.ifBlank { stringResource(R.string.block_button_untitled) },
                                 style = MaterialTheme.typography.labelLarge,
@@ -524,6 +571,8 @@ private fun ButtonSheet(
     button: LinkButton,
     rowSize: Int,
     nodes: List<FlowNode>,
+    duplicateCallback: Boolean,
+    onOpenReaction: () -> Unit,
     onUpdate: (LinkButton) -> Unit,
     onMove: (GridDir) -> Unit,
     onAddBeside: () -> Unit,
@@ -543,7 +592,13 @@ private fun ButtonSheet(
                 types.forEach { t ->
                     FilterChip(
                         selected = button.type == t,
-                        onClick = { if (button.type != t) onUpdate(button.copy(type = t, url = if (t in ButtonTypes.LINKS && button.type in ButtonTypes.LINKS) button.url else "")) },
+                        onClick = {
+                            if (button.type != t) onUpdate(button.copy(type = t, url = when {
+                                t in ButtonTypes.LINKS && button.type in ButtonTypes.LINKS -> button.url
+                                t == ButtonTypes.CALLBACK -> callbackSlug(button.text)
+                                else -> ""
+                            }))
+                        },
                         label = { Text(buttonTypeLabel(t)) },
                         leadingIcon = { AppIcon(buttonTypeIcon(t), Modifier.size(16.dp)) },
                     )
@@ -570,10 +625,23 @@ private fun ButtonSheet(
                     label = { Text(buttonValueLabel(button.type)) },
                     placeholder = { Text(buttonValueHint(button.type)) },
                     singleLine = button.type != ButtonTypes.COPY,
-                    isError = invalid,
-                    supportingText = { Text(if (invalid) buttonValueError(button.type) else buttonValueHelp(button.type)) },
+                    isError = invalid || duplicateCallback,
+                    supportingText = {
+                        Text(
+                            when {
+                                duplicateCallback -> stringResource(R.string.btn_err_callback_taken)
+                                invalid -> buttonValueError(button.type)
+                                else -> buttonValueHelp(button.type)
+                            },
+                        )
+                    },
                     modifier = Modifier.fillMaxWidth(),
                 )
+            }
+            if (button.type == ButtonTypes.CALLBACK) {
+                Button(onClick = onOpenReaction, modifier = Modifier.fillMaxWidth()) {
+                    ButtonLabel(R.drawable.ic_folder_open, stringResource(R.string.btn_open_reaction))
+                }
             }
 
             HorizontalDivider()
@@ -606,6 +674,230 @@ private fun ButtonSheet(
                 }
             }
             Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.done)) }
+        }
+    }
+}
+
+/** Texto de callback sugerido a partir do nome do botão ("Ver planos" -> "ver_planos"). */
+fun callbackSlug(text: String): String {
+    val base = java.text.Normalizer.normalize(text.lowercase(), java.text.Normalizer.Form.NFD)
+        .replace(Regex("\\p{M}+"), "").replace(Regex("[^a-z0-9]+"), "_").trim('_')
+    return base.take(40)
+}
+
+// -- Bloco: Aguardar resposta ---------------------------------------------------------------------------
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun WaitBlockCard(env: BlockEditorEnv, block: CommandBlock.Wait, onChange: (CommandBlock.Wait) -> Unit, actions: BlockActions) {
+    var editingRule by remember(block.key) { mutableStateOf<Int?>(null) }
+    Card(
+        Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+    ) {
+        Column(Modifier.padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            BlockHeader(R.drawable.ic_hearing, stringResource(R.string.block_wait), actions)
+            Column(Modifier.padding(end = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(stringResource(R.string.block_wait_help), style = MaterialTheme.typography.bodySmall)
+                block.rules.forEachIndexed { i, rule ->
+                    RuleRow(
+                        prefix = stringResource(if (i == 0) R.string.rule_if else R.string.rule_else_if),
+                        condition = rule.condition,
+                        count = rule.blocks.size,
+                        keep = rule.keep,
+                        onCondition = { editingRule = i },
+                        onOpen = { env.onOpen(TreeStep.Rule(block.key, i)) },
+                    )
+                }
+                RuleRow(
+                    prefix = stringResource(R.string.rule_otherwise),
+                    condition = null,
+                    count = block.otherwise.size,
+                    keep = block.otherwiseKeep,
+                    onCondition = null,
+                    onOpen = { env.onOpen(TreeStep.Otherwise(block.key)) },
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = { onChange(block.copy(rules = block.rules + WaitRule())); editingRule = block.rules.size }) {
+                        ButtonLabel(R.drawable.ic_add, stringResource(R.string.rule_add))
+                    }
+                }
+                OutlinedTextField(
+                    value = block.variable,
+                    onValueChange = { onChange(block.copy(variable = it.lowercase().replace(' ', '_').filter { c -> c.isLetterOrDigit() || c == '_' }.take(32))) },
+                    label = { Text(stringResource(R.string.wait_variable)) },
+                    placeholder = { Text("foto") },
+                    supportingText = { Text(stringResource(R.string.wait_variable_hint, block.variable.ifBlank { "variavel" })) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+    }
+    editingRule?.let { i ->
+        val rule = block.rules.getOrNull(i)
+        if (rule == null) editingRule = null
+        else RuleSheet(
+            rule = rule,
+            onChange = { r -> onChange(block.copy(rules = block.rules.mapIndexed { j, x -> if (j == i) r else x })) },
+            onDelete = { onChange(block.copy(rules = block.rules.filterIndexed { j, _ -> j != i })); editingRule = null },
+            onOpen = { editingRule = null; env.onOpen(TreeStep.Rule(block.key, i)) },
+            onDismiss = { editingRule = null },
+        )
+    }
+}
+
+/** "SE [Tipo da mensagem] [é] [Foto]  → pasta (n)". Os bloquinhos da condição abrem a edição. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun RuleRow(prefix: String, condition: WaitCondition?, count: Int, keep: Boolean, onCondition: (() -> Unit)?, onOpen: () -> Unit) {
+    Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.surface) {
+        Column(Modifier.fillMaxWidth().padding(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                LogicChip(prefix, MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.onPrimary, null)
+                if (condition != null && onCondition != null) {
+                    conditionParts(condition).forEach { part ->
+                        LogicChip(part, MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer, onCondition)
+                    }
+                }
+            }
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen),
+            ) {
+                Row(Modifier.padding(horizontal = 10.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    AppIcon(if (count > 0) R.drawable.ic_folder_open else R.drawable.ic_folder, Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        if (count > 0) stringResource(R.string.rule_reply_n, count) else stringResource(R.string.rule_reply_empty),
+                        style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f),
+                    )
+                    if (keep) {
+                        AppIcon(R.drawable.ic_refresh, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary,
+                            description = stringResource(R.string.rule_keep))
+                    }
+                    AppIcon(R.drawable.ic_chevron_right, Modifier.size(18.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LogicChip(text: String, bg: Color, fg: Color, onClick: (() -> Unit)?) {
+    Surface(
+        shape = RoundedCornerShape(6.dp), color = bg, contentColor = fg,
+        modifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier,
+    ) {
+        Text(text, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+    }
+}
+
+@Composable
+private fun conditionParts(c: WaitCondition): List<String> = when (c.field) {
+    "any" -> listOf(stringResource(R.string.cond_any))
+    "type" -> listOf(
+        stringResource(R.string.cond_type),
+        stringResource(if (c.op == "is_not") R.string.cond_is_not else R.string.cond_is),
+        messageTypeLabel(c.value),
+    )
+    else -> listOfNotNull(
+        stringResource(R.string.cond_text),
+        textOpLabel(c.op),
+        if (c.op in WaitCondition.NO_VALUE) null else "\"" + c.value + "\"",
+    )
+}
+
+@Composable
+private fun messageTypeLabel(type: String): String = when (type) {
+    "text" -> stringResource(R.string.cond_type_text)
+    "animation" -> stringResource(R.string.media_animation)
+    else -> previewText(type, "").ifBlank { type }
+}
+
+@Composable
+private fun textOpLabel(op: String): String = stringResource(
+    when (op) {
+        "equals" -> R.string.cond_equals
+        "starts" -> R.string.cond_starts
+        "ends" -> R.string.cond_ends
+        "number" -> R.string.cond_number
+        "email" -> R.string.cond_email
+        "phone" -> R.string.cond_phone
+        else -> R.string.cond_contains
+    },
+)
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+private fun RuleSheet(rule: WaitRule, onChange: (WaitRule) -> Unit, onDelete: () -> Unit, onOpen: () -> Unit, onDismiss: () -> Unit) {
+    val c = rule.condition
+    fun set(cond: WaitCondition) = onChange(rule.copy(condition = cond))
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+        Column(
+            Modifier.padding(start = 16.dp, end = 16.dp, bottom = 32.dp).verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(stringResource(R.string.rule_title), style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.rule_when), style = MaterialTheme.typography.labelLarge)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf("type" to R.string.cond_type, "text" to R.string.cond_text, "any" to R.string.cond_any).forEach { (f, label) ->
+                    FilterChip(selected = c.field == f, onClick = {
+                        if (c.field != f) set(when (f) {
+                            "type" -> WaitCondition("type", "is", "photo")
+                            "text" -> WaitCondition("text", "contains", "")
+                            else -> WaitCondition("any", "is", "")
+                        })
+                    }, label = { Text(stringResource(label)) })
+                }
+            }
+            when (c.field) {
+                "type" -> {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        FilterChip(selected = c.op != "is_not", onClick = { set(c.copy(op = "is")) }, label = { Text(stringResource(R.string.cond_is)) })
+                        FilterChip(selected = c.op == "is_not", onClick = { set(c.copy(op = "is_not")) }, label = { Text(stringResource(R.string.cond_is_not)) })
+                    }
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        WaitCondition.TYPES.forEach { t ->
+                            FilterChip(
+                                selected = c.value == t, onClick = { set(c.copy(value = t)) },
+                                label = { Text(messageTypeLabel(t)) },
+                                leadingIcon = { AppIcon(mediaIcon(t) ?: R.drawable.ic_chat, Modifier.size(16.dp)) },
+                            )
+                        }
+                    }
+                }
+                "text" -> {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        WaitCondition.TEXT_OPS.forEach { op ->
+                            FilterChip(selected = c.op == op, onClick = { set(c.copy(op = op)) }, label = { Text(textOpLabel(op)) })
+                        }
+                    }
+                    if (c.op !in WaitCondition.NO_VALUE) {
+                        OutlinedTextField(
+                            value = c.value, onValueChange = { set(c.copy(value = it.take(200))) },
+                            label = { Text(stringResource(R.string.cond_value)) }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                            supportingText = { Text(stringResource(R.string.cond_value_hint)) },
+                        )
+                    }
+                }
+                else -> Text(stringResource(R.string.cond_any_hint), style = MaterialTheme.typography.bodySmall)
+            }
+            HorizontalDivider()
+            SwitchRow(stringResource(R.string.rule_keep), stringResource(R.string.rule_keep_sub), rule.keep) { onChange(rule.copy(keep = it)) }
+            Button(onClick = onOpen, modifier = Modifier.fillMaxWidth()) {
+                ButtonLabel(R.drawable.ic_folder_open, stringResource(R.string.rule_open))
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = onDelete) {
+                    AppIcon(R.drawable.ic_delete, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error)
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.rule_delete), color = MaterialTheme.colorScheme.error)
+                }
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.done)) }
+            }
         }
     }
 }
@@ -648,7 +940,7 @@ private fun TermuxBlockCard(script: CommandScript, onChange: (CommandScript) -> 
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun FlowBlockCard(node: String, nodes: List<FlowNode>, onChange: (String) -> Unit, actions: BlockActions) {
+private fun FlowBlockCard(node: String, nodes: List<FlowNode>, onChange: (String) -> Unit, actions: BlockActions, onOpenFlows: (() -> Unit)?) {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             BlockHeader(R.drawable.ic_account_tree, stringResource(R.string.block_flow), actions)
@@ -659,6 +951,9 @@ private fun FlowBlockCard(node: String, nodes: List<FlowNode>, onChange: (String
             }
             if (nodes.none { it.id == node }) {
                 Text(stringResource(R.string.btn_node_missing), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            }
+            if (onOpenFlows != null) {
+                TextButton(onClick = onOpenFlows) { ButtonLabel(R.drawable.ic_account_tree, stringResource(R.string.block_flow_open)) }
             }
         }
     }
@@ -707,6 +1002,7 @@ fun CommandPreviewDialog(trigger: String, blocks: List<CommandBlock>, botId: Lon
                                 stringResource(R.string.preview_termux, b.script.command.ifBlank { "…" }))
                             is CommandBlock.Flow -> PreviewNote(R.drawable.ic_account_tree,
                                 stringResource(R.string.preview_flow, nodes.firstOrNull { it.id == b.node }?.title ?: b.node))
+                            is CommandBlock.Wait -> PreviewNote(R.drawable.ic_hearing, stringResource(R.string.preview_wait, b.rules.size))
                         }
                     }
                 }

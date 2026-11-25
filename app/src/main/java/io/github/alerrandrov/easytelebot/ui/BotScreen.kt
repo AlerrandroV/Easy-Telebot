@@ -87,8 +87,6 @@ fun BotScreen(
     onAntispam: () -> Unit,
     onShop: () -> Unit,
     onTermux: () -> Unit,
-    onFlows: () -> Unit,
-    onNewNode: () -> Unit,
     onNewScriptCommand: () -> Unit,
     /** Novo produto (true = assinatura de canal). */
     onNewProduct: (Boolean) -> Unit,
@@ -263,16 +261,6 @@ fun BotScreen(
 
             item {
                 SectionCard(
-                    icon = R.drawable.ic_account_tree,
-                    title = stringResource(R.string.flows_title),
-                    subtitle = if (config.flows.isEmpty()) stringResource(R.string.bot_flows_sub)
-                    else stringResource(R.string.bot_flows_n, config.flows.size),
-                    onClick = onFlows,
-                )
-            }
-
-            item {
-                SectionCard(
                     icon = R.drawable.ic_terminal,
                     title = stringResource(R.string.termux_title),
                     subtitle = when {
@@ -385,15 +373,6 @@ fun BotScreen(
                     onClick = {
                         showAddSheet = false
                         onEditCommand(null, true)
-                    },
-                )
-                SectionCard(
-                    icon = R.drawable.ic_account_tree,
-                    title = stringResource(R.string.add_flow_node),
-                    subtitle = stringResource(R.string.add_flow_node_sub),
-                    onClick = {
-                        showAddSheet = false
-                        onNewNode()
                     },
                 )
                 SectionCard(

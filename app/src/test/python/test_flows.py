@@ -156,3 +156,89 @@ class BlockTests(unittest.TestCase):
         self.assertEqual(api.sent[0]["reply_markup"]["inline_keyboard"][0][0]["url"], "https://t.me/meucanal")
         self.assertEqual(cb.of("replied")[0]["messages"], 3)
         chats.close(d)
+
+
+class CallbackTreeAndWaitTests(unittest.TestCase):
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        chats.close(self.dir)
+
+    def make(self, script, commands):
+        path = os.path.join(self.dir, "config.json")
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump({"version": 2, "commands": commands}, fh)
+        cb = Callbacks()
+        api = FakeApi(script)
+        eng = engine.Engine("1:x", path, self.dir, cb, api=api)
+        eng.flows.sync = True
+        api.engine = eng
+        eng.sleep = lambda s: None
+        return eng, api, cb
+
+    def photo(self, update_id):
+        u = msg("", update_id=update_id)
+        u["message"]["message_id"] = 200 + update_id
+        del u["message"]["text"]
+        u["message"]["photo"] = [{"file_id": "FOTO1", "file_unique_id": "u", "width": 90, "height": 90}]
+        return u
+
+    def test_wait_rules_like_the_profile_photo_example(self):
+        cmd = {"triggers": ["foto"], "blocks": [
+            {"type": "message", "text": "Me envie a sua foto de perfil."},
+            {"type": "wait", "variable": "foto", "rules": [
+                {"condition": {"field": "type", "op": "is", "value": "photo"},
+                 "blocks": [{"type": "message", "text": "Foto de perfil atualizada com sucesso"}]},
+                {"condition": {"field": "type", "op": "is", "value": "text"}, "keep": True,
+                 "blocks": [{"type": "message", "text": "Erro! Por favor me envie uma foto valida!"}]},
+            ]},
+        ]}
+        eng, api, cb = self.make([[msg("/foto")], [reply("oi", 2)], [self.photo(3)], [self.photo(4)]], [cmd])
+        eng.run()
+        self.assertEqual([p["text"] for p in api.sent], [
+            "Me envie a sua foto de perfil.", "Erro! Por favor me envie uma foto valida!",
+            "Foto de perfil atualizada com sucesso"])  # a 2ª foto não é respondida: a espera acabou
+        state = flows.user_state(self.dir, 42)
+        self.assertNotIn("waiting", state)
+        self.assertEqual(state["vars"]["foto"], "FOTO1")
+
+    def test_otherwise_keeps_waiting_and_text_conditions(self):
+        cmd = {"triggers": ["cupom"], "blocks": [
+            {"type": "message", "text": "Digite o cupom"},
+            {"type": "wait", "variable": "cupom", "rules": [
+                {"condition": {"field": "text", "op": "equals", "value": "PROMO10"},
+                 "blocks": [{"type": "message", "text": "Cupom {cupom} aplicado!"}]}],
+             "otherwise": [{"type": "message", "text": "Cupom inválido, tente de novo."}], "otherwise_keep": True},
+        ]}
+        eng, api, cb = self.make([[msg("/cupom")], [reply("abc", 2)], [reply("promo10", 3)]], [cmd])
+        eng.run()
+        self.assertEqual([p["text"] for p in api.sent], ["Digite o cupom", "Cupom inválido, tente de novo.",
+                                                         "Cupom promo10 aplicado!"])
+
+    def test_callback_folders_edit_the_menu_and_respect_admin_level(self):
+        premium = {"type": "message", "text": "Premium: R$ 30 por mês."}
+        planos = {"type": "message", "text": "Nossos planos:",
+                  "buttons": [[{"text": "Premium", "type": "callback", "value": "premium",
+                                "reaction": {"edit": True, "blocks": [premium]}}]]}
+        menu = {"type": "message", "text": "Menu, {nome}",
+                "buttons": [[{"text": "Planos", "type": "callback", "value": "planos",
+                              "reaction": {"edit": True, "blocks": [planos]}},
+                             {"text": "Sem resposta", "type": "callback", "value": "solto"}]]}
+        painel = {"type": "message", "text": "painel",
+                  "buttons": [[{"text": "Zerar", "type": "callback", "value": "zerar",
+                                "reaction": {"blocks": [{"type": "message", "text": "zerado"}]}}]]}
+        eng, api, cb = self.make([[msg("/menu")], [press("cb:planos", 2)], [press("cb:premium", 3)],
+                                  [press("cb:solto", 4)], [press("cb:zerar", 5)]],
+                                 [{"triggers": ["menu"], "blocks": [menu]},
+                                  {"triggers": ["painel"], "admin_level": 1, "blocks": [painel]}])
+        eng.run()
+        first = api.sent[0]
+        self.assertEqual(first["text"], "Menu, Ana")
+        self.assertEqual([b["callback_data"] for b in first["reply_markup"]["inline_keyboard"][0]], ["cb:planos", "cb:solto"])
+        edits = [p for m, p, f in api.calls if m == "editMessageText"]
+        self.assertEqual([e["text"] for e in edits], ["Nossos planos:", "Premium: R$ 30 por mês."])
+        self.assertEqual(edits[0]["reply_markup"]["inline_keyboard"][0][0]["callback_data"], "cb:premium")
+        self.assertEqual(cb.of("custom_callback")[0]["data"], "solto")  # sem resposta: vai para os scripts
+        self.assertNotIn("zerado", [p.get("text") for p in api.sent])  # botão de comando de admin
+        self.assertEqual(len(api.sent), 1)

@@ -68,7 +68,7 @@ fun AppRoot(openRequest: OpenRequest? = null, onOpenHandled: () -> Unit = {}) {
             Screen.PRODUCT -> productReturn
             Screen.COMMAND -> commandReturn
             Screen.NODE -> nodeReturn
-            Screen.FLOWS -> Screen.BOT
+            Screen.FLOWS -> if (commandId != null) Screen.COMMAND else Screen.BOT
             Screen.CHATS, Screen.BROADCAST, Screen.ANTISPAM, Screen.SHOP, Screen.TERMUX,
             Screen.CHANGE_TOKEN, Screen.PROFILE, Screen.LOG, Screen.ADMINS, Screen.STORAGE -> Screen.BOT
             else -> Screen.HOME
@@ -113,8 +113,7 @@ fun AppRoot(openRequest: OpenRequest? = null, onOpenHandled: () -> Unit = {}) {
                 screen = Screen.COMMAND
             },
             onTermux = { screen = Screen.TERMUX },
-            onFlows = { screen = Screen.FLOWS },
-            onNewNode = { nodeId = null; nodeReturn = Screen.BOT; screen = Screen.NODE },
+
             onProfile = { screen = Screen.PROFILE },
             onLog = { screen = Screen.LOG },
             onAdmins = { add -> adminsAutoAdd = add; screen = Screen.ADMINS },
@@ -139,12 +138,13 @@ fun AppRoot(openRequest: OpenRequest? = null, onOpenHandled: () -> Unit = {}) {
             commandId = commandId,
             newAsAdmin = newCommandIsAdmin,
             newAsScript = newCommandIsScript,
+            onOpenFlows = { screen = Screen.FLOWS },
             onDone = { screen = commandReturn },
         )
         Screen.FLOWS -> FlowsScreen(
             botId = botId,
             onEditNode = { nodeId = it; nodeReturn = Screen.FLOWS; screen = Screen.NODE },
-            onBack = goBot,
+            onBack = { screen = if (commandId != null) Screen.COMMAND else Screen.BOT },
         )
         Screen.NODE -> NodeEditorScreen(botId = botId, nodeId = nodeId, onDone = { screen = nodeReturn })
         Screen.TERMUX -> TermuxScreen(
