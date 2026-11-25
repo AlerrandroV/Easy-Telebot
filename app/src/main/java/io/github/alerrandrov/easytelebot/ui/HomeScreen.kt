@@ -67,6 +67,7 @@ fun HomeScreen(onAddBot: () -> Unit, onOpenBot: (Long) -> Unit, onBattery: () ->
     val batteryOk = remember(resumeTick) { BatteryHelper.isIgnoringOptimizations(context) }
 
     Scaffold(
+        contentWindowInsets = screenInsets,
         topBar = {
             AppBar(stringResource(R.string.app_name)) {
                 AppLanguageButton()

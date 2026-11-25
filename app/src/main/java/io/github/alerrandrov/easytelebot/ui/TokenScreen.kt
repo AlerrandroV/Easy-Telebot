@@ -93,6 +93,7 @@ fun TokenScreen(expectedBotId: Long?, onBack: () -> Unit, onSaved: (Long) -> Uni
 
     val title = stringResource(if (expectedBotId == null) R.string.token_title else R.string.token_change)
     Scaffold(
+        contentWindowInsets = screenInsets,
         topBar = { AppBar(title, onBack = onBack) },
     ) { padding ->
         Column(

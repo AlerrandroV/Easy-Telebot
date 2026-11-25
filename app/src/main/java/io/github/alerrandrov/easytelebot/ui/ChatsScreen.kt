@@ -67,7 +67,7 @@ fun ChatsScreen(botId: Long, onOpenChat: (Long) -> Unit, onBack: () -> Unit) {
     }
     var query by remember { mutableStateOf("") }
 
-    Scaffold(topBar = { AppBar(stringResource(R.string.chats_title), onBack) }) { padding ->
+    Scaffold(contentWindowInsets = screenInsets, topBar = { AppBar(stringResource(R.string.chats_title), onBack) }) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(bottom = 24.dp)) {
             item {
                 OutlinedTextField(

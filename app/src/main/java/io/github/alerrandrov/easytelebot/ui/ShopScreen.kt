@@ -111,7 +111,7 @@ fun ShopScreen(
         ConfigRepository.save(botId, config)
     }
 
-    Scaffold(topBar = { AppBar(stringResource(R.string.shop_title), onBack) }) { padding ->
+    Scaffold(contentWindowInsets = screenInsets, topBar = { AppBar(stringResource(R.string.shop_title), onBack) }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             PrimaryTabRow(selectedTabIndex = tab) {
                 ShopTab.entries.forEachIndexed { i, t ->

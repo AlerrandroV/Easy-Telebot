@@ -85,7 +85,7 @@ fun AntispamScreen(botId: Long, onOpenChat: (Long) -> Unit, onBack: () -> Unit) 
         }
     }
 
-    Scaffold(topBar = { AppBar(stringResource(R.string.antispam_title), onBack) }) { padding ->
+    Scaffold(contentWindowInsets = screenInsets, topBar = { AppBar(stringResource(R.string.antispam_title), onBack) }) { padding ->
         LazyColumn(
             Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(16.dp, 16.dp, 16.dp, 48.dp),

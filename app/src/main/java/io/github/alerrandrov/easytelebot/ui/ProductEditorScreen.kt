@@ -153,6 +153,7 @@ fun ProductEditorScreen(botId: Long, productId: String?, subscription: Boolean, 
     }
 
     Scaffold(
+        contentWindowInsets = screenInsets,
         topBar = {
             AppBar(
                 stringResource(

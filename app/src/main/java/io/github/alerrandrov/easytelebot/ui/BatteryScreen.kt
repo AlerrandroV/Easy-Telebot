@@ -37,7 +37,7 @@ fun BatteryScreen(onBack: () -> Unit) {
     val ignoring = remember(tick) { BatteryHelper.isIgnoringOptimizations(context) }
     val guide = remember { BatteryHelper.guideForThisPhone() }
 
-    Scaffold(topBar = { AppBar(stringResource(R.string.battery_title), onBack) }) { padding ->
+    Scaffold(contentWindowInsets = screenInsets, topBar = { AppBar(stringResource(R.string.battery_title), onBack) }) { padding ->
         Column(
             Modifier
                 .fillMaxSize()

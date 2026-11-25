@@ -140,7 +140,7 @@ fun StorageScreen(botId: Long, onBack: () -> Unit) {
         }
     }
 
-    Scaffold(topBar = { AppBar(stringResource(R.string.storage_title), onBack) }) { padding ->
+    Scaffold(contentWindowInsets = screenInsets, topBar = { AppBar(stringResource(R.string.storage_title), onBack) }) { padding ->
         Column(
             Modifier
                 .fillMaxSize()

@@ -130,7 +130,7 @@ fun TermuxScreen(botId: Long, onNewScriptCommand: () -> Unit, onBack: () -> Unit
     val errPort = stringResource(R.string.termux_port_invalid)
     val errPortTaken = stringResource(R.string.termux_port_taken)
 
-    Scaffold(topBar = { AppBar(stringResource(R.string.termux_title), onBack) }) { padding ->
+    Scaffold(contentWindowInsets = screenInsets, topBar = { AppBar(stringResource(R.string.termux_title), onBack) }) { padding ->
         LazyColumn(
             Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(16.dp, 16.dp, 16.dp, 48.dp),

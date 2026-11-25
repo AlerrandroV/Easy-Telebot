@@ -116,6 +116,7 @@ fun FlowsScreen(botId: Long, onEditNode: (String?) -> Unit, onBack: () -> Unit) 
     val rows = remember(config) { buildTree(config, labels) }
 
     Scaffold(
+        contentWindowInsets = screenInsets,
         topBar = { AppBar(stringResource(R.string.flows_title), onBack) },
         floatingActionButton = {
             ExtendedFloatingActionButton(onClick = { onEditNode(null) }) { ButtonLabel(R.drawable.ic_add, stringResource(R.string.flow_new_node)) }
@@ -237,6 +238,7 @@ fun NodeEditorScreen(botId: Long, nodeId: String?, onDone: () -> Unit) {
     }
 
     Scaffold(
+        contentWindowInsets = screenInsets,
         topBar = {
             AppBar(stringResource(if (original == null) R.string.flow_new_node else R.string.flow_edit_node), onDone) {
                 if (original != null) {

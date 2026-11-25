@@ -148,7 +148,7 @@ fun ProfileScreen(botId: Long, onBack: () -> Unit) {
 
     val changed = original?.let { name.trim() != it.name || about != it.shortDescription || description != it.description } ?: false
 
-    Scaffold(topBar = { AppBar(stringResource(R.string.bot_profile), onBack) }) { padding ->
+    Scaffold(contentWindowInsets = screenInsets, topBar = { AppBar(stringResource(R.string.bot_profile), onBack) }) { padding ->
         Column(
             Modifier
                 .fillMaxSize()

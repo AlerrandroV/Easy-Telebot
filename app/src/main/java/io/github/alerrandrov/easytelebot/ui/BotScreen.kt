@@ -149,6 +149,7 @@ fun BotScreen(
     }
 
     Scaffold(
+        contentWindowInsets = screenInsets,
         topBar = { AppBar(meta.name.ifEmpty { "@${meta.username}" }, onBack) },
         floatingActionButton = {
             ExtendedFloatingActionButton(onClick = { showAddSheet = true }) {

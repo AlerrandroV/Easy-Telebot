@@ -115,7 +115,7 @@ fun AdminsScreen(botId: Long, autoAdd: Boolean = false, onBack: () -> Unit) {
     // Veio do botão "Adicionar" da tela do bot: já começa o fluxo.
     LaunchedEffect(Unit) { if (autoAdd) startAdd() }
 
-    Scaffold(topBar = { AppBar(stringResource(R.string.admins_title), onBack) }) { padding ->
+    Scaffold(contentWindowInsets = screenInsets, topBar = { AppBar(stringResource(R.string.admins_title), onBack) }) { padding ->
         LazyColumn(
             Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(16.dp),

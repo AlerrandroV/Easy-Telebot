@@ -197,6 +197,7 @@ fun CommandEditorScreen(
     }
 
     Scaffold(
+        contentWindowInsets = screenInsets,
         topBar = {
             AppBar(
                 if (path.isNotEmpty()) crumbs.last() else stringResource(

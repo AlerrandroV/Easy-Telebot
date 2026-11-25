@@ -1,5 +1,9 @@
 package io.github.alerrandrov.easytelebot.ui
 
+import androidx.compose.material3.ScaffoldDefaults
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.WindowInsets
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -278,3 +282,12 @@ fun safeStart(context: Context, intent: Intent): Boolean = try {
 } catch (e: SecurityException) {
     false
 }
+
+
+/**
+ * Margens das telas incluindo o teclado. Com a tela de ponta a ponta (obrigatória no
+ * Android 15+), o `adjustResize` não encolhe mais a janela: cada tela reserva sozinha o
+ * espaço do teclado, e o campo focado sobe junto com a rolagem.
+ */
+val screenInsets: WindowInsets
+    @Composable get() = ScaffoldDefaults.contentWindowInsets.union(WindowInsets.ime)

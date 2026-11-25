@@ -111,6 +111,7 @@ fun LogScreen(botId: Long?, onBack: () -> Unit) {
     }
 
     Scaffold(
+        contentWindowInsets = screenInsets,
         topBar = {
             AppBar(stringResource(if (botId == null) R.string.log_title_all else R.string.log_title), onBack) {
                 IconButton(onClick = { export() }, enabled = lines.isNotEmpty()) {
