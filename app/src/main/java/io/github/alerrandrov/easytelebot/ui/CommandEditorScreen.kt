@@ -36,6 +36,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.FilterChip
 import androidx.compose.runtime.mutableIntStateOf
+import io.github.alerrandrov.easytelebot.data.CommandBlock
 import io.github.alerrandrov.easytelebot.data.CommandScript
 import io.github.alerrandrov.easytelebot.data.FlowNode
 import io.github.alerrandrov.easytelebot.data.ButtonTypes
@@ -103,7 +104,7 @@ fun CommandEditorScreen(
         original ?: SimpleCommand(
             adminLevel = if (newAsAdmin) 1 else null,
             showInMenu = true,
-            script = if (newAsScript) CommandScript() else null,
+            blocks = if (newAsScript) listOf(CommandBlock.Termux(CommandScript())) else emptyList(),
         )
     }
 
@@ -113,18 +114,10 @@ fun CommandEditorScreen(
     var showInMenu by remember { mutableStateOf(start.showInMenu) }
     var adminLevel by remember { mutableStateOf(start.adminLevel) }
     var lastLevel by remember { mutableStateOf(start.adminLevel ?: 1) }
-    var nextKey by remember { mutableLongStateOf(start.messages.size.toLong()) }
-    var drafts by remember {
-        mutableStateOf(start.messages.ifEmpty { listOf(BotMessage()) }.mapIndexed { i, m -> Draft(i.toLong(), m) })
-    }
+    var blocks by remember { mutableStateOf(start.blocks) }
     var showErrors by remember { mutableStateOf(false) }
-    /** Resposta: "messages", "script" (Termux) ou "flow" (iniciar um fluxo). */
-    var mode by remember { mutableStateOf(if (start.flow != null) "flow" else if (start.script != null) "script" else "messages") }
-    val scriptMode = mode == "script"
-    var flowStart by remember { mutableStateOf(start.flow ?: config.flows.firstOrNull()?.id) }
+    var showPreview by remember { mutableStateOf(false) }
     val nodeIds = config.flows.map { it.id }.toSet()
-    var scriptCommand by remember { mutableStateOf(start.script?.command ?: "") }
-    var scriptTimeout by remember { mutableIntStateOf(start.script?.timeout ?: 30) }
     var confirmDiscard by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
 
@@ -135,14 +128,11 @@ fun CommandEditorScreen(
         description = description.trim(),
         showInMenu = showInMenu,
         adminLevel = adminLevel,
-        messages = drafts.map { it.msg },
-        script = if (scriptMode) CommandScript(scriptCommand.trim(), scriptTimeout) else null,
-        flow = if (mode == "flow") flowStart else null,
+        blocks = blocks,
     )
     val changed = current() != start
 
-    val errors = validate(context, triggers, drafts.map { it.msg }, otherTriggers, if (scriptMode) scriptCommand else null,
-        if (mode == "flow") flowStart ?: "" else null, nodeIds)
+    val errors = validate(context, triggers, blocks, otherTriggers, nodeIds)
 
     fun addTrigger() {
         val parts = triggerInput.split(' ', ',', ';').map { it.trim().removePrefix("/").lowercase() }.filter { it.isNotEmpty() }
@@ -154,12 +144,11 @@ fun CommandEditorScreen(
 
     fun save() {
         if (triggerInput.isNotBlank()) addTrigger()
-        if (validate(context, triggers, drafts.map { it.msg }, otherTriggers, if (scriptMode) scriptCommand else null,
-        if (mode == "flow") flowStart ?: "" else null, nodeIds).isNotEmpty()) {
+        if (validate(context, triggers, blocks, otherTriggers, nodeIds).isNotEmpty()) {
             showErrors = true
             return
         }
-        val cmd = current().copy(messages = drafts.map { it.msg }.filter { it.text.isNotBlank() || it.media != null })
+        val cmd = current()
         val list = config.commands.toMutableList()
         val index = list.indexOfFirst { it.id == cmd.id }
         if (index >= 0) list[index] = cmd else list.add(cmd)
@@ -186,6 +175,9 @@ fun CommandEditorScreen(
                     TextButton(onClick = { confirmDelete = true }) {
                         Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
                     }
+                }
+                IconButton(onClick = { showPreview = true }) {
+                    AppIcon(R.drawable.ic_visibility, description = stringResource(R.string.preview_title))
                 }
                 TextButton(onClick = { save() }) { Text(stringResource(R.string.save)) }
             }
@@ -278,88 +270,22 @@ fun CommandEditorScreen(
 
             item { SectionTitle(stringResource(R.string.cmd_response_title)) }
             item {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
-                        selected = mode == "messages", onClick = { mode = "messages" },
-                        label = { Text(stringResource(R.string.cmd_response_messages)) },
-                        leadingIcon = { AppIcon(R.drawable.ic_send, Modifier.size(18.dp)) },
-                    )
-                    FilterChip(
-                        selected = mode == "flow", onClick = { mode = "flow" },
-                        label = { Text(stringResource(R.string.cmd_response_flow)) },
-                        leadingIcon = { AppIcon(R.drawable.ic_account_tree, Modifier.size(18.dp)) },
-                    )
-                    FilterChip(
-                        selected = scriptMode, onClick = { mode = "script" },
-                        label = { Text(stringResource(R.string.cmd_response_script)) },
-                        leadingIcon = { AppIcon(R.drawable.ic_terminal, Modifier.size(18.dp)) },
-                    )
-                }
-            }
-            if (scriptMode) {
-                item { ScriptEditor(scriptCommand, { scriptCommand = it }, scriptTimeout, { scriptTimeout = it }) }
-            }
-            if (mode == "flow") {
-                item {
-                    Card(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(stringResource(R.string.cmd_flow_start), style = MaterialTheme.typography.titleSmall)
-                            if (config.flows.isEmpty()) {
-                                Text(stringResource(R.string.cmd_flow_empty), style = MaterialTheme.typography.bodyMedium)
-                            }
-                            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                config.flows.forEach { n ->
-                                    FilterChip(
-                                        selected = flowStart == n.id, onClick = { flowStart = n.id },
-                                        label = { Text(n.title.ifBlank { n.id }) },
-                                    )
-                                }
-                            }
-                            Text(stringResource(R.string.cmd_flow_help), style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                }
-            }
-            if (mode == "messages") itemsIndexed(drafts, key = { _, d -> d.key }) { index, draft ->
-                MessageEditor(
+                ResponseBlocksEditor(
                     botId = botId,
-                    index = index,
-                    count = drafts.size,
-                    draft = draft,
-                    onChange = { m -> drafts = drafts.map { if (it.key == draft.key) it.copy(msg = m) else it } },
-                    onMove = { delta ->
-                        val list = drafts.toMutableList()
-                        val target = index + delta
-                        if (target in list.indices) {
-                            list.add(target, list.removeAt(index))
-                            drafts = list
-                        }
-                    },
-                    onRemove = { drafts = drafts.filter { it.key != draft.key } },
+                    blocks = blocks,
+                    onChange = { blocks = it },
                     nodes = config.flows,
                     extraVariables = config.flowVariables(),
-                )
-            }
-            if (mode == "messages") item {
-                OutlinedButton(
-                    onClick = {
-                        drafts = drafts + Draft(nextKey, BotMessage())
-                        nextKey++
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                ) { ButtonLabel(R.drawable.ic_add, stringResource(R.string.cmd_add_message)) }
-            }
-            if (mode == "messages") item {
-                Text(
-                    stringResource(R.string.cmd_messages_help),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
     }
 
+    if (showPreview) {
+        CommandPreviewDialog(triggers.firstOrNull() ?: triggerInput.trim().removePrefix("/"), blocks, botId, config.flows) {
+            showPreview = false
+        }
+    }
     if (confirmDiscard) {
         AlertDialog(
             onDismissRequest = { confirmDiscard = false },
@@ -391,59 +317,25 @@ fun CommandEditorScreen(
 private fun validate(
     context: android.content.Context,
     triggers: List<String>,
-    messages: List<BotMessage>,
+    blocks: List<CommandBlock>,
     otherTriggers: Set<String>,
-    /** Linha de comando do script (`null` = comando de mensagens prontas). */
-    script: String?,
-    /** Etapa inicial do fluxo (`null` = não é fluxo). */
-    flow: String?,
     nodeIds: Set<String>,
 ): List<String> = buildList {
     if (triggers.isEmpty()) add(context.getString(R.string.cmd_err_no_trigger))
     triggers.filter { it in AdminLevels.RESERVED }.forEach { add(context.getString(R.string.cmd_err_reserved, it)) }
     triggers.filter { it in otherTriggers }.forEach { add(context.getString(R.string.cmd_err_trigger_taken, it)) }
-    if (script != null) {
-        if (script.isBlank()) add(context.getString(R.string.cmd_err_no_script))
-        return@buildList
-    }
-    if (flow != null) {
-        if (flow !in nodeIds) add(context.getString(R.string.cmd_err_no_flow))
-        return@buildList
-    }
-    if (messages.none { it.text.isNotBlank() || it.media != null }) add(context.getString(R.string.cmd_err_no_message))
-    messages.forEachIndexed { i, m ->
-        if (m.text.length > TEXT_LIMIT) add(context.getString(R.string.cmd_err_too_long, i + 1))
-        if (m.buttons.flatten().any { b -> !ButtonTypes.isValid(b, nodeIds) }) {
-            add(context.getString(R.string.cmd_err_button, i + 1))
-        }
-    }
-}
-
-/** Linha de comando do Termux + tempo máximo, com a explicação da saída. */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun ScriptEditor(command: String, onCommand: (String) -> Unit, timeout: Int, onTimeout: (Int) -> Unit) {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
-                value = command,
-                onValueChange = { onCommand(it.take(2000)) },
-                label = { Text(stringResource(R.string.cmd_script_command)) },
-                placeholder = { Text("python ~/bot/clima.py") },
-                textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Text(stringResource(R.string.cmd_script_timeout), style = MaterialTheme.typography.titleSmall)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf(10, 30, 60, 120).forEach { t ->
-                    FilterChip(selected = timeout == t, onClick = { onTimeout(t) }, label = { Text(stringResource(R.string.cmd_script_seconds, t)) })
-                }
+    if (blocks.isEmpty()) add(context.getString(R.string.cmd_err_no_blocks))
+    blocks.forEachIndexed { i, b ->
+        val n = i + 1
+        when (b) {
+            is CommandBlock.Message -> {
+                val m = b.msg
+                if (m.text.isBlank() && m.media == null) add(context.getString(R.string.cmd_err_block_empty, n))
+                if (m.text.length > (if (m.media != null) CAPTION_LIMIT else TEXT_LIMIT)) add(context.getString(R.string.cmd_err_too_long, n))
+                if (m.buttons.flatten().any { !ButtonTypes.isValid(it, nodeIds) }) add(context.getString(R.string.cmd_err_button, n))
             }
-            Text(
-                stringResource(R.string.cmd_script_help),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            is CommandBlock.Termux -> if (b.script.command.isBlank()) add(context.getString(R.string.cmd_err_block_script, n))
+            is CommandBlock.Flow -> if (b.node !in nodeIds) add(context.getString(R.string.cmd_err_no_flow))
         }
     }
 }
@@ -809,6 +701,9 @@ internal fun ButtonEditor(
 internal fun buttonTypeLabel(type: String): String = stringResource(
     when (type) {
         ButtonTypes.COPY -> R.string.btn_type_copy
+        ButtonTypes.USER -> R.string.btn_type_user
+        ButtonTypes.CHANNEL -> R.string.btn_type_channel
+        ButtonTypes.GROUP -> R.string.btn_type_group
         ButtonTypes.NODE -> R.string.btn_type_node
         ButtonTypes.WEBAPP -> R.string.btn_type_webapp
         ButtonTypes.CALLBACK -> R.string.btn_type_callback
@@ -818,15 +713,21 @@ internal fun buttonTypeLabel(type: String): String = stringResource(
 
 internal fun buttonTypeIcon(type: String): Int = when (type) {
     ButtonTypes.COPY -> R.drawable.ic_content_copy
+    ButtonTypes.USER -> R.drawable.ic_person
+    ButtonTypes.CHANNEL -> R.drawable.ic_campaign
+    ButtonTypes.GROUP -> R.drawable.ic_group
     ButtonTypes.NODE -> R.drawable.ic_account_tree
-    ButtonTypes.WEBAPP -> R.drawable.ic_storefront
+    ButtonTypes.WEBAPP -> R.drawable.ic_web_asset
     ButtonTypes.CALLBACK -> R.drawable.ic_terminal
     else -> R.drawable.ic_link
 }
 
 @Composable
-private fun buttonValueLabel(type: String): String = stringResource(
+internal fun buttonValueLabel(type: String): String = stringResource(
     when (type) {
+        ButtonTypes.USER -> R.string.btn_value_user
+        ButtonTypes.CHANNEL -> R.string.btn_value_channel
+        ButtonTypes.GROUP -> R.string.btn_value_group
         ButtonTypes.COPY -> R.string.btn_value_copy
         ButtonTypes.WEBAPP -> R.string.btn_value_webapp
         ButtonTypes.CALLBACK -> R.string.btn_value_callback
@@ -834,7 +735,10 @@ private fun buttonValueLabel(type: String): String = stringResource(
     },
 )
 
-private fun buttonValueHint(type: String): String = when (type) {
+internal fun buttonValueHint(type: String): String = when (type) {
+    ButtonTypes.USER -> "@usuario"
+    ButtonTypes.CHANNEL -> "@meucanal  ·  t.me/meucanal"
+    ButtonTypes.GROUP -> "t.me/+convite  ·  @meugrupo"
     ButtonTypes.COPY -> "chave-pix@exemplo.com"
     ButtonTypes.WEBAPP -> "https://…"
     ButtonTypes.CALLBACK -> "pedido:123"
@@ -842,7 +746,7 @@ private fun buttonValueHint(type: String): String = when (type) {
 }
 
 @Composable
-private fun buttonValueHelp(type: String): String = when (type) {
+internal fun buttonValueHelp(type: String): String = when (type) {
     ButtonTypes.COPY -> stringResource(R.string.btn_help_copy)
     ButtonTypes.WEBAPP -> stringResource(R.string.btn_help_webapp)
     ButtonTypes.CALLBACK -> stringResource(R.string.btn_help_callback)
@@ -850,7 +754,7 @@ private fun buttonValueHelp(type: String): String = when (type) {
 }
 
 @Composable
-private fun buttonValueError(type: String): String = stringResource(
+internal fun buttonValueError(type: String): String = stringResource(
     when (type) {
         ButtonTypes.WEBAPP -> R.string.btn_err_webapp
         ButtonTypes.CALLBACK -> R.string.btn_err_callback

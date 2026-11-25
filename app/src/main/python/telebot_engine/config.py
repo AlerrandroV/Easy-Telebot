@@ -39,7 +39,9 @@ def _clean_trigger(value):
     return str(value or "").strip().lstrip("/").lower()
 
 
-BUTTON_TYPES = ("url", "copy", "node", "webapp", "callback")
+# user/channel/group são links (t.me/... ou @nome); o tipo só muda o ícone no app.
+LINK_TYPES = ("url", "user", "channel", "group")
+BUTTON_TYPES = LINK_TYPES + ("copy", "node", "webapp", "callback")
 
 
 def normalize_button(b):
@@ -53,7 +55,7 @@ def normalize_button(b):
     if not value:
         return None
     out = {"text": str(b["text"]), "type": kind, "value": value}
-    if kind == "url":
+    if kind in LINK_TYPES:
         out["url"] = value  # compatibilidade com quem lê "url"
     return out
 
@@ -89,6 +91,42 @@ def _message(item):
     }
 
 
+BLOCK_TYPES = ("message", "termux", "flow")
+
+
+def _blocks(item, legacy_messages):
+    """A resposta do comando: blocos executados em ordem.
+
+    ``[{"type": "message", ...mensagem}, {"type": "termux", "command", "timeout"},
+    {"type": "flow", "node"}]``. Comandos antigos (``messages``/``script``/``flow``)
+    viram blocos equivalentes.
+    """
+    raw = item.get("blocks")
+    out = []
+    if isinstance(raw, list):
+        for b in raw:
+            if not isinstance(b, dict):
+                continue
+            kind = b.get("type")
+            if kind == "message":
+                m = _message(b)
+                if m:
+                    out.append({"type": "message", "message": m})
+            elif kind == "termux":
+                sc = termux.normalize_script(b)
+                if sc:
+                    out.append({"type": "termux", "script": sc})
+            elif kind == "flow" and b.get("node"):
+                out.append({"type": "flow", "node": str(b["node"])})
+        return out
+    if item.get("flow"):
+        return [{"type": "flow", "node": str(item["flow"])}]
+    script = termux.normalize_script(item.get("script"))
+    if script:
+        return [{"type": "termux", "script": script}]
+    return [{"type": "message", "message": m} for m in legacy_messages]
+
+
 def normalize(data):
     data = data if isinstance(data, dict) else {}
     commands = []
@@ -118,9 +156,14 @@ def normalize(data):
             "triggers": triggers,
             "description": str(item.get("description") or "").strip(),
             "show_in_menu": bool(item.get("show_in_menu", True)),
-            "messages": messages,
-            "script": termux.normalize_script(item.get("script")),
-            "flow": str(item.get("flow") or "") or None,
+        })
+        blocks = _blocks(item, messages)
+        commands[-1].update({
+            "blocks": blocks,
+            # Atalhos para quem só precisa de uma parte (menu, botões de script, fluxos...).
+            "messages": [b["message"] for b in blocks if b["type"] == "message"],
+            "script": next((b["script"] for b in blocks if b["type"] == "termux"), None),
+            "flow": next((b["node"] for b in blocks if b["type"] == "flow"), None),
         })
     b = data.get("broadcast") if isinstance(data.get("broadcast"), dict) else {}
     try:

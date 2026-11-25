@@ -13,7 +13,7 @@ import java.util.UUID
  */
 data class LinkButton(val text: String, val url: String, val type: String = ButtonTypes.URL) {
     fun toJson(): JSONObject = JSONObject().put("text", text).put("type", type).put("value", url).apply {
-        if (type == ButtonTypes.URL) put("url", url)
+        if (type in ButtonTypes.LINKS) put("url", url)
     }
 
     companion object {
@@ -31,7 +31,12 @@ object ButtonTypes {
     const val NODE = "node"
     const val WEBAPP = "webapp"
     const val CALLBACK = "callback"
-    val ALL = listOf(URL, COPY, NODE, WEBAPP, CALLBACK)
+    /** Links para usuário, canal ou grupo (@nome ou t.me/...): no Telegram são links comuns. */
+    const val USER = "user"
+    const val CHANNEL = "channel"
+    const val GROUP = "group"
+    val LINKS = setOf(URL, USER, CHANNEL, GROUP)
+    val ALL = listOf(URL, USER, CHANNEL, GROUP, COPY, WEBAPP, NODE, CALLBACK)
 
     /** `nodeIds` = etapas existentes (`null` = não conferir). */
     fun isValid(b: LinkButton, nodeIds: Set<String>? = null): Boolean = b.text.isNotBlank() && when (b.type) {
@@ -90,20 +95,49 @@ data class BotMessage(
     val linkPreview: Boolean = false,
 )
 
-/** "Comando simples": um ou mais gatilhos (/start, /iniciar) → uma ou mais mensagens. */
+/**
+ * Comando: um ou mais gatilhos (/start, /iniciar) e a resposta em **blocos**, executados
+ * em ordem (mensagem, script do Termux, início de fluxo). Mesmo formato de `config.py`.
+ */
 data class SimpleCommand(
     val id: String = UUID.randomUUID().toString(),
     val triggers: List<String> = emptyList(),
     val description: String = "",
     val showInMenu: Boolean = true,
-    val messages: List<BotMessage> = listOf(BotMessage()),
     /** `null` = qualquer pessoa. 1..10 = só admins dessa classe ou acima (1 = classe I). */
     val adminLevel: Int? = null,
-    /** Se definido, o comando roda um script no Termux em vez de mandar as mensagens. */
-    val script: CommandScript? = null,
-    /** Se definido, o comando inicia este fluxo (id da etapa). */
-    val flow: String? = null,
-)
+    val blocks: List<CommandBlock> = emptyList(),
+) {
+    val messages: List<BotMessage> get() = blocks.filterIsInstance<CommandBlock.Message>().map { it.msg }
+    val script: CommandScript? get() = blocks.filterIsInstance<CommandBlock.Termux>().firstOrNull()?.script
+    val flow: String? get() = blocks.filterIsInstance<CommandBlock.Flow>().firstOrNull()?.node
+}
+
+/** Um bloco da resposta de um comando. [key] só identifica o bloco na tela (não é salvo). */
+sealed interface CommandBlock {
+    val key: String
+
+    data class Message(val msg: BotMessage, override val key: String = newKey()) : CommandBlock
+    data class Termux(val script: CommandScript, override val key: String = newKey()) : CommandBlock
+    data class Flow(val node: String, override val key: String = newKey()) : CommandBlock
+
+    companion object {
+        fun newKey() = UUID.randomUUID().toString()
+
+        fun toJson(b: CommandBlock): JSONObject = when (b) {
+            is Message -> BotConfig.messageJson(b.msg).put("type", "message")
+            is Termux -> JSONObject().put("type", "termux").put("command", b.script.command).put("timeout", b.script.timeout)
+            is Flow -> JSONObject().put("type", "flow").put("node", b.node)
+        }
+
+        fun fromJson(o: JSONObject): CommandBlock? = when (o.optString("type")) {
+            "message" -> Message(BotConfig.parseMessage(o))
+            "termux" -> Termux(CommandScript(o.optString("command"), o.optInt("timeout", 30).coerceIn(1, 300)))
+            "flow" -> o.optString("node").takeIf { it.isNotBlank() }?.let { Flow(it) }
+            else -> null
+        }
+    }
+}
 
 /** Linha de comando rodada no Termux (ex.: `python ~/bot/clima.py`) e o tempo máximo em segundos. */
 data class CommandScript(val command: String = "", val timeout: Int = 30)
@@ -181,11 +215,7 @@ data class BotConfig(
                     put("description", c.description)
                     put("show_in_menu", c.showInMenu)
                     put("admin_level", c.adminLevel ?: JSONObject.NULL)
-                    put("script", c.script?.let { JSONObject().put("command", it.command).put("timeout", it.timeout) } ?: JSONObject.NULL)
-                    put("flow", c.flow ?: JSONObject.NULL)
-                    put("messages", JSONArray().apply {
-                        c.messages.forEach { m -> put(messageJson(m)) }
-                    })
+                    put("blocks", JSONArray().apply { c.blocks.forEach { put(CommandBlock.toJson(it)) } })
                 })
             }
         })
@@ -239,10 +269,22 @@ data class BotConfig(
                 SimpleCommand(
                     triggers = listOf("start"),
                     description = "Começar",
-                    messages = listOf(BotMessage("Olá, *{nome}*! Eu sou o {bot}. Use o menu para ver o que sei fazer.")),
+                    blocks = listOf(CommandBlock.Message(BotMessage("Olá, *{nome}*! Eu sou o {bot}. Use o menu para ver o que sei fazer."))),
                 ),
             )
         )
+
+        /** Comandos de antes dos blocos: fluxo, script ou lista de mensagens. */
+        private fun legacyBlocks(o: JSONObject, messages: JSONArray): List<CommandBlock> {
+            if (!o.isNull("flow") && o.optString("flow").isNotBlank()) return listOf(CommandBlock.Flow(o.optString("flow")))
+            o.optJSONObject("script")?.let { s ->
+                if (s.optString("command").isNotBlank()) {
+                    return listOf(CommandBlock.Termux(CommandScript(s.optString("command"), s.optInt("timeout", 30).coerceIn(1, 300))))
+                }
+            }
+            return (0 until messages.length()).mapNotNull { j -> messages.optJSONObject(j)?.let(::parseMessage) }
+                .map { CommandBlock.Message(it) }
+        }
 
         internal fun messageJson(m: BotMessage) = JSONObject().apply {
             put("text", m.text)
@@ -286,18 +328,16 @@ data class BotConfig(
                         description = o.optString("description"),
                         showInMenu = o.optBoolean("show_in_menu", true),
                         adminLevel = if (o.isNull("admin_level")) null else o.optInt("admin_level", 1).coerceIn(1, AdminLevels.MAX),
-                        messages = (0 until m.length()).mapNotNull { j -> m.optJSONObject(j)?.let(::parseMessage) },
-                        script = o.optJSONObject("script")?.let { s ->
-                            CommandScript(s.optString("command"), s.optInt("timeout", 30).coerceIn(1, 300))
-                        }?.takeIf { it.command.isNotBlank() },
-                        flow = if (o.isNull("flow")) null else o.optString("flow").ifEmpty { null },
+                        blocks = o.optJSONArray("blocks")?.let { bl ->
+                            (0 until bl.length()).mapNotNull { j -> bl.optJSONObject(j)?.let(CommandBlock::fromJson) }
+                        } ?: legacyBlocks(o, m),
                     )
                 } else {
                     // versão 1: um comando → um texto
                     SimpleCommand(
                         triggers = listOf(o.optString("command")),
                         description = o.optString("description"),
-                        messages = listOf(BotMessage(o.optString("response"))),
+                        blocks = listOf(CommandBlock.Message(BotMessage(o.optString("response")))),
                     )
                 }
             }

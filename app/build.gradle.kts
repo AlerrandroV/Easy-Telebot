@@ -13,7 +13,8 @@ android {
         applicationId = "io.github.alerrandrov.easytelebot"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
+        // Cada build do GitHub Actions tem um número maior: o Android sempre aceita como atualização.
+        versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
         versionName = "0.1.0"
 
         ndk {
@@ -27,6 +28,15 @@ android {
     // e passa os dados por variáveis de ambiente. Sem elas, o release sai sem assinatura.
     val keystorePath = System.getenv("KEYSTORE_PATH")
     signingConfigs {
+        // Chave de DEPURAÇÃO fixa (senhas públicas padrão do Android, não é segredo).
+        // Sem ela, cada build do CI gerava uma chave nova e o Android recusava instalar
+        // por cima ("pacote em conflito"), obrigando a desinstalar. Não serve para release.
+        getByName("debug") {
+            storeFile = file("debug-signing.jks")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
         if (keystorePath != null) {
             create("release") {
                 storeFile = file(keystorePath)

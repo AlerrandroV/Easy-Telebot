@@ -291,8 +291,8 @@
     <string name="cmd_err_no_trigger">Adicione pelo menos um comando (ex.: start).</string>
     <string name="cmd_err_trigger_taken">/%1$s já é usado por outro comando deste bot.</string>
     <string name="cmd_err_no_message">Escreva um texto ou anexe uma mídia em pelo menos uma mensagem.</string>
-    <string name="cmd_err_too_long">Mensagem %1$d: o texto passa de 4096 caracteres (limite do Telegram).</string>
-    <string name="cmd_err_button">Mensagem %1$d: todo botão precisa de um texto e de um link válido.</string>
+    <string name="cmd_err_too_long">Mensagem %1$d: o texto passa do limite do Telegram (4096 caracteres, ou 1024 numa legenda).</string>
+    <string name="cmd_err_button">Mensagem %1$d: algum botão está sem nome ou com o valor inválido (marcado em vermelho).</string>
     <string name="cmd_discard_title">Salvar as alterações?</string>
     <string name="cmd_discard_msg">Você mudou este comando e ainda não salvou.</string>
     <string name="cmd_delete_title">Excluir este comando?</string>
@@ -1075,4 +1075,53 @@
     <string name="log_clear_msg">O histórico some deste celular. Isso não afeta o bot nem as conversas.</string>
     <string name="log_hide">Esconder</string>
     <string name="log_error_code">código: %1$s</string>
+
+    <!-- Resposta em blocos -->
+    <string name="blocks_empty">Este comando ainda não responde nada. Adicione o que o bot deve fazer.</string>
+    <string name="blocks_add">Adicionar</string>
+    <string name="blocks_add_title">Adicionar à resposta</string>
+    <string name="block_message">Mensagem simples</string>
+    <string name="block_message_sub">Texto, foto, vídeo, áudio ou documento, com ou sem legenda, e botões.</string>
+    <string name="block_termux">Termux</string>
+    <string name="block_termux_sub">Roda um programa seu no Termux (Python, Node, Bash…) e manda o que ele imprimir.</string>
+    <string name="block_termux_help">O que o programa imprimir vira mensagem. Tempo máximo: %1$d s (mude nos três pontinhos).</string>
+    <string name="block_termux_timeout">Tempo máximo: %1$d s</string>
+    <string name="block_flow">Iniciar fluxo</string>
+    <string name="block_duplicate">Duplicar</string>
+    <string name="block_text_hint">Escreva a mensagem…</string>
+    <string name="block_caption_hint">Legenda (opcional)…</string>
+    <string name="block_add_image">Imagem</string>
+    <string name="block_add_video">Vídeo</string>
+    <string name="block_add_audio">Áudio</string>
+    <string name="block_add_file">Documento</string>
+    <string name="block_add_button">Botão</string>
+    <string name="block_preview_on">Mostrar prévia de links</string>
+    <string name="block_preview_off">Esconder prévia de links</string>
+    <string name="block_button_untitled">Sem nome</string>
+    <string name="block_button_settings">Configurar botão</string>
+    <string name="block_button_position">Posição na grade</string>
+    <string name="block_button_position_hint">Lados: troca de lugar na linha. Cima/baixo: muda de linha.</string>
+    <string name="block_button_beside">Botão ao lado</string>
+    <string name="block_move_left">Mover para a esquerda</string>
+    <string name="block_move_right">Mover para a direita</string>
+    <string name="btn_type_user">Usuário</string>
+    <string name="btn_type_channel">Canal</string>
+    <string name="btn_type_group">Grupo</string>
+    <string name="btn_value_user">Usuário (@nome ou t.me/nome)</string>
+    <string name="btn_value_channel">Canal (@canal ou t.me/canal)</string>
+    <string name="btn_value_group">Grupo (@grupo ou link de convite)</string>
+    <string name="fmt_bold">Negrito</string>
+    <string name="fmt_italic">Itálico</string>
+    <string name="fmt_underline">Sublinhado</string>
+    <string name="fmt_strike">Riscado</string>
+    <string name="fmt_code">Código</string>
+    <string name="cmd_err_no_blocks">Adicione pelo menos uma resposta (toque em Adicionar).</string>
+    <string name="cmd_err_block_empty">A mensagem %1$d está vazia: escreva um texto ou anexe uma mídia.</string>
+    <string name="cmd_err_block_script">O bloco Termux %1$d está sem linha de comando.</string>
+    <string name="preview_title">Pré-visualização</string>
+    <string name="preview_empty">Nada para mostrar ainda: adicione uma resposta.</string>
+    <string name="preview_termux">Aqui entra o que o script imprimir (%1$s)</string>
+    <string name="preview_flow">Abre o fluxo: %1$s</string>
+    <string name="preview_args">(texto depois do comando)</string>
+    <string name="preview_note">Variáveis com valores de exemplo ({nome} = Ana). No Telegram, cada pessoa vê os próprios dados.</string>
 </resources>

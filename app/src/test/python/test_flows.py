@@ -123,3 +123,36 @@ class FlowTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BlockTests(unittest.TestCase):
+    def test_blocks_run_in_order_and_legacy_is_converted(self):
+        from telebot_engine import config as config_mod
+        from test_termux import ScriptApi, TermuxCallbacks
+        d = tempfile.mkdtemp()
+        path = os.path.join(d, "config.json")
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump({"version": 2, "commands": [
+                {"triggers": ["tempo"], "blocks": [
+                    {"type": "message", "text": "Consultando, {nome}...",
+                     "buttons": [[{"text": "Canal", "type": "channel", "value": "@meucanal"}]]},
+                    {"type": "termux", "command": "python ~/tempo.py", "timeout": 10},
+                    {"type": "message", "text": "Fim."}]},
+                {"triggers": ["velho"], "messages": [{"text": "a"}, {"text": "b"}]},
+                {"triggers": ["vazio"], "blocks": []},
+            ]}, fh)
+        cmds = {c["triggers"][0]: c for c in config_mod.load(path)["commands"]}
+        self.assertEqual([b["type"] for b in cmds["velho"]["blocks"]], ["message", "message"])
+        self.assertEqual(cmds["tempo"]["script"]["command"], "python ~/tempo.py")
+        cb = TermuxCallbacks(["28 °C"])
+        api = ScriptApi([[msg("/tempo")], [msg("/vazio", update_id=2)]])
+        eng = engine.Engine("1:x", path, d, cb, api=api)
+        eng.termux.sync_scripts = True
+        eng.termux._sender = lambda: eng
+        api.engine = eng
+        eng.sleep = lambda s: None
+        eng.run()
+        self.assertEqual([p["text"] for p in api.sent], ["Consultando, Ana...", "28 °C", "Fim."])
+        self.assertEqual(api.sent[0]["reply_markup"]["inline_keyboard"][0][0]["url"], "https://t.me/meucanal")
+        self.assertEqual(cb.of("replied")[0]["messages"], 3)
+        chats.close(d)

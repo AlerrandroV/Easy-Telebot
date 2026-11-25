@@ -225,8 +225,12 @@ class TermuxBridge:
         }
 
     def _run(self, command, trigger, update, chat_id, user, args, data, reply_to, message_id):
+        self.execute(command["script"], trigger, update, chat_id, user, args, data, reply_to, message_id)
+
+    def execute(self, script, trigger, update, chat_id, user, args="", data=None, reply_to=None, message_id=None,
+                sender=None):
+        """Roda o script e manda a saída (bloqueia). Devolve quantas mensagens saíram (-1 = erro)."""
         eng = self.engine
-        script = command["script"]
         with self._slots:
             started = time.time()
             try:
@@ -240,19 +244,19 @@ class TermuxBridge:
                 err = result.get("error") or {}
                 eng.emit("error", context="script", command=trigger, retry_in=None, fatal=False,
                          code=err.get("code") or "termux_failed", detail=err.get("detail") or "", retry_after=None)
-                return
+                return -1
             code = int(result.get("exit_code") or 0)
             if code != 0:
                 eng.emit("error", context="script", command=trigger, retry_in=None, fatal=False,
                          code="termux_timeout" if code == 124 else "termux_exit",
                          detail="código %d. %s" % (code, (result.get("stderr") or "").strip()[-600:]), retry_after=None)
-                return
-            sender = self._sender()
+                return -1
+            sender = sender or self._sender()
             context = None
             sent = 0
             for msg in parse_output(result.get("stdout"))[:10]:
                 if eng.stopping:
-                    return
+                    return sent
                 if context is None:
                     stamp = eng._now()
                     date, _, hour = stamp.partition(" ")
@@ -262,6 +266,7 @@ class TermuxBridge:
                     sent += 1
                     reply_to = None
             eng.emit("script_done", command=trigger, seconds=elapsed, messages=sent)
+            return sent
 
     def _sender(self):
         """Cópia do motor com conexão própria (a do motor está presa no long polling)."""

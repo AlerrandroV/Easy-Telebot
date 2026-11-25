@@ -14,7 +14,10 @@ build/
 __pycache__/
 *.pyc
 
-# Assinatura: NUNCA commitar
+# Assinatura: NUNCA commitar a chave de release
 *.jks
 *.keystore
 keystore.properties
+# Exceção: chave de depuração fixa (senha pública "android"), só para o APK de teste
+# poder ser instalado por cima da versão anterior. Não assina releases.
+!app/debug-signing.jks

@@ -581,28 +581,42 @@ class Engine:
         reply_to = None
         if chat.get("type") != "private":
             reply_to = {"message_id": message.get("message_id"), "allow_sending_without_reply": True}
-        if command.get("script"):
-            self.termux.run_command(command, name, {"message": message}, chat.get("id"), user, args,
-                                    reply_to=reply_to)
-            return True
-        if command.get("flow"):
-            self.flows.start(command["flow"], chat.get("id"), user, args, reply_to=reply_to)
-            self.emit("replied", command=name, chat=chat.get("id"), messages=1)
-            return True
+        job = (command, name, message, chat, user, args, reply_to)
+        if any(b["type"] == "termux" for b in command["blocks"]) and not self.termux.sync_scripts:
+            # Script no meio: roda numa thread com conexão própria (o bot segue respondendo).
+            threading.Thread(target=self.run_blocks, args=job, kwargs={"sender": self.termux._sender()},
+                             name="blocks", daemon=True).start()
+        else:
+            self.run_blocks(*job)
+        return True
 
+    def run_blocks(self, command, name, message, chat, user, args, reply_to, sender=None):
+        """Executa a resposta do comando, bloco por bloco, na ordem."""
+        sender = sender or self
+        bot_username = (self.bot or {}).get("username", "")
         stamp = self._now()
         date, _, hour = stamp.partition(" ")
         context = template.build_context(message, args, bot_username, date, hour)
         sent = 0
-        for msg in command["messages"]:
+        for block in command["blocks"]:
             if self.stopping:
-                return True
-            if self.send_message(chat.get("id"), msg, context, name, reply_to):
+                break
+            if block["type"] == "message":
+                if sender.send_message(chat.get("id"), block["message"], context, name, reply_to):
+                    sent += 1
+                    reply_to = None  # só a primeira mensagem responde à do usuário
+            elif block["type"] == "termux":
+                n = self.termux.execute(block["script"], name, {"message": message}, chat.get("id"), user, args,
+                                        reply_to=reply_to, sender=sender if sender is not self else None)
+                if n > 0:
+                    sent += n
+                    reply_to = None
+            elif block["type"] == "flow":
+                self.flows.start(block["node"], chat.get("id"), user, args, reply_to=reply_to)
                 sent += 1
-                reply_to = None  # só a primeira mensagem responde à do usuário
+                reply_to = None
         if sent:
             self.emit("replied", command=name, chat=chat.get("id"), messages=sent)
-        return True
 
     # -- antispam ----------------------------------------------------------------
 
