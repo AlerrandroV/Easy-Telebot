@@ -18,8 +18,8 @@ Python restent en anglais : `if`, `elif`, `else`, `for`, `in`, `while`, `break`,
 
 ## Où l'utiliser
 
-- **Bloc « Python simplifié »** (dans l'application : *Simple Python* / *Python
-  facilitado*) dans une commande : touchez *Ajouter* et choisissez le bloc. Le code tourne
+- **Bloc « Python simplifié »** (dans l'application : *Python*) dans une
+  commande : touchez *Ajouter* et choisissez le bloc. Le code tourne
   quand quelqu'un utilise la commande. `arreter()` termine les blocs qui suivent.
 - **Bloc « Attendre la réponse »** (*Wait for reply* / *Aguardar resposta*) : dans le menu
   à trois points, choisissez d'utiliser Python. Le code tourne **à chaque message** envoyé

@@ -18,7 +18,7 @@ quedan en inglés: `if`, `elif`, `else`, `for`, `in`, `while`, `break`, `continu
 
 ## Dónde usarlo
 
-- **Bloque "Python fácil"** (en la app: *Simple Python* / *Python facilitado*) en un
+- **Bloque "Python fácil"** (en la app: *Python*) en un
   comando: toca *Agregar* y elige el bloque. El código corre cuando alguien usa el
   comando. `detener()` termina los bloques que vendrían después.
 - **Bloque "Esperar respuesta"** (*Wait for reply* / *Aguardar resposta*): en el menú de

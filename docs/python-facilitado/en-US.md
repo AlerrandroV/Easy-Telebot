@@ -14,9 +14,9 @@ and `None`.
 
 ## Where to use it
 
-- **"Simple Python" block** in a command: tap *Add* and choose *Simple Python*. The code
+- **"Python" block** in a command: tap *Add* and choose *Python*. The code
   runs when someone uses the command. `stop()` ends the blocks that would come after it.
-- **"Wait for reply" block**: in the three-dot menu, choose *Use Simple Python*. The code
+- **"Wait for reply" block**: in the three-dot menu, choose *Use Python*. The code
   runs **for every message** the person sends (and for every button without its own
   reply that they tap), until the code calls `stop()`. If the person sends a command,
   the wait is cancelled.

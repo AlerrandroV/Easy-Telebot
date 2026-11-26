@@ -15,9 +15,9 @@ inglês: `if`, `elif`, `else`, `for`, `in`, `while`, `break`, `continue`, `and`,
 
 ## Onde usar
 
-- **Bloco "Python facilitado"** num comando: toque em *Adicionar* e escolha *Python facilitado*.
+- **Bloco "Python"** num comando: toque em *Adicionar* e escolha *Python*.
   O código roda quando alguém usa o comando. `parar()` encerra os blocos que viriam depois.
-- **Bloco "Aguardar resposta"**: nos três pontinhos, escolha *Usar Python facilitado*.
+- **Bloco "Aguardar resposta"**: nos três pontinhos, escolha *Usar Python*.
   O código roda **a cada mensagem** que a pessoa mandar (e a cada botão sem resposta
   própria que ela tocar), até o código chamar `parar()`. Se a pessoa mandar um comando,
   a espera é cancelada.

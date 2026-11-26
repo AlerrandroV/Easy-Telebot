@@ -1178,21 +1178,21 @@
 
     <!-- Python facilitado, idiomas e textos que antes estavam no código -->
     <string name="log_code_log">/%1$s: o código registrou: %2$s</string>
-    <string name="log_code_error">/%1$s: erro no Python facilitado. %2$s</string>
-    <string name="block_code">Python facilitado</string>
+    <string name="log_code_error">/%1$s: erro no Python. %2$s</string>
+    <string name="block_code">Python</string>
     <string name="block_code_sub">Um código curto decide o que responder (if, else, termux()…)</string>
     <string name="block_code_help">Roda quando o comando é usado. parar() encerra os blocos seguintes.</string>
     <string name="block_wait_code_help">O código roda a cada mensagem recebida (ou botão apertado) até chamar parar().</string>
-    <string name="wait_use_code">Usar Python facilitado</string>
+    <string name="wait_use_code">Usar Python</string>
     <string name="wait_use_rules">Usar regras em blocos</string>
-    <string name="preview_code">Roda o código em Python facilitado</string>
+    <string name="preview_code">Roda o código em Python</string>
     <string name="preview_wait_code">Espera as próximas mensagens e roda o código em cada uma</string>
     <string name="code_indent">Recuo</string>
     <string name="code_help">Ajuda</string>
     <string name="code_ok">Código sem erros</string>
     <string name="code_help_body">Escreva em Python simples: if/elif/else, for, while, variáveis, textos, listas e f-strings. O código roda no próprio celular com limites de segurança: não acessa arquivos nem a internet (só pelo termux()). Os nomes valem em português, inglês, espanhol, francês e russo. Num \"Aguardar resposta\", o código roda a cada mensagem até chamar parar(). O guia completo está na pasta docs do projeto.</string>
     <string name="code_help_reference">"mensagem.tipo == texto / foto / video / audio / voz / documento / botao\nmensagem.texto  mensagem.foto  mensagem.arquivo  mensagem.dado\narquivo.baixar()   base64(arquivo)\nusuario.nome  usuario.id  usuario.arroba  usuario.admin\nchat.id  chat.privado  argumentos  variaveis[\"x\"]\nenviar_texto(texto, botoes=[...])   responder(texto)\nenviar_foto(foto, legenda=\"\")   enviar_arquivo(caminho)\nbotao(\"Texto\", link=..., dado=..., copiar=...)\nr = termux(\"cmd\", arg, arquivo, tempo=30, esperar=True, ambiente={...})\nr.ok  r.saida  r.erro  r.codigo  r.tempo_esgotado\nparar()  pausa(seg)  registrar(...)  aleatorio(1, 6)  escolher(lista)  agora()"</string>
-    <string name="code_sample">"# Python facilitado: roda quando o comando é usado.\nif argumentos:\n    enviar_texto(f\"Você escreveu: {argumentos}\")\nelse:\n    enviar_texto(f\"Olá, {usuario.nome}! Escreva algo depois do comando.\")\n"</string>
+    <string name="code_sample">"# Python: roda quando o comando é usado.\nif argumentos:\n    enviar_texto(f\"Você escreveu: {argumentos}\")\nelse:\n    enviar_texto(f\"Olá, {usuario.nome}! Escreva algo depois do comando.\")\n"</string>
     <string name="code_sample_wait">"# Roda a cada mensagem recebida, até parar().\nif mensagem.tipo == foto:\n    enviar_texto(\"Foto recebida, obrigado!\")\n    parar()\nelse:\n    enviar_texto(\"Isso não é uma foto. Envie uma imagem, por favor.\")\n"</string>
     <string-array name="code_snippets">
         <item>if mensagem.tipo == foto:</item>
@@ -1202,7 +1202,7 @@
         <item>termux(\"\")</item>
         <item>variaveis[\"\"]</item>
     </string-array>
-    <string name="cmd_err_block_code">O bloco %1$d (Python facilitado) está vazio.</string>
+    <string name="cmd_err_block_code">O bloco %1$d (Python) está vazio.</string>
     <string name="wait_variable_placeholder">foto</string>
     <string name="wait_variable_generic">variavel</string>
     <string name="block_termux_placeholder">python ~/bot/clima.py</string>

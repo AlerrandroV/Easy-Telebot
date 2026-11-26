@@ -1179,21 +1179,21 @@
 
     <!-- Simple Python, languages and texts that used to be in the code -->
     <string name="log_code_log">/%1$s: the code logged: %2$s</string>
-    <string name="log_code_error">/%1$s: Simple Python error. %2$s</string>
-    <string name="block_code">Simple Python</string>
+    <string name="log_code_error">/%1$s: Python error. %2$s</string>
+    <string name="block_code">Python</string>
     <string name="block_code_sub">A short code decides what to reply (if, else, termux()…)</string>
     <string name="block_code_help">Runs when the command is used. stop() ends the blocks after it.</string>
     <string name="block_wait_code_help">The code runs for every message received (or button pressed) until it calls stop().</string>
-    <string name="wait_use_code">Use Simple Python</string>
+    <string name="wait_use_code">Use Python</string>
     <string name="wait_use_rules">Use block rules</string>
-    <string name="preview_code">Runs the Simple Python code</string>
+    <string name="preview_code">Runs the Python code</string>
     <string name="preview_wait_code">Waits for the next messages and runs the code on each one</string>
     <string name="code_indent">Indent</string>
     <string name="code_help">Help</string>
     <string name="code_ok">No errors in the code</string>
     <string name="code_help_body">Write plain Python: if/elif/else, for, while, variables, text, lists and f-strings. The code runs on the phone itself with safety limits: it can\'t touch files or the internet (only through termux()). Names work in English, Portuguese, Spanish, French and Russian. In a \"Wait for reply\" block, the code runs for each message until it calls stop(). The full guide is in the project\'s docs folder.</string>
     <string name="code_help_reference">"message.type == text / photo / video / audio / voice / document / button\nmessage.text  message.photo  message.file  message.data\nfile.download()   base64(file)\nuser.name  user.id  user.username  user.admin\nchat.id  chat.private  args  variables[\"x\"]\nsend_text(text, buttons=[...])   reply(text)\nsend_photo(photo, caption=\"\")   send_file(path)\nbutton(\"Text\", link=..., data=..., copy=...)\nr = termux(\"cmd\", arg, file, timeout=30, wait=True, env={...})\nr.ok  r.output  r.error  r.code  r.timed_out\nstop()  pause(sec)  log(...)  random(1, 6)  choice(list)  now()"</string>
-    <string name="code_sample">"# Simple Python: runs when the command is used.\nif args:\n    send_text(f\"You wrote: {args}\")\nelse:\n    send_text(f\"Hello, {user.name}! Write something after the command.\")\n"</string>
+    <string name="code_sample">"# Python: runs when the command is used.\nif args:\n    send_text(f\"You wrote: {args}\")\nelse:\n    send_text(f\"Hello, {user.name}! Write something after the command.\")\n"</string>
     <string name="code_sample_wait">"# Runs for every message received, until stop().\nif message.type == photo:\n    send_text(\"Photo received, thank you!\")\n    stop()\nelse:\n    send_text(\"That\'s not a photo. Please send an image.\")\n"</string>
     <string-array name="code_snippets">
         <item>if message.type == photo:</item>
@@ -1203,7 +1203,7 @@
         <item>termux(\"\")</item>
         <item>variables[\"\"]</item>
     </string-array>
-    <string name="cmd_err_block_code">Block %1$d (Simple Python) is empty.</string>
+    <string name="cmd_err_block_code">Block %1$d (Python) is empty.</string>
     <string name="wait_variable_placeholder">photo</string>
     <string name="wait_variable_generic">variable</string>
     <string name="block_termux_placeholder">python ~/bot/weather.py</string>
