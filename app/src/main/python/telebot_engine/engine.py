@@ -31,6 +31,9 @@ from . import config as config_mod
 from . import automations, code_runner, errors, flows, i18n, template, webfetch
 from . import scheduler as scheduler_mod
 from . import moderation as moderation_mod
+from . import booking as booking_mod
+from . import desk as desk_mod
+from . import forms as forms_mod
 from .api import Aborted, NetworkError, TelegramApi, TelegramError
 
 POLL_TIMEOUT = 50  # segundos que o Telegram segura a conexão esperando mensagens
@@ -229,6 +232,9 @@ class Engine:
         self.auto = automations.AutomationRunner(self)
         self.scheduler = scheduler_mod.Scheduler(self)
         self.mod = moderation_mod.Moderator(self)
+        self.desk = desk_mod.Desk(self)
+        self.booking = booking_mod.Booking(self)
+        self.forms = forms_mod.Forms(self)
         self.send_source = "auto"  # "auto" = resposta de comando; "manual" = enviada pelo app
         self.storage = None
         if storage:
@@ -589,6 +595,8 @@ class Engine:
             return BLOCKED
         if self.mod.handle(message, parsed):
             return True
+        if self.desk.handle_admin_reply(message):
+            return True
         if self.shop.handle_message(message, parsed):
             return True
         if self.post.handle(message, parsed):
@@ -596,7 +604,9 @@ class Engine:
         if self.flows.handle_message(message, parsed):
             return True
         if parsed is None:
-            return self.auto.handle_message(message)
+            return self.auto.handle_message(message) or self.desk.handle_customer(message)
+        if self.booking.handle_command(message, parsed) or self.desk.handle_command(message, parsed):
+            return True
         name, args = parsed
         if name == "start" and chat.get("type") == "private":
             self.scheduler.record_start(user)  # começa a sequência (drip) dessa pessoa
@@ -689,6 +699,10 @@ class Engine:
             elif kind == "wait":
                 self.flows.wait_for(block, chat_id, user, name)
                 break
+            elif kind == "form":
+                self.forms.start(block, chat_id, user, sender)
+                sent += 1
+                break  # as próximas mensagens são as respostas do formulário
         if sent:
             self.emit("replied", command=name, chat=chat_id, messages=sent, kind=kind)
 
@@ -757,6 +771,8 @@ class Engine:
     def handle_callback(self, query):
         """Botões da loja e do aviso de antispam (✅ Desbloquear / 🚫 Manter bloqueado)."""
         if self.mod.handle_callback(query):
+            return True
+        if self.desk.handle_callback(query) or self.booking.handle_callback(query):
             return True
         if self.shop.handle_callback(query):
             return True

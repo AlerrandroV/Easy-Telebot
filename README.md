@@ -153,6 +153,23 @@ admin, com as permissões Apagar mensagens e Banir usuários):
 
 Os avisos do bot somem do grupo depois de 1 minuto, e cada ação aparece no registro do app.
 
+## Atendimento e pequenos negócios
+
+- **Atendimento** (na tela do bot):
+  - **Modo suporte**: mensagens livres dos clientes chegam aos admins no Telegram; o
+    admin toca em *Responder* e o bot entrega a resposta (texto, foto, áudio…), com aviso
+    de "recebemos sua mensagem" opcional.
+  - **Horário de atendimento**: fora dos dias e horas escolhidos, o bot manda um aviso de
+    ausência (no máximo a cada 6 h por pessoa).
+  - **Perguntas frequentes**: se a mensagem parecer com uma pergunta cadastrada (entende
+    variações e erros de digitação), o bot responde sozinho; `/faq` mostra a lista.
+- **Agenda de horários**: `/agendar` → a pessoa escolhe o dia e o horário livre em botões e
+  confirma; `/meushorarios` mostra e cancela. Dias, horário, duração, vagas por horário,
+  lembrete antes e aviso aos admins. No app, a lista dos próximos agendamentos.
+- **Formulários** (bloco na resposta de qualquer comando): várias perguntas em sequência —
+  texto, número, e-mail, telefone ou opções em teclado —, validação, variáveis, aviso aos
+  admins e respostas guardadas, que viram planilha CSV no app.
+
 ## Python facilitado
 
 Para quem quer um pouco mais que blocos, sem virar programador: um pedaço de Python

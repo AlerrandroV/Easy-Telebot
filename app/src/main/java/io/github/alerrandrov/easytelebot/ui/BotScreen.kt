@@ -92,6 +92,8 @@ fun BotScreen(
     onBroadcast: () -> Unit,
     onAntispam: () -> Unit,
     onModeration: () -> Unit,
+    onDesk: () -> Unit,
+    onBooking: () -> Unit,
     onShop: () -> Unit,
     onTermux: () -> Unit,
     onNewScriptCommand: () -> Unit,
@@ -301,6 +303,24 @@ fun BotScreen(
                     title = stringResource(R.string.mod_title),
                     subtitle = stringResource(if (config.moderation.enabled) R.string.bot_mod_on else R.string.bot_mod_off),
                     onClick = onModeration,
+                )
+            }
+            item {
+                SectionCard(
+                    icon = R.drawable.ic_forum,
+                    title = stringResource(R.string.desk_title),
+                    subtitle = stringResource(
+                        if (config.desk.support || config.desk.faq || config.desk.hours) R.string.bot_desk_on else R.string.bot_desk_off
+                    ),
+                    onClick = onDesk,
+                )
+            }
+            item {
+                SectionCard(
+                    icon = R.drawable.ic_schedule,
+                    title = stringResource(R.string.booking_title),
+                    subtitle = stringResource(if (config.booking.enabled) R.string.bot_booking_on else R.string.bot_booking_off, "/" + config.booking.command),
+                    onClick = onBooking,
                 )
             }
 

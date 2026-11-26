@@ -328,6 +328,16 @@ sealed interface CommandBlock {
     /** Python facilitado: um pequeno código que decide o que responder. */
     data class Code(val code: String, override val key: String = newKey()) : CommandBlock
 
+    /** Formulário: várias perguntas em sequência; as respostas ficam guardadas (e viram CSV no app). */
+    data class Form(
+        val id: String = UUID.randomUUID().toString().take(8),
+        val title: String = "",
+        val questions: List<FormQuestion> = listOf(FormQuestion()),
+        val done: String = "",
+        val notify: Boolean = true,
+        override val key: String = newKey(),
+    ) : CommandBlock
+
     /** Requisição HTTP: o resultado vira {variavel} (e {variavel_status}) nos blocos seguintes. */
     data class Http(
         val method: String = "GET",
@@ -359,6 +369,12 @@ sealed interface CommandBlock {
             is Termux -> JSONObject().put("type", "termux").put("command", b.script.command).put("timeout", b.script.timeout)
             is Flow -> JSONObject().put("type", "flow").put("node", b.node)
             is Code -> JSONObject().put("type", "code").put("code", b.code)
+            is Form -> JSONObject().put("type", "form").put("id", b.id).put("title", b.title).put("done", b.done)
+                .put("notify", b.notify).put("questions", JSONArray().apply {
+                    b.questions.forEach { q ->
+                        put(JSONObject().put("text", q.text).put("kind", q.kind).put("options", JSONArray(q.options)).put("var", q.variable))
+                    }
+                })
             is Http -> JSONObject().put("type", "http").put("method", b.method).put("url", b.url).put("headers", b.headers)
                 .put("body", b.body).put("body_type", b.bodyType).put("variable", b.variable).put("path", b.path)
                 .put("timeout", b.timeout)
@@ -382,6 +398,21 @@ sealed interface CommandBlock {
             "termux" -> Termux(CommandScript(o.optString("command"), o.optInt("timeout", 30).coerceIn(1, 300)))
             "flow" -> o.optString("node").takeIf { it.isNotBlank() }?.let { Flow(it) }
             "code" -> Code(o.optString("code"))
+            "form" -> {
+                val qs = o.optJSONArray("questions") ?: JSONArray()
+                Form(
+                    id = o.optString("id").ifBlank { UUID.randomUUID().toString().take(8) },
+                    title = o.optString("title"),
+                    questions = (0 until qs.length()).mapNotNull { i ->
+                        qs.optJSONObject(i)?.let { q ->
+                            FormQuestion(q.optString("text"), q.optString("kind").takeIf { it in FormQuestion.KINDS } ?: "text",
+                                strList(q.optJSONArray("options")), q.optString("var"))
+                        }
+                    },
+                    done = o.optString("done"),
+                    notify = o.optBoolean("notify", true),
+                )
+            }
             "http" -> Http(
                 method = o.optString("method").takeIf { it in Http.METHODS } ?: "GET",
                 url = o.optString("url"),
@@ -429,6 +460,7 @@ sealed interface CommandBlock {
                 list.forEach { b ->
                     when (b) {
                         is Http -> { val v = b.variable.ifBlank { "http" }; out += v; out += v + "_status" }
+                        is Form -> b.questions.forEach { q -> if (q.variable.isNotBlank()) out += q.variable }
                         is Wait -> {
                             if (b.variable.isNotBlank()) { out += b.variable; out += "resposta" }
                             b.rules.forEach { walk(it.blocks) }
@@ -550,6 +582,111 @@ data class BroadcastSettings(
 )
 
 /** Antispam: bloqueio automático de quem inunda o bot (veja `antispam.py`). */
+private fun strList(a: JSONArray?) = if (a == null) emptyList() else (0 until a.length()).map { a.optString(it) }.filter { it.isNotBlank() }
+private fun intList(a: JSONArray?) = if (a == null) emptyList() else (0 until a.length()).map { a.optInt(it) }
+
+/** Uma pergunta frequente: pergunta, resposta e outras formas de perguntar a mesma coisa. */
+data class FaqItem(val question: String = "", val answer: String = "", val keywords: List<String> = emptyList())
+
+/** Atendimento (mesmo formato de `desk.py`): modo suporte, horário e perguntas frequentes. */
+data class DeskSettings(
+    val support: Boolean = false,
+    val supportLevel: Int = 1,
+    val ack: String = "",
+    val ackHours: Int = 12,
+    val hours: Boolean = false,
+    val days: List<Int> = listOf(0, 1, 2, 3, 4),
+    val start: String = "09:00",
+    val end: String = "18:00",
+    val away: String = "",
+    val faq: Boolean = false,
+    val faqCommand: String = "faq",
+    val faqItems: List<FaqItem> = emptyList(),
+) {
+    fun toJson(): JSONObject = JSONObject()
+        .put("support", JSONObject().put("enabled", support).put("admin_level", supportLevel).put("ack", ack).put("ack_hours", ackHours))
+        .put("hours", JSONObject().put("enabled", hours).put("days", JSONArray(days)).put("start", start).put("end", end).put("away", away))
+        .put("faq", JSONObject().put("enabled", faq).put("command", faqCommand).put("items", JSONArray().apply {
+            faqItems.forEach { put(JSONObject().put("q", it.question).put("a", it.answer).put("keywords", JSONArray(it.keywords))) }
+        }))
+
+    companion object {
+        fun fromJson(o: JSONObject?): DeskSettings {
+            if (o == null) return DeskSettings()
+            val s = o.optJSONObject("support") ?: JSONObject()
+            val h = o.optJSONObject("hours") ?: JSONObject()
+            val f = o.optJSONObject("faq") ?: JSONObject()
+            val items = f.optJSONArray("items") ?: JSONArray()
+            return DeskSettings(
+                support = s.optBoolean("enabled", false),
+                supportLevel = s.optInt("admin_level", 1).coerceIn(1, AdminLevels.MAX),
+                ack = s.optString("ack"),
+                ackHours = s.optInt("ack_hours", 12).coerceIn(0, 168),
+                hours = h.optBoolean("enabled", false),
+                days = intList(h.optJSONArray("days")).filter { it in 0..6 }.ifEmpty { if (h.has("days")) emptyList() else listOf(0, 1, 2, 3, 4) },
+                start = h.optString("start").takeIf { TriggerKinds.TIME.matches(it) } ?: "09:00",
+                end = h.optString("end").takeIf { TriggerKinds.TIME.matches(it) } ?: "18:00",
+                away = h.optString("away"),
+                faq = f.optBoolean("enabled", false),
+                faqCommand = f.optString("command").ifBlank { "faq" },
+                faqItems = (0 until items.length()).mapNotNull { i ->
+                    items.optJSONObject(i)?.let { FaqItem(it.optString("q"), it.optString("a"), strList(it.optJSONArray("keywords"))) }
+                },
+            )
+        }
+    }
+}
+
+/** Agenda de horários (mesmo formato de `booking.py`). */
+data class BookingSettings(
+    val enabled: Boolean = false,
+    val command: String = "agendar",
+    val myCommand: String = "meushorarios",
+    val service: String = "",
+    val days: List<Int> = listOf(0, 1, 2, 3, 4),
+    val start: String = "09:00",
+    val end: String = "18:00",
+    val slot: Int = 30,
+    val ahead: Int = 14,
+    val capacity: Int = 1,
+    val remindHours: Int = 2,
+    val adminLevel: Int = 1,
+    val confirm: String = "",
+) {
+    fun toJson(): JSONObject = JSONObject().put("enabled", enabled).put("command", command).put("my_command", myCommand)
+        .put("service", service).put("days", JSONArray(days)).put("start", start).put("end", end).put("slot", slot)
+        .put("ahead", ahead).put("capacity", capacity).put("remind_hours", remindHours).put("admin_level", adminLevel)
+        .put("confirm", confirm)
+
+    companion object {
+        fun fromJson(o: JSONObject?): BookingSettings {
+            if (o == null) return BookingSettings()
+            return BookingSettings(
+                enabled = o.optBoolean("enabled", false),
+                command = o.optString("command").ifBlank { "agendar" },
+                myCommand = o.optString("my_command").ifBlank { "meushorarios" },
+                service = o.optString("service"),
+                days = intList(o.optJSONArray("days")).filter { it in 0..6 }.ifEmpty { if (o.has("days")) emptyList() else listOf(0, 1, 2, 3, 4) },
+                start = o.optString("start").takeIf { TriggerKinds.TIME.matches(it) } ?: "09:00",
+                end = o.optString("end").takeIf { TriggerKinds.TIME.matches(it) } ?: "18:00",
+                slot = o.optInt("slot", 30).coerceIn(5, 480),
+                ahead = o.optInt("ahead", 14).coerceIn(1, 90),
+                capacity = o.optInt("capacity", 1).coerceIn(1, 100),
+                remindHours = o.optInt("remind_hours", 2).coerceIn(0, 72),
+                adminLevel = o.optInt("admin_level", 1).coerceIn(1, AdminLevels.MAX),
+                confirm = o.optString("confirm"),
+            )
+        }
+    }
+}
+
+/** Uma pergunta de formulário: texto, tipo (text, number, email, phone, choice), opções e variável. */
+data class FormQuestion(val text: String = "", val kind: String = "text", val options: List<String> = emptyList(), val variable: String = "") {
+    companion object {
+        val KINDS = listOf("text", "number", "email", "phone", "choice")
+    }
+}
+
 /** Moderação de grupos (mesmo formato de `moderation.py`). Vale para todos os grupos em que o bot é admin. */
 data class ModerationSettings(
     val enabled: Boolean = false,
@@ -639,6 +776,8 @@ data class BotConfig(
     /** Idioma das mensagens automáticas do bot (loja, antispam...). Vazio = idioma do app. */
     val language: String = "",
     val moderation: ModerationSettings = ModerationSettings(),
+    val desk: DeskSettings = DeskSettings(),
+    val booking: BookingSettings = BookingSettings(),
 ) {
     /** Variáveis criadas pelas perguntas dos fluxos (ex.: {cidade}). */
     fun flowVariables(): Set<String> =
@@ -674,6 +813,8 @@ data class BotConfig(
             .put("warn_user", antispam.warnUser))
         put("shop", shop.toJson())
         put("moderation", moderation.toJson())
+        put("desk", desk.toJson())
+        put("booking", booking.toJson())
         put("flows", JSONObject().put("nodes", JSONArray().apply {
             flows.forEach { n ->
                 put(JSONObject()
@@ -836,7 +977,9 @@ data class BotConfig(
             }
             return BotConfig(json.optBoolean("auto_menu", true), list, broadcast, antispam,
                 ShopSettings.fromJson(json.optJSONObject("shop")), termux, nodes, json.optString("language"),
-                ModerationSettings.fromJson(json.optJSONObject("moderation")))
+                ModerationSettings.fromJson(json.optJSONObject("moderation")),
+                DeskSettings.fromJson(json.optJSONObject("desk")),
+                BookingSettings.fromJson(json.optJSONObject("booking")))
         }
     }
 }

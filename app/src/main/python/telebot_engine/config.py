@@ -29,7 +29,7 @@ A versão 1 (``command`` + ``response``) é convertida automaticamente.
 
 import json
 
-from . import antispam, automations, flows, i18n, moderation, pyfacil, termux, webfetch
+from . import antispam, automations, booking, desk, flows, forms, i18n, moderation, pyfacil, termux, webfetch
 from .shop import catalog as shop_catalog
 
 MEDIA_TYPES = ("photo", "video", "animation", "audio", "voice", "document", "sticker")
@@ -148,6 +148,10 @@ def _block_list(raw):
             code = str(b.get("code") or "")[:pyfacil.MAX_CODE]
             if code.strip():
                 out.append({"type": "code", "code": code})
+        elif kind == "form":
+            f = forms.normalize_block(b)
+            if f:
+                out.append(f)
         elif kind == "http":
             h = webfetch.normalize_block(b)
             if h:
@@ -175,7 +179,7 @@ def _index(commands):
     Cada espera ganha um id pelo caminho (``comando/0/r1/2``); cada callback leva a classe
     de admin do comando de origem (quem não pode usar o comando também não usa os botões).
     """
-    callbacks, waits = {}, {}
+    callbacks, waits, form_map = {}, {}, {}
 
     def walk(blocks, path, level):
         for i, b in enumerate(blocks):
@@ -186,6 +190,8 @@ def _index(commands):
                         if btn["type"] == "callback" and "reaction" in btn and btn["value"] not in callbacks:
                             callbacks[btn["value"]] = dict(btn["reaction"], admin_level=level, text=btn["text"])
                             walk(btn["reaction"]["blocks"], "%s/cb:%s" % (here, btn["value"]), level)
+            elif b["type"] == "form":
+                form_map.setdefault(b["id"], dict(b, admin_level=level))
             elif b["type"] == "wait":
                 b["id"] = here
                 waits[here] = dict(b, admin_level=level)
@@ -195,7 +201,7 @@ def _index(commands):
 
     for c in commands:
         walk(c["blocks"], c["id"], c["admin_level"])
-    return callbacks, waits
+    return callbacks, waits, form_map
 
 
 def _blocks(item, legacy_messages):
@@ -272,7 +278,7 @@ def normalize(data):
             "script": next((b["script"] for b in blocks if b["type"] == "termux"), None),
             "flow": next((b["node"] for b in blocks if b["type"] == "flow"), None),
         })
-    callbacks, waits = _index(commands + autos)
+    callbacks, waits, form_map = _index(commands + autos)
     b = data.get("broadcast") if isinstance(data.get("broadcast"), dict) else {}
     try:
         b_level = max(1, min(10, int(b.get("admin_level", 1))))
@@ -288,6 +294,9 @@ def normalize(data):
         "flows": flows.normalize(data.get("flows"), _message),
         "callbacks": callbacks,
         "waits": waits,
+        "forms": form_map,
+        "desk": desk.normalize(data.get("desk")),
+        "booking": booking.normalize(data.get("booking")),
         "shop": shop_catalog.normalize(data.get("shop"), _message),
         "auto_menu": bool(data.get("auto_menu", True)),
         "commands": commands,

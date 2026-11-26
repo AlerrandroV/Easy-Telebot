@@ -288,6 +288,8 @@ class FlowRunner:
         if parsed is not None or time.time() - waiting.get("since", 0) > WAIT_TTL:
             _update(self.engine.base_dir, uid, lambda st: st.pop("waiting", None))
             return False
+        if waiting.get("form"):
+            return self.engine.forms.answer(waiting, message, user, chat)
         if waiting.get("wait"):
             return self._handle_wait(waiting, message, user, chat)
         node = self.nodes.get(waiting.get("node"))

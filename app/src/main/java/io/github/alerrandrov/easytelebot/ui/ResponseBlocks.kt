@@ -145,6 +145,7 @@ fun ResponseBlocksEditor(env: BlockEditorEnv, blocks: List<CommandBlock>, onChan
             is CommandBlock.Flow -> b.copy(key = CommandBlock.newKey())
             is CommandBlock.Code -> b.copy(key = CommandBlock.newKey())
             is CommandBlock.Http -> b.copy(key = CommandBlock.newKey())
+            is CommandBlock.Form -> b.copy(key = CommandBlock.newKey(), id = java.util.UUID.randomUUID().toString().take(8))
             is CommandBlock.Wait -> b.copy(key = CommandBlock.newKey())
         })
     })
@@ -178,6 +179,7 @@ fun ResponseBlocksEditor(env: BlockEditorEnv, blocks: List<CommandBlock>, onChan
                 is CommandBlock.Wait -> WaitBlockCard(env, block, { replace(i, it) }, actions)
                 is CommandBlock.Code -> CodeBlockCard(block.code, { replace(i, block.copy(code = it)) }, actions)
                 is CommandBlock.Http -> HttpBlockCard(block, { replace(i, it) }, actions)
+                is CommandBlock.Form -> FormBlockCard(env.botId, block, { replace(i, it) }, actions)
             }
         }
         if (blocks.isNotEmpty()) {
@@ -209,6 +211,12 @@ fun ResponseBlocksEditor(env: BlockEditorEnv, blocks: List<CommandBlock>, onChan
                     title = stringResource(R.string.block_code),
                     subtitle = stringResource(R.string.block_code_sub),
                     onClick = { add(CommandBlock.Code(sample)); showAdd = false },
+                )
+                SectionCard(
+                    icon = R.drawable.ic_list_alt,
+                    title = stringResource(R.string.block_form),
+                    subtitle = stringResource(R.string.block_form_sub),
+                    onClick = { add(CommandBlock.Form()); showAdd = false },
                 )
                 SectionCard(
                     icon = R.drawable.ic_public,
@@ -802,6 +810,130 @@ private fun WaitVariableField(block: CommandBlock.Wait, onChange: (CommandBlock.
     )
 }
 
+// -- Bloco: Formulário -------------------------------------------------------------------------------
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun FormBlockCard(botId: Long, block: CommandBlock.Form, onChange: (CommandBlock.Form) -> Unit, actions: BlockActions) {
+    var showResponses by remember { mutableStateOf(false) }
+    fun setQ(i: Int, q: io.github.alerrandrov.easytelebot.data.FormQuestion) =
+        onChange(block.copy(questions = block.questions.mapIndexed { j, x -> if (j == i) q else x }))
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            BlockHeader(R.drawable.ic_list_alt, stringResource(R.string.block_form), actions) { dismiss ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.form_responses)) },
+                    leadingIcon = { AppIcon(R.drawable.ic_visibility) },
+                    onClick = { dismiss(); showResponses = true },
+                )
+                HorizontalDivider()
+            }
+            Column(Modifier.padding(end = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(block.title, { onChange(block.copy(title = it.take(100))) },
+                    label = { Text(stringResource(R.string.form_title)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                block.questions.forEachIndexed { i, q ->
+                    OutlinedCard(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(stringResource(R.string.form_question_n, i + 1), style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+                                if (i > 0) IconButton(onClick = {
+                                    onChange(block.copy(questions = block.questions.toMutableList().apply { add(i - 1, removeAt(i)) }))
+                                }, modifier = Modifier.size(32.dp)) { AppIcon(R.drawable.ic_arrow_upward, Modifier.size(18.dp)) }
+                                if (block.questions.size > 1) IconButton(onClick = {
+                                    onChange(block.copy(questions = block.questions.filterIndexed { j, _ -> j != i }))
+                                }, modifier = Modifier.size(32.dp)) { AppIcon(R.drawable.ic_delete, Modifier.size(18.dp)) }
+                            }
+                            OutlinedTextField(q.text, { setQ(i, q.copy(text = it.take(1000))) },
+                                label = { Text(stringResource(R.string.form_question)) }, modifier = Modifier.fillMaxWidth())
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                io.github.alerrandrov.easytelebot.data.FormQuestion.KINDS.forEach { k ->
+                                    FilterChip(selected = q.kind == k, onClick = { setQ(i, q.copy(kind = k)) }, label = {
+                                        Text(stringResource(when (k) {
+                                            "number" -> R.string.flow_validate_number
+                                            "email" -> R.string.flow_validate_email
+                                            "phone" -> R.string.flow_validate_phone
+                                            "choice" -> R.string.form_kind_choice
+                                            else -> R.string.flow_validate_text
+                                        }))
+                                    })
+                                }
+                            }
+                            if (q.kind == "choice") WordsInput(q.options, stringResource(R.string.form_option), { setQ(i, q.copy(options = it.take(12))) },
+                                splitOnComma = true)
+                            OutlinedTextField(q.variable, {
+                                setQ(i, q.copy(variable = it.lowercase().replace(' ', '_').filter { c -> c.isLetterOrDigit() || c == '_' }.take(32)))
+                            }, label = { Text(stringResource(R.string.wait_variable)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        }
+                    }
+                }
+                if (block.questions.size < 30) TextButton(onClick = { onChange(block.copy(questions = block.questions + io.github.alerrandrov.easytelebot.data.FormQuestion())) }) {
+                    ButtonLabel(R.drawable.ic_add, stringResource(R.string.form_add_question))
+                }
+                OutlinedTextField(block.done, { onChange(block.copy(done = it.take(2000))) },
+                    label = { Text(stringResource(R.string.form_done)) }, supportingText = { Text(stringResource(R.string.form_done_hint)) },
+                    minLines = 2, modifier = Modifier.fillMaxWidth())
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.form_notify), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                    androidx.compose.material3.Switch(checked = block.notify, onCheckedChange = { onChange(block.copy(notify = it)) })
+                }
+                OutlinedButton(onClick = { showResponses = true }) { ButtonLabel(R.drawable.ic_visibility, stringResource(R.string.form_responses)) }
+            }
+        }
+    }
+    if (showResponses) FormResponsesDialog(botId, block) { showResponses = false }
+}
+
+@Composable
+private fun FormResponsesDialog(botId: Long, block: CommandBlock.Form, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val dir = io.github.alerrandrov.easytelebot.data.BotRepository.dir(botId).path
+    var items by remember { mutableStateOf<List<io.github.alerrandrov.easytelebot.engine.PythonBridge.FormResponse>?>(null) }
+    androidx.compose.runtime.LaunchedEffect(block.id) {
+        items = withContext(Dispatchers.IO) { io.github.alerrandrov.easytelebot.engine.PythonBridge.formResponses(context, dir, block.id) }
+    }
+    val saveCsv = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
+        if (uri != null) scope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                runCatching {
+                    val csv = io.github.alerrandrov.easytelebot.engine.PythonBridge.formCsv(context, dir, block.id, block.questions.map { it.text })
+                    context.contentResolver.openOutputStream(uri)?.use { it.write(("\uFEFF" + csv).toByteArray()) }
+                }.isSuccess
+            }
+            Toast.makeText(context, context.getString(if (ok) R.string.form_exported else R.string.export_failed), Toast.LENGTH_SHORT).show()
+        }
+    }
+    val fmt = remember { java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT, java.text.DateFormat.SHORT) }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.form_responses_n, items?.size ?: 0)) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                val list = items
+                if (list == null) Text("…")
+                else if (list.isEmpty()) Text(stringResource(R.string.form_no_responses))
+                else list.forEach { r ->
+                    OutlinedCard(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(8.dp)) {
+                            Text(r.name + (if (r.username.isNotBlank()) " (@${r.username})" else "") + " · " + fmt.format(java.util.Date(r.at)),
+                                style = MaterialTheme.typography.labelMedium)
+                            block.questions.zip(r.answers).forEach { (q, a) ->
+                                Text(q.text.take(60) + ": " + a, style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = !items.isNullOrEmpty(), onClick = { saveCsv.launch((block.title.ifBlank { "form" }) + ".csv") }) {
+                Text(stringResource(R.string.form_export))
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) } },
+    )
+}
+
 // -- Bloco: Requisição HTTP ------------------------------------------------------------------------
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -1206,6 +1338,8 @@ fun CommandPreviewDialog(trigger: String, blocks: List<CommandBlock>, botId: Lon
                             is CommandBlock.Wait -> PreviewNote(R.drawable.ic_hearing,
                                 if (b.usesCode) stringResource(R.string.preview_wait_code) else stringResource(R.string.preview_wait, b.rules.size))
                             is CommandBlock.Code -> PreviewNote(R.drawable.ic_code, stringResource(R.string.preview_code))
+                            is CommandBlock.Form -> PreviewNote(R.drawable.ic_list_alt,
+                                stringResource(R.string.preview_form, b.questions.size, b.questions.firstOrNull()?.text.orEmpty().take(80)))
                             is CommandBlock.Http -> PreviewNote(R.drawable.ic_public,
                                 stringResource(R.string.preview_http, b.method, b.url.take(60), b.variable.ifBlank { "http" }))
                         }

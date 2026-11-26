@@ -295,6 +295,12 @@ object BotRuntime {
                 id, LogEntry.Level.OUT,
                 s(R.string.log_script_done, e.optString("command"), e.optDouble("seconds").toString().replace('.', ','), e.optInt("messages")),
             )
+            "support_message" -> add(id, LogEntry.Level.IN, s(R.string.log_support_message, e.optString("user"), e.optInt("admins")))
+            "support_reply" -> add(id, LogEntry.Level.OUT, s(R.string.log_support_reply, e.optString("admin")))
+            "faq_answered" -> add(id, LogEntry.Level.OUT, s(R.string.log_faq_answered, e.optString("question")))
+            "booking_created" -> add(id, LogEntry.Level.INFO, s(R.string.log_booking_created, e.optString("user"), e.optString("when")))
+            "booking_cancelled" -> add(id, LogEntry.Level.INFO, s(R.string.log_booking_cancelled, e.optString("user"), e.optString("when")))
+            "form_done" -> add(id, LogEntry.Level.IN, s(R.string.log_form_done, e.optString("user"), e.optString("form")))
             "mod_action" -> add(
                 id, LogEntry.Level.WARN,
                 s(R.string.log_mod_action, modActionLabel(e.optString("action")), e.optString("user"), e.optString("chat")) +

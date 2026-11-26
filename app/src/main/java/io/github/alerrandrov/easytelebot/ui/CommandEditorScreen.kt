@@ -455,6 +455,10 @@ private fun validateBlocks(
             is CommandBlock.Termux -> if (b.script.command.isBlank()) add(context.getString(R.string.cmd_err_block_script, n))
             is CommandBlock.Flow -> if (b.node !in nodeIds) add(context.getString(R.string.cmd_err_no_flow))
             is CommandBlock.Code -> if (b.code.isBlank()) add(context.getString(R.string.cmd_err_block_code, n))
+            is CommandBlock.Form -> {
+                if (b.questions.any { it.text.isBlank() }) add(context.getString(R.string.cmd_err_form_question, n))
+                if (b.questions.any { it.kind == "choice" && it.options.isEmpty() }) add(context.getString(R.string.cmd_err_form_choice, n))
+            }
             is CommandBlock.Http -> if (!Regex("^https?://\\S+", RegexOption.IGNORE_CASE).containsMatchIn(b.url.trim()))
                 add(context.getString(R.string.cmd_err_block_http, n))
             is CommandBlock.Wait -> if (b.usesCode) Unit else {

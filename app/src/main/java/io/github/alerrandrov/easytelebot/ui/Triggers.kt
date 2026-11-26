@@ -426,6 +426,29 @@ internal fun Note(text: String) {
 
 // -- Agendamentos ----------------------------------------------------------------------------------
 
+/** Botão que abre o relógio do Android e devolve "HH:MM". */
+@Composable
+internal fun TimeButton(label: String, time: String, modifier: Modifier = Modifier, onChange: (String) -> Unit) {
+    val context = LocalContext.current
+    OutlinedButton(onClick = {
+        val parts = time.split(":").map { it.toIntOrNull() ?: 0 }
+        android.app.TimePickerDialog(context, { _, hh, mm -> onChange("%02d:%02d".format(hh, mm)) },
+            parts.getOrElse(0) { 9 }, parts.getOrElse(1) { 0 }, android.text.format.DateFormat.is24HourFormat(context)).show()
+    }, modifier = modifier) { ButtonLabel(R.drawable.ic_schedule, "$label $time") }
+}
+
+/** Dias da semana (0 = segunda) como chips. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun WeekdayChips(days: List<Int>, onChange: (List<Int>) -> Unit) {
+    val names = weekdayNames()
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        (0..6).forEach { d ->
+            FilterChip(selected = d in days, onClick = { onChange(if (d in days) days - d else (days + d).sorted()) }, label = { Text(names[d]) })
+        }
+    }
+}
+
 @Composable
 private fun weekdayNames(): List<String> {
     val locale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]

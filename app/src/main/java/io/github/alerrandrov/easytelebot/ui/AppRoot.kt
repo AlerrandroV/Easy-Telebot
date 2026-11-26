@@ -13,7 +13,7 @@ import io.github.alerrandrov.easytelebot.data.BotRepository
 import io.github.alerrandrov.easytelebot.data.Prefs
 import io.github.alerrandrov.easytelebot.service.Alerts
 
-enum class Screen { HOME, ADD_BOT, BATTERY, BOT, CHANGE_TOKEN, PROFILE, COMMAND, LOG, ADMINS, STORAGE, CHATS, CHAT, BROADCAST, ANTISPAM, SHOP, PRODUCT, TERMUX, FLOWS, NODE, LOGS_ALL, MODERATION }
+enum class Screen { HOME, ADD_BOT, BATTERY, BOT, CHANGE_TOKEN, PROFILE, COMMAND, LOG, ADMINS, STORAGE, CHATS, CHAT, BROADCAST, ANTISPAM, SHOP, PRODUCT, TERMUX, FLOWS, NODE, LOGS_ALL, MODERATION, DESK, BOOKING }
 
 /** Pedido vindo de fora (notificação) para abrir uma tela de um bot. */
 data class OpenRequest(val botId: Long, val screen: String)
@@ -71,7 +71,7 @@ fun AppRoot(openRequest: OpenRequest? = null, onOpenHandled: () -> Unit = {}) {
             Screen.COMMAND -> commandReturn
             Screen.NODE -> nodeReturn
             Screen.FLOWS -> if (commandId != null) Screen.COMMAND else Screen.BOT
-            Screen.CHATS, Screen.BROADCAST, Screen.ANTISPAM, Screen.MODERATION, Screen.SHOP, Screen.TERMUX,
+            Screen.CHATS, Screen.BROADCAST, Screen.ANTISPAM, Screen.MODERATION, Screen.DESK, Screen.BOOKING, Screen.SHOP, Screen.TERMUX,
             Screen.CHANGE_TOKEN, Screen.PROFILE, Screen.LOG, Screen.ADMINS, Screen.STORAGE -> Screen.BOT
             else -> Screen.HOME
         }
@@ -134,6 +134,8 @@ fun AppRoot(openRequest: OpenRequest? = null, onOpenHandled: () -> Unit = {}) {
             onBroadcast = { screen = Screen.BROADCAST },
             onAntispam = { screen = Screen.ANTISPAM },
             onModeration = { screen = Screen.MODERATION },
+            onDesk = { screen = Screen.DESK },
+            onBooking = { screen = Screen.BOOKING },
             onShop = { screen = Screen.SHOP },
             onNewProduct = { sub ->
                 productId = null
@@ -195,6 +197,8 @@ fun AppRoot(openRequest: OpenRequest? = null, onOpenHandled: () -> Unit = {}) {
             onDone = { screen = productReturn },
         )
         Screen.MODERATION -> ModerationScreen(botId = botId, onBack = goBot)
+        Screen.DESK -> DeskScreen(botId = botId, onBack = goBot)
+        Screen.BOOKING -> BookingScreen(botId = botId, onBack = goBot)
         Screen.ANTISPAM -> AntispamScreen(
             botId = botId,
             onOpenChat = { chatId = it; chatReturn = Screen.ANTISPAM; screen = Screen.CHAT },

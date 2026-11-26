@@ -209,6 +209,47 @@ object PythonBridge {
         FeedPreview(false, url, e.message ?: e.toString(), emptyList())
     }
 
+    // --- agenda e formulários (booking.py / forms.py) ---
+
+    data class BookingItem(val id: String, val name: String, val username: String, val at: String)
+
+    fun listBookings(context: Context, botDir: String): List<BookingItem> = try {
+        val arr = org.json.JSONArray(module(context, "booking").callAttr("list_bookings", botDir).toString())
+        (0 until arr.length()).map { i ->
+            arr.getJSONObject(i).let { BookingItem(it.optString("id"), it.optString("name"), it.optString("username"), it.optString("at")) }
+        }
+    } catch (e: Exception) {
+        emptyList()
+    }
+
+    /** Cancela pelo app e avisa a pessoa no Telegram. */
+    fun cancelBooking(context: Context, token: String, configPath: String, id: String): Boolean = try {
+        parse(module(context, "booking").callAttr("app_cancel", token, configPath, id)).optBoolean("ok")
+    } catch (e: Exception) {
+        false
+    }
+
+    data class FormResponse(val at: Long, val name: String, val username: String, val answers: List<String>)
+
+    fun formResponses(context: Context, botDir: String, formId: String): List<FormResponse> = try {
+        val arr = org.json.JSONArray(module(context, "forms").callAttr("list_responses", botDir, formId).toString())
+        (0 until arr.length()).map { i ->
+            val o = arr.getJSONObject(i)
+            val a = o.optJSONArray("answers") ?: org.json.JSONArray()
+            FormResponse(o.optLong("at") * 1000, o.optString("name"), o.optString("username"), (0 until a.length()).map { a.optString(it) })
+        }
+    } catch (e: Exception) {
+        emptyList()
+    }
+
+    fun formCsv(context: Context, botDir: String, formId: String, questions: List<String>): String =
+        module(context, "forms").callAttr("export_csv", botDir, formId, org.json.JSONArray(questions).toString(),
+            context.resources.configuration.locales[0].language).toString()
+
+    fun clearForm(context: Context, botDir: String, formId: String) {
+        module(context, "forms").callAttr("clear", botDir, formId)
+    }
+
     /** Cria o motor de um bot. Chame `run` numa thread própria; `stop`/`wake`/`request_reload` de qualquer thread. */
     fun createEngine(
         context: Context,
