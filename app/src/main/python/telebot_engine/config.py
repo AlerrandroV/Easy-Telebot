@@ -29,7 +29,7 @@ A versão 1 (``command`` + ``response``) é convertida automaticamente.
 
 import json
 
-from . import antispam, automations, flows, i18n, pyfacil, termux
+from . import antispam, automations, flows, i18n, pyfacil, termux, webfetch
 from .shop import catalog as shop_catalog
 
 MEDIA_TYPES = ("photo", "video", "animation", "audio", "voice", "document", "sticker")
@@ -148,6 +148,10 @@ def _block_list(raw):
             code = str(b.get("code") or "")[:pyfacil.MAX_CODE]
             if code.strip():
                 out.append({"type": "code", "code": code})
+        elif kind == "http":
+            h = webfetch.normalize_block(b)
+            if h:
+                out.append(h)
         elif kind == "flow" and b.get("node"):
             out.append({"type": "flow", "node": str(b["node"])})
         elif kind == "wait":

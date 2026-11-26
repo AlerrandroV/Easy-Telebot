@@ -261,7 +261,7 @@
     <string name="add_title">What do you want to add?</string>
     <string name="add_simple_command">Simple command</string>
     <string name="add_simple_command_sub">One or more commands (e.g. /start and /begin) that reply with one or more messages: formatted text, photos, videos, files and link buttons.</string>
-    <string name="add_more_soon">Coming soon: internet without Termux, group moderation, support desk, AI and more.</string>
+    <string name="add_more_soon">Coming soon: group moderation, support desk, AI and more.</string>
     <string name="add_admin_command">Admin command</string>
     <string name="add_admin_command_sub">Like a simple command, but only administrators of the chosen class (or higher) can use it. For everyone else, the bot doesn’t answer.</string>
     <string name="add_admin">Add administrator</string>
@@ -1192,7 +1192,7 @@
     <string name="code_help">Help</string>
     <string name="code_ok">No errors in the code</string>
     <string name="code_help_body">Write plain Python: if/elif/else, for, while, variables, text, lists and f-strings. The code runs on the phone itself with safety limits: it can\'t touch files or the internet (only through termux()). Names work in English, Portuguese, Spanish, French and Russian. In a \"Wait for reply\" block, the code runs for each message until it calls stop(). The full guide is in the project\'s docs folder.</string>
-    <string name="code_help_reference">"message.type == text / photo / video / audio / voice / document / button\nmessage.text  message.photo  message.file  message.data\nfile.download()   base64(file)\nuser.name  user.id  user.username  user.admin\nchat.id  chat.private  args  variables[\"x\"]\nsend_text(text, buttons=[...])   reply(text)\nsend_photo(photo, caption=\"\")   send_file(path)\nbutton(\"Text\", link=..., data=..., copy=...)\nr = termux(\"cmd\", arg, file, timeout=30, wait=True, env={...})\nr.ok  r.output  r.error  r.code  r.timed_out\nstop()  pause(sec)  log(...)  random(1, 6)  choice(list)  now()\nremind(\"tomorrow 9am …\")  cancel_reminders()  send_text(…, to=ID)"</string>
+    <string name="code_help_reference">"message.type == text / photo / video / audio / voice / document / button\nmessage.text  message.photo  message.file  message.data\nfile.download()   base64(file)\nuser.name  user.id  user.username  user.admin\nchat.id  chat.private  args  variables[\"x\"]\nsend_text(text, buttons=[...])   reply(text)\nsend_photo(photo, caption=\"\")   send_file(path)\nbutton(\"Text\", link=..., data=..., copy=...)\nr = termux(\"cmd\", arg, file, timeout=30, wait=True, env={...})\nr.ok  r.output  r.error  r.code  r.timed_out\nstop()  pause(sec)  log(...)  random(1, 6)  choice(list)  now()\nremind(\"tomorrow 9am …\")  cancel_reminders()  send_text(…, to=ID)\nr = fetch(url)  r.ok  r.json  price(\"BTC\")  exchange_rate(\"EUR\")  weather(\"London\")"</string>
     <string name="code_sample">"# Python: runs when the command is used.\nif args:\n    send_text(f\"You wrote: {args}\")\nelse:\n    send_text(f\"Hello, {user.name}! Write something after the command.\")\n"</string>
     <string name="code_sample_wait">"# Runs for every message received, until stop().\nif message.type == photo:\n    send_text(\"Photo received, thank you!\")\n    stop()\nelse:\n    send_text(\"That\'s not a photo. Please send an image.\")\n"</string>
     <string-array name="code_snippets">
@@ -1404,4 +1404,56 @@
     <string name="log_drip_sent">Sequence “%1$s” sent to %2$s.</string>
     <string name="log_reminder_created">%1$s created a reminder for %2$s.</string>
     <string name="log_reminder_sent">Reminder sent.</string>
+
+    <!-- Internet without Termux -->
+    <string name="block_http">HTTP request</string>
+    <string name="block_http_sub">Fetches data from an API or site (GET, POST…) and stores the result in a variable for the next messages.</string>
+    <string name="preview_http">%1$s %2$s → {%3$s}</string>
+    <string name="http_url">Address (URL)</string>
+    <string name="http_url_placeholder">https://api.example.com/item?q={args}</string>
+    <string name="http_url_hint">You can use variables, like {args} or {id}: they go in already encoded.</string>
+    <string name="http_variable">Store the result in</string>
+    <string name="http_variable_hint">Use {%1$s} in the following messages ({%1$s_status} = HTTP code).</string>
+    <string name="http_path">Part of the JSON (optional)</string>
+    <string name="http_path_hint">E.g. data.price, items.0.title or [0].name. Empty = the whole response.</string>
+    <string name="http_advanced">Headers and body</string>
+    <string name="http_headers">Headers (one per line: Name: value)</string>
+    <string name="http_body">Body</string>
+    <string name="http_body_json">JSON</string>
+    <string name="http_body_form">Form</string>
+    <string name="http_body_text">Text</string>
+    <string name="http_test">Test</string>
+    <string name="http_test_status">HTTP response %1$d</string>
+    <string name="http_test_failed">Couldn\'t connect: %1$s</string>
+    <string name="http_path_missing">That part of the JSON wasn\'t found. See the start of the response:</string>
+    <string name="cmd_err_block_http">Block %1$d (HTTP request) needs an address starting with https://</string>
+    <string name="err_http_failed_title">The HTTP request failed</string>
+    <string name="err_http_failed_msg">The site or API didn\'t answer as expected (no internet, wrong address, invalid key or down). The next messages continued with the variable empty. Use Test on the block to see the response.</string>
+    <string name="err_feed_failed_title">Couldn\'t read the news feed</string>
+    <string name="err_feed_failed_msg">The address didn\'t answer or isn\'t an RSS/Atom feed. The bot tries again at the next check. Check the link with the Test button.</string>
+    <string name="log_feed_posted">News “%1$s”: new post “%2$s”.</string>
+    <string name="add_internet_title">Internet</string>
+    <string name="trigger_feed">Automatic news</string>
+    <string name="add_trigger_feed_sub">New posts from a site (RSS) or YouTube channel become messages in your channel or group.</string>
+    <string name="trigger_feed_help">The bot checks the feed every so often and sends each new post using the reply below. Variables: {title}, {link}, {summary}, {author} and {image}.</string>
+    <string name="feed_url">Feed address</string>
+    <string name="feed_url_hint">The site\'s RSS or Atom (many have /feed). YouTube: youtube.com/channel/UC… or the channel\'s feed link.</string>
+    <string name="feed_test_ok">Feed found: %1$d recent post(s)</string>
+    <string name="feed_test_failed">Not a feed or no answer: %1$s</string>
+    <string name="feed_every">Check every</string>
+    <string name="feed_note">On the first check, existing posts are only marked as seen: the channel only gets what comes out afterwards. At most 5 new posts per check.</string>
+    <string name="feed_err_url">Write the feed address.</string>
+    <string name="feed_default_message">*{title}*\n{link}</string>
+    <string-array name="feed_variables">
+        <item>title</item>
+        <item>link</item>
+        <item>summary</item>
+        <item>author</item>
+        <item>image</item>
+    </string-array>
+    <string-array name="net_variables">
+        <item>price:BTC</item>
+        <item>rate:EUR</item>
+        <item>weather:London</item>
+    </string-array>
 </resources>

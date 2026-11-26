@@ -124,8 +124,11 @@ fun CommandEditorScreen(
         ) else SimpleCommand(
             adminLevel = if (newAsAdmin) 1 else null,
             showInMenu = true,
-            blocks = if (newAsScript) listOf(CommandBlock.Termux(CommandScript())) else emptyList(),
             kind = newKind,
+            trigger = if (newKind == TriggerKinds.FEED) io.github.alerrandrov.easytelebot.data.TriggerSpec(target = "channels", every = 30)
+            else io.github.alerrandrov.easytelebot.data.TriggerSpec(),
+            blocks = if (newKind == TriggerKinds.FEED) listOf(CommandBlock.Message(BotMessage(context.getString(R.string.feed_default_message), linkPreview = true)))
+            else if (newAsScript) listOf(CommandBlock.Termux(CommandScript())) else emptyList(),
         )
     }
     val isCommand = start.isCommand
@@ -200,7 +203,9 @@ fun CommandEditorScreen(
         botId = botId,
         nodes = config.flows,
         extraVariables = config.flowVariables() + config.commands.flatMap { CommandBlock.waitVariables(it.blocks) } +
-            CommandBlock.waitVariables(blocks),
+            CommandBlock.waitVariables(blocks) +
+            (if (start.kind == TriggerKinds.FEED) context.resources.getStringArray(R.array.feed_variables).toList() else emptyList()) +
+            context.resources.getStringArray(R.array.net_variables).toList(),
         callbackCounts = callbackCounts,
         onOpen = { path = path + it },
         onOpenFlows = if (config.flows.isEmpty()) null else ({
@@ -294,7 +299,7 @@ fun CommandEditorScreen(
             if (!isCommand) item {
                 TriggerEditor(start.kind, spec, botId, botUsername, enabled, { enabled = it }) { spec = it }
             }
-            if (start.kind in TriggerKinds.TIMED) item {
+            if (start.kind in TriggerKinds.TIMED || start.kind == TriggerKinds.FEED) item {
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it.take(64) },
@@ -335,7 +340,7 @@ fun CommandEditorScreen(
                     }
                 }
             }
-            if (start.kind != TriggerKinds.EVENT && start.kind !in TriggerKinds.TIMED) item {
+            if (start.kind != TriggerKinds.EVENT && start.kind !in TriggerKinds.TIMED && start.kind != TriggerKinds.FEED) item {
                 Card(
                     Modifier.fillMaxWidth(),
                     colors = if (adminLevel != null) {
@@ -450,6 +455,8 @@ private fun validateBlocks(
             is CommandBlock.Termux -> if (b.script.command.isBlank()) add(context.getString(R.string.cmd_err_block_script, n))
             is CommandBlock.Flow -> if (b.node !in nodeIds) add(context.getString(R.string.cmd_err_no_flow))
             is CommandBlock.Code -> if (b.code.isBlank()) add(context.getString(R.string.cmd_err_block_code, n))
+            is CommandBlock.Http -> if (!Regex("^https?://\\S+", RegexOption.IGNORE_CASE).containsMatchIn(b.url.trim()))
+                add(context.getString(R.string.cmd_err_block_http, n))
             is CommandBlock.Wait -> if (b.usesCode) Unit else {
                 b.rules.forEachIndexed { j, r ->
                     if (r.condition.field == "text" && r.condition.op !in WaitCondition.NO_VALUE && r.condition.value.isBlank()) {

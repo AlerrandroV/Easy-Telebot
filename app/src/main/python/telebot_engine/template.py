@@ -21,6 +21,8 @@ ALIASES = {"name": "nome", "last_name": "sobrenome", "username": "usuario", "gro
            "date": "data", "time": "hora"}
 
 _VAR = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
+# Variável com argumento, como {preço:BTC} ou {clima:São Paulo} (dados da internet, netvars.py).
+_ANYVAR = re.compile(r"\{([^\W\d]\w*)(?::([^{}\n]{1,80}))?\}")
 _PH = re.compile("\x00(\\d+)\x00")
 
 
@@ -145,16 +147,21 @@ def markdown_to_html(text):
     return text
 
 
-def render(text, context):
+def render(text, context, lang=None):
     """Formata o texto e troca as variáveis conhecidas. Desconhecidas ficam como estão."""
     values = []
 
     def var(m):
-        name = m.group(1)
-        values.append(escape(context[name]) if name in context else escape(m.group(0)))
+        name, arg = m.group(1), m.group(2)
+        if arg is not None:
+            from . import netvars
+            value = netvars.resolve(name, arg, lang)
+            values.append(escape(value) if value is not None else escape(m.group(0)))
+        else:
+            values.append(escape(context[name]) if name in context else escape(m.group(0)))
         return "\x00%d\x00" % (len(values) - 1)
 
-    body = markdown_to_html(_VAR.sub(var, text or ""))
+    body = markdown_to_html(_ANYVAR.sub(var, text or ""))
     return _PH.sub(lambda m: values[int(m.group(1))], body)
 
 

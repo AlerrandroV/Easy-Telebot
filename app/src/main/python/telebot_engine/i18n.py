@@ -321,4 +321,8 @@ TEXTS = {
     "label.schedule": _t("agendamento", "schedule"),
     "label.drip": _t("sequência", "sequence"),
     "label.reminder": _t("lembrete", "reminder"),
+
+    # -- internet --
+    "label.feed": _t("notícias", "news"),
+    "http.sample_args": _t("teste", "test"),
 }

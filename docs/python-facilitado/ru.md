@@ -104,6 +104,10 @@ else:
 | `сейчас()` | Дата и время телефона: `"25/11/2026 14:30"` (день/месяц/год) |
 | `напомнить(когда_и_текст)` | Ставит напоминание отправителю: `напомнить("25/12 10:00 позвонить бабушке")` или `напомнить(30, "достать пирог")` (минуты). Даты словами понимаются на португальском и английском ("tomorrow 9am…"). Возвращает, когда напомнит, или пустую строку, если не понял |
 | `отменить_напоминания()` | Удаляет ожидающие напоминания отправителя и говорит, сколько их было |
+| `запрос(url, метод="GET", json={...}, тело="", заголовки={...}, время=15)` | Запрос к сайту или API. У результата есть `р.ок`, `р.статус`, `р.текст`, `р.json` и `р.ошибка`. С `json=` отправляется POST. До 20 за запуск |
+| `цена("BTC")`, `цена("ETH", валюта="USD")` | Курс криптовалюты (число) |
+| `курс("USD", валюта="RUB")` | Сколько стоит 1 единица валюты (число) |
+| `погода("Москва")` | Температура и погода сейчас (описание на португальском или английском, в зависимости от языка приложения) |
 
 Все функции отправки принимают `кому=ID_ЧАТА` (или `кому="@канал"`), чтобы отправить в другой чат, например в расписании без получателя.
 
@@ -182,6 +186,10 @@ Termux должен быть настроен: см. *Termux и скрипты* 
 | `escolher` | `choice` | `elegir` | `choisir` | `выбрать` |
 | `agora` | `now` | `ahora` | `maintenant` | `сейчас` |
 | `lembrar` | `remind` | `recordar` | `rappeler` | `напомнить` |
+| `buscar` | `fetch` | `consultar` | `recuperer` | `запрос` |
+| `preco` / `cotacao` | `price` | `precio` | `prix` | `цена` |
+| `cambio` | `exchange_rate` / `rate` | `tipo_de_cambio` / `cambio` | `taux_de_change` | `курс` |
+| `clima` | `weather` | `clima` | `meteo` | `погода` |
 | `cancelar_lembretes` | `cancel_reminders` | `cancelar_recordatorios` | `annuler_rappels` | `отменить_напоминания` |
 | `verdadeiro` | `true` | `verdadero` | `vrai` | `истина` |
 | `falso` | `false` | `falso` | `faux` | `ложь` |
@@ -214,6 +222,11 @@ Termux должен быть настроен: см. *Termux и скрипты* 
 | `tipo` | `type` | `tipo` | `type` | `тип` |
 | `titulo` / `nome` | `title` / `name` | `titulo` / `nombre` | `titre` / `nom` | `название` |
 | `privado` | `private` / `is_private` | `privado` | `prive` | `личный` |
+| `status` / `codigo` | `status` / `status_code` | `estado` / `codigo` | `statut` / `code` | `статус` / `код` |
+| `texto` | `text` | `texto` | `texte` | `текст` |
+| `json` / `dados` | `json` | `json` / `datos` | `json` / `donnees` | `json` / `данные` |
+| `ok` / `sucesso` | `ok` / `success` | `ok` / `exito` | `ok` / `succes` | `ок` / `успех` |
+| `erro` | `error` | `error` | `erreur` | `ошибка` |
 | `saida` | `output` / `stdout` | `salida` | `sortie` | `вывод` |
 | `erro` | `error` / `stderr` | `error` | `erreur` | `ошибка` |
 | `codigo` | `code` / `exit_code` | `codigo` | `code` | `код` |
@@ -233,6 +246,11 @@ Termux должен быть настроен: см. *Termux и скрипты* 
 | `dado` | `data` | `dato` | `donnee` | `данные` |
 | `copiar` | `copy` | `copiar` | `copier` | `копировать` |
 | `para` | `to` / `chat_id` | `para` | `vers` / `destinataire` | `кому` |
+| `metodo` | `method` | `metodo` | `methode` | `метод` |
+| `corpo` | `body` | `cuerpo` | `corps` | `тело` |
+| `json` | `json` | `json` | `json` | `json` |
+| `cabecalhos` | `headers` | `encabezados` | `entetes` | `заголовки` |
+| `moeda` | `currency` | `moneda` | `devise` | `валюта` |
 
 ### Типы сообщений
 

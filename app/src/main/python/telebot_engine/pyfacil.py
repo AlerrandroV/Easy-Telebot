@@ -58,6 +58,7 @@ MAX_TERMUX_TIMEOUT = 300
 DEFAULT_TERMUX_TIMEOUT = 30
 MAX_FILE_TO_TERMUX = 512 * 1024
 MAX_VARIABLES = 64 * 1024
+MAX_FETCHES = 20
 ENV_NAME = re.compile(r"^[A-Z][A-Z0-9_]*$")
 _BIG_NUMBER = re.compile(r"\d{5,}")
 
@@ -196,6 +197,29 @@ class Result(Proxy):
 
     def attr(self, canonical, interp, line):
         return self.values.get(canonical)
+
+
+class ResponseRef(Proxy):
+    """Resultado de ``buscar()``: ``r.ok``, ``r.status``, ``r.texto``, ``r.json``, ``r.erro``."""
+
+    kind = "response"
+
+    def __init__(self, res):
+        self.res = res
+
+    def __str__(self):
+        return self.res.get("text") or ""
+
+    def __bool__(self):
+        return bool(self.res.get("ok"))
+
+    def attr(self, canonical, interp, line):
+        r = self.res
+        if canonical == "text":
+            return interp.check_size((r.get("text") or "")[:MAX_TEXT], line)
+        if canonical == "error":
+            return r.get("error") or ("" if r.get("ok") else "HTTP %s" % r.get("status"))
+        return {"status": r.get("status"), "json": r.get("json"), "ok": bool(r.get("ok"))}.get(canonical)
 
 
 class UserRef(Proxy):
@@ -679,6 +703,44 @@ def f_remind(interp, line, when, text=None):
     return out[0] if out else ""
 
 
+def f_fetch(interp, line, url, method="GET", body=None, json=None, headers=None, timeout=15):
+    """``r = buscar("https://api...")``: GET por padrão; ``json={...}`` manda JSON (POST)."""
+    from . import webfetch
+    import json as _json
+    interp.fetches += 1
+    if interp.fetches > MAX_FETCHES:
+        raise ScriptError("fetches", line, n=MAX_FETCHES)
+    hdrs = {str(k): str(v) for k, v in (headers or {}).items()}
+    data = None
+    if json is not None:
+        data = _json.dumps(json, ensure_ascii=False)
+        hdrs.setdefault("Content-Type", "application/json")
+        if str(method).upper() == "GET":
+            method = "POST"
+    elif body is not None:
+        data = str(body)
+    res = interp.external(webfetch.fetch, str(url), str(method), hdrs, data, timeout)
+    if res.get("json") is not None:
+        interp.check_size(res["json"] if isinstance(res["json"], (list, dict)) else [], line)
+    return ResponseRef(res)
+
+
+def f_price(interp, line, symbol, currency=None):
+    from . import netvars
+    return interp.external(netvars.price, str(symbol), None if currency is None else str(currency).upper(), interp.host_lang())
+
+
+def f_rate(interp, line, code, currency=None):
+    from . import netvars
+    value, _ = interp.external(netvars.rate, str(code), None if currency is None else str(currency).upper(), interp.host_lang())
+    return value
+
+
+def f_weather(interp, line, city):
+    from . import netvars
+    return interp.external(netvars.weather, str(city), interp.host_lang()) or ""
+
+
 def f_cancel_reminders(interp, line):
     return interp.external(interp.host.cancel_reminders)
 
@@ -699,6 +761,10 @@ FUNCTIONS = {
     "choice": (f_choice, ()),
     "now": (f_now, ()),
     "remind": (f_remind, ()),
+    "fetch": (f_fetch, ("method", "body", "json", "headers", "timeout")),
+    "price": (f_price, ("currency",)),
+    "rate": (f_rate, ("currency",)),
+    "weather": (f_weather, ()),
     "cancel_reminders": (f_cancel_reminders, ()),
 }
 
@@ -712,6 +778,7 @@ class Interpreter:
         self.vars = {}
         self.steps = 0
         self.sends = 0
+        self.fetches = 0
         self.paused = 0.0
         self.allocated = 0
         self.external_time = 0.0
@@ -731,6 +798,10 @@ class Interpreter:
         self.chat_id = chat_ref.chat.get("id")
         if message and message.get("message_id") and message.get("_button") is None:
             self.reply_to = {"message_id": message["message_id"], "allow_sending_without_reply": True}
+
+    def host_lang(self):
+        """Idioma do bot (para moeda e clima); ``None`` = idioma do app."""
+        return getattr(self.host, "lang", None)
 
     # nomes no idioma do código (para mensagens de erro)
     def local(self, obj, canonical):

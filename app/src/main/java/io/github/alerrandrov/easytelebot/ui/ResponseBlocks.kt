@@ -75,6 +75,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import io.github.alerrandrov.easytelebot.R
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
 import io.github.alerrandrov.easytelebot.data.BotMessage
 import io.github.alerrandrov.easytelebot.data.BotRepository
 import io.github.alerrandrov.easytelebot.data.ButtonTypes
@@ -141,6 +144,7 @@ fun ResponseBlocksEditor(env: BlockEditorEnv, blocks: List<CommandBlock>, onChan
             is CommandBlock.Termux -> b.copy(key = CommandBlock.newKey())
             is CommandBlock.Flow -> b.copy(key = CommandBlock.newKey())
             is CommandBlock.Code -> b.copy(key = CommandBlock.newKey())
+            is CommandBlock.Http -> b.copy(key = CommandBlock.newKey())
             is CommandBlock.Wait -> b.copy(key = CommandBlock.newKey())
         })
     })
@@ -173,6 +177,7 @@ fun ResponseBlocksEditor(env: BlockEditorEnv, blocks: List<CommandBlock>, onChan
                 is CommandBlock.Flow -> FlowBlockCard(block.node, nodes, { replace(i, block.copy(node = it)) }, actions, env.onOpenFlows)
                 is CommandBlock.Wait -> WaitBlockCard(env, block, { replace(i, it) }, actions)
                 is CommandBlock.Code -> CodeBlockCard(block.code, { replace(i, block.copy(code = it)) }, actions)
+                is CommandBlock.Http -> HttpBlockCard(block, { replace(i, it) }, actions)
             }
         }
         if (blocks.isNotEmpty()) {
@@ -204,6 +209,12 @@ fun ResponseBlocksEditor(env: BlockEditorEnv, blocks: List<CommandBlock>, onChan
                     title = stringResource(R.string.block_code),
                     subtitle = stringResource(R.string.block_code_sub),
                     onClick = { add(CommandBlock.Code(sample)); showAdd = false },
+                )
+                SectionCard(
+                    icon = R.drawable.ic_public,
+                    title = stringResource(R.string.block_http),
+                    subtitle = stringResource(R.string.block_http_sub),
+                    onClick = { add(CommandBlock.Http()); showAdd = false },
                 )
                 if (!hasWait) SectionCard(
                     icon = R.drawable.ic_hearing,
@@ -791,6 +802,126 @@ private fun WaitVariableField(block: CommandBlock.Wait, onChange: (CommandBlock.
     )
 }
 
+// -- Bloco: Requisição HTTP ------------------------------------------------------------------------
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun HttpBlockCard(block: CommandBlock.Http, onChange: (CommandBlock.Http) -> Unit, actions: BlockActions) {
+    val context = LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var advanced by remember(block.key) { mutableStateOf(block.headers.isNotBlank() || block.body.isNotBlank()) }
+    var testing by remember { mutableStateOf(false) }
+    var result by remember { mutableStateOf<io.github.alerrandrov.easytelebot.engine.PythonBridge.HttpTest?>(null) }
+    val variable = block.variable.ifBlank { "http" }
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            BlockHeader(R.drawable.ic_public, stringResource(R.string.block_http), actions) { dismiss ->
+                listOf(5, 15, 30).forEach { t ->
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.block_termux_timeout, t)) },
+                        leadingIcon = { if (block.timeout == t) AppIcon(R.drawable.ic_check) },
+                        onClick = { dismiss(); onChange(block.copy(timeout = t)) },
+                    )
+                }
+                HorizontalDivider()
+            }
+            Column(Modifier.padding(end = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    CommandBlock.Http.METHODS.forEach { m ->
+                        FilterChip(selected = block.method == m, onClick = { onChange(block.copy(method = m)) }, label = { Text(m) })
+                    }
+                }
+                OutlinedTextField(
+                    value = block.url,
+                    onValueChange = { onChange(block.copy(url = it.take(2000).replace("\n", ""))) },
+                    label = { Text(stringResource(R.string.http_url)) },
+                    placeholder = { Text(stringResource(R.string.http_url_placeholder)) },
+                    supportingText = { Text(stringResource(R.string.http_url_hint)) },
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = block.variable,
+                    onValueChange = { onChange(block.copy(variable = it.lowercase().replace(' ', '_').filter { c -> c.isLetterOrDigit() || c == '_' }.take(32))) },
+                    label = { Text(stringResource(R.string.http_variable)) },
+                    placeholder = { Text("http") },
+                    supportingText = { Text(stringResource(R.string.http_variable_hint, variable)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = block.path,
+                    onValueChange = { onChange(block.copy(path = it.take(200))) },
+                    label = { Text(stringResource(R.string.http_path)) },
+                    placeholder = { Text("data.price") },
+                    supportingText = { Text(stringResource(R.string.http_path_hint)) },
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                TextButton(onClick = { advanced = !advanced }) {
+                    ButtonLabel(if (advanced) R.drawable.ic_expand_more else R.drawable.ic_chevron_right, stringResource(R.string.http_advanced))
+                }
+                if (advanced) {
+                    OutlinedTextField(
+                        value = block.headers,
+                        onValueChange = { onChange(block.copy(headers = it.take(4000))) },
+                        label = { Text(stringResource(R.string.http_headers)) },
+                        placeholder = { Text("Authorization: Bearer …") },
+                        minLines = 2,
+                        textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    if (block.method != "GET") {
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            CommandBlock.Http.BODY_TYPES.forEach { t ->
+                                FilterChip(selected = block.bodyType == t, onClick = { onChange(block.copy(bodyType = t)) },
+                                    label = { Text(stringResource(when (t) { "form" -> R.string.http_body_form; "text" -> R.string.http_body_text; else -> R.string.http_body_json })) })
+                            }
+                        }
+                        OutlinedTextField(
+                            value = block.body,
+                            onValueChange = { onChange(block.copy(body = it.take(20000))) },
+                            label = { Text(stringResource(R.string.http_body)) },
+                            placeholder = { Text(if (block.bodyType == "form") "nome={nome}&id={id}" else "{\"nome\": \"{nome}\"}") },
+                            minLines = 3,
+                            textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedButton(enabled = block.url.isNotBlank() && !testing, onClick = {
+                        testing = true
+                        scope.launch {
+                            result = withContext(Dispatchers.IO) {
+                                io.github.alerrandrov.easytelebot.engine.PythonBridge.testHttp(context, CommandBlock.toJson(block).toString())
+                            }
+                            testing = false
+                        }
+                    }) { ButtonLabel(R.drawable.ic_play_arrow, stringResource(if (testing) R.string.shop_testing else R.string.http_test)) }
+                }
+                result?.let { r ->
+                    Card(colors = CardDefaults.cardColors(containerColor = if (r.ok) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.errorContainer)) {
+                        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                if (r.status > 0) stringResource(R.string.http_test_status, r.status) else stringResource(R.string.http_test_failed, r.error),
+                                style = MaterialTheme.typography.labelLarge,
+                            )
+                            if (r.value.isNotBlank()) Text("{$variable} = " + r.value.take(500), style = MaterialTheme.typography.bodySmall,
+                                fontFamily = FontFamily.Monospace)
+                            if (block.path.isNotBlank() && r.value.isBlank() && r.preview.isNotBlank()) {
+                                Text(stringResource(R.string.http_path_missing), style = MaterialTheme.typography.bodySmall)
+                                Text(r.preview.take(800), style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 // -- Bloco: Python facilitado ------------------------------------------------------------------------
 
 @Composable
@@ -1075,6 +1206,8 @@ fun CommandPreviewDialog(trigger: String, blocks: List<CommandBlock>, botId: Lon
                             is CommandBlock.Wait -> PreviewNote(R.drawable.ic_hearing,
                                 if (b.usesCode) stringResource(R.string.preview_wait_code) else stringResource(R.string.preview_wait, b.rules.size))
                             is CommandBlock.Code -> PreviewNote(R.drawable.ic_code, stringResource(R.string.preview_code))
+                            is CommandBlock.Http -> PreviewNote(R.drawable.ic_public,
+                                stringResource(R.string.preview_http, b.method, b.url.take(60), b.variable.ifBlank { "http" }))
                         }
                     }
                 }

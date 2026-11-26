@@ -26,6 +26,10 @@ class EngineHost:
         self.args = args or ""
 
     @property
+    def lang(self):
+        return self.engine.lang
+
+    @property
     def stopping(self):
         return self.engine.stopping
 
@@ -117,7 +121,8 @@ def run(engine, code, name, chat_id, user, args="", update=None, sender=None, me
     stored = flows.user_state(engine.base_dir, uid).get("vars") or {} if uid is not None else {}
     before = json.dumps(stored, sort_keys=True, ensure_ascii=False)
     host = EngineHost(engine, sender or engine, name, update, chat_id, user, args)
-    out = pyfacil.run(code, host, message=message, user=user, chat=chat, args=args, variables=dict(stored),
+    variables = dict(stored, **(update.get("vars") or {}))
+    out = pyfacil.run(code, host, message=message, user=user, chat=chat, args=args, variables=variables,
                       default_lang=engine.lang, is_admin=uid in engine.admins)
     if uid is not None:
         clean = pyfacil.storable(out["variables"])

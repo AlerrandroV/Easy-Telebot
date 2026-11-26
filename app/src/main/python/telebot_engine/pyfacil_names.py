@@ -52,6 +52,10 @@ GLOBALS = {
     "choice": _t(["escolher"], ["choice"], ["elegir"], ["choisir"], ["выбрать"]),
     "now": _t(["agora"], ["now"], ["ahora"], ["maintenant"], ["сейчас"]),
     "remind": _t(["lembrar"], ["remind"], ["recordar"], ["rappeler"], ["напомнить"]),
+    "fetch": _t(["buscar"], ["fetch"], ["consultar"], ["recuperer"], ["запрос"]),
+    "price": _t(["preco", "cotacao"], ["price"], ["precio"], ["prix"], ["цена"]),
+    "rate": _t(["cambio"], ["exchange_rate", "rate"], ["tipo_de_cambio", "cambio"], ["taux_de_change"], ["курс"]),
+    "weather": _t(["clima"], ["weather"], ["clima"], ["meteo"], ["погода"]),
     "cancel_reminders": _t(["cancelar_lembretes"], ["cancel_reminders"], ["cancelar_recordatorios"],
                            ["annuler_rappels"], ["отменить_напоминания"]),
     # constantes
@@ -125,6 +129,14 @@ ATTRS = {
                     ["название"]),
         "private": _t(["privado"], ["private", "is_private"], ["privado"], ["prive"], ["личный"]),
     },
+    "response": {
+        "status": _t(["status", "codigo"], ["status", "status_code"], ["estado", "codigo"], ["statut", "code"],
+                     ["статус", "код"]),
+        "text": _t(["texto"], ["text"], ["texto"], ["texte"], ["текст"]),
+        "json": _t(["json", "dados"], ["json"], ["json", "datos"], ["json", "donnees"], ["json", "данные"]),
+        "ok": _t(["ok", "sucesso"], ["ok", "success"], ["ok", "exito"], ["ok", "succes"], ["ок", "успех"]),
+        "error": _t(["erro"], ["error"], ["error"], ["erreur"], ["ошибка"]),
+    },
     "result": {
         "output": _t(["saida"], ["output", "stdout"], ["salida"], ["sortie"], ["вывод"]),
         "error": _t(["erro"], ["error", "stderr"], ["error"], ["erreur"], ["ошибка"]),
@@ -147,6 +159,11 @@ KWARGS = {
     "data": _t(["dado"], ["data"], ["dato"], ["donnee"], ["данные"]),
     "copy": _t(["copiar"], ["copy"], ["copiar"], ["copier"], ["копировать"]),
     "to": _t(["para"], ["to", "chat_id"], ["para"], ["vers", "destinataire"], ["кому"]),
+    "method": _t(["metodo"], ["method"], ["metodo"], ["methode"], ["метод"]),
+    "body": _t(["corpo"], ["body"], ["cuerpo"], ["corps"], ["тело"]),
+    "json": _t(["json"], ["json"], ["json"], ["json"], ["json"]),
+    "headers": _t(["cabecalhos"], ["headers"], ["encabezados"], ["entetes"], ["заголовки"]),
+    "currency": _t(["moeda"], ["currency"], ["moneda"], ["devise"], ["валюта"]),
 }
 
 # -- mensagens de erro ------------------------------------------------------------------------
@@ -296,6 +313,12 @@ ERRORS = {
         "Las variables guardadas pasaron el límite de {n} KB o tienen un valor que no se puede guardar (solo texto, números, listas y diccionarios).",
         "Les variables enregistrées dépassent {n} Ko ou contiennent une valeur impossible à enregistrer (texte, nombres, listes et dictionnaires seulement).",
         "Сохранённые переменные превысили {n} КБ или содержат значение, которое нельзя сохранить (только текст, числа, списки и словари)."),
+    "fetches": _t(
+        "Linha {line}: limite de {n} buscas na internet por execução.",
+        "Line {line}: limit of {n} internet requests per run.",
+        "Línea {line}: límite de {n} consultas a internet por ejecución.",
+        "Ligne {line} : limite de {n} requêtes Internet par exécution.",
+        "Строка {line}: лимит {n} запросов в интернет за запуск."),
     "no_chat": _t(
         "Linha {line}: aqui não há conversa para responder (agendamento sem destino). Diga para onde: para=ID_DO_CHAT.",
         "Line {line}: there is no chat to reply to here (schedule without a target). Say where: to=CHAT_ID.",
@@ -317,6 +340,8 @@ HINT = _t(" Você quis dizer \"{name}\"?", " Did you mean \"{name}\"?", " ¿Quis
 OBJECT_LABELS = {
     "message": GLOBALS["message"], "user": GLOBALS["user"], "chat": GLOBALS["chat"],
     "file": ATTRS["message"]["file"],
+    "response": _t(["o resultado do buscar()"], ["the fetch() result"], ["el resultado de consultar()"],
+                   ["le résultat de recuperer()"], ["результат запрос()"]),
     "result": _t(["o resultado do termux()"], ["the termux() result"], ["el resultado de termux()"],
                  ["le résultat de termux()"], ["результат termux()"]),
 }

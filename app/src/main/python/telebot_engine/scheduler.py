@@ -210,11 +210,14 @@ class Scheduler:
         autos = self.engine.config.get("automations") or []
         schedules = [a for a in autos if a["kind"] == "schedule"]
         drips = [a for a in autos if a["kind"] == "drip"]
+        feed_items = [a for a in autos if a["kind"] == "feed"]
         if schedules:
             self._schedules(schedules, now_ts)
         if drips:
             self._drips(drips, now_ts)
         self._reminders(now_ts)
+        for a in feed_items:
+            self._feed(a, now_ts)
 
     # -- mensagens agendadas -------------------------------------------------------------------
 
@@ -271,6 +274,35 @@ class Scheduler:
             eng.run_blocks(auto["blocks"], label, chat_id, user, "", update={}, sender=sender, kind="schedule")
             if len(rows) > 1:
                 eng._stop.wait(0.05)  # ~20 por segundo, dentro do limite do Telegram
+
+    # -- notícias (RSS/YouTube) --------------------------------------------------------------------
+
+    def _feed(self, auto, now_ts):
+        from . import feeds
+        new = feeds.check(self.base_dir, auto, now_ts)
+        if new is None:
+            self.engine.emit("error", context="feed", command=None, retry_in=None, fatal=False, code="feed_failed",
+                             detail=auto["trigger"]["url"], retry_after=None)
+            return
+        if new:
+            self._run(self.post_feed, auto, new)
+
+    def post_feed(self, auto, items):
+        from . import feeds
+        eng = self.engine
+        sender = self._sender()
+        rows = self.recipients(auto["trigger"])
+        label = auto.get("description") or i18n.t("label.feed")
+        for item in items:
+            eng.emit("feed_posted", label=label, title=item["title"][:100])
+            for row in rows:
+                if eng.stopping:
+                    return
+                chat_id = row["chat_id"] if row else None
+                eng.run_blocks(auto["blocks"], label, chat_id, {}, "", update={"vars": feeds.item_vars(item)},
+                               sender=sender, kind="feed")
+                if len(rows) > 1:
+                    eng._stop.wait(0.05)
 
     # -- sequência depois do /start --------------------------------------------------------------
 

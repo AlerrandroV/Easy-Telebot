@@ -260,7 +260,7 @@
     <string name="add_title">O que você quer adicionar?</string>
     <string name="add_simple_command">Comando simples</string>
     <string name="add_simple_command_sub">Um ou mais comandos (ex.: /start e /iniciar) que respondem com uma ou mais mensagens: texto formatado, fotos, vídeos, arquivos e botões com links.</string>
-    <string name="add_more_soon">Em breve: internet sem Termux, moderação de grupos, atendimento, IA e mais.</string>
+    <string name="add_more_soon">Em breve: moderação de grupos, atendimento, IA e mais.</string>
     <string name="add_admin_command">Comando de admin</string>
     <string name="add_admin_command_sub">Igual ao comando simples, mas só administradores da classe escolhida (ou acima) podem usar. Para os outros, o bot não responde nada.</string>
     <string name="add_admin">Adicionar administrador</string>
@@ -1191,7 +1191,7 @@
     <string name="code_help">Ajuda</string>
     <string name="code_ok">Código sem erros</string>
     <string name="code_help_body">Escreva em Python simples: if/elif/else, for, while, variáveis, textos, listas e f-strings. O código roda no próprio celular com limites de segurança: não acessa arquivos nem a internet (só pelo termux()). Os nomes valem em português, inglês, espanhol, francês e russo. Num \"Aguardar resposta\", o código roda a cada mensagem até chamar parar(). O guia completo está na pasta docs do projeto.</string>
-    <string name="code_help_reference">"mensagem.tipo == texto / foto / video / audio / voz / documento / botao\nmensagem.texto  mensagem.foto  mensagem.arquivo  mensagem.dado\narquivo.baixar()   base64(arquivo)\nusuario.nome  usuario.id  usuario.arroba  usuario.admin\nchat.id  chat.privado  argumentos  variaveis[\"x\"]\nenviar_texto(texto, botoes=[...])   responder(texto)\nenviar_foto(foto, legenda=\"\")   enviar_arquivo(caminho)\nbotao(\"Texto\", link=..., dado=..., copiar=...)\nr = termux(\"cmd\", arg, arquivo, tempo=30, esperar=True, ambiente={...})\nr.ok  r.saida  r.erro  r.codigo  r.tempo_esgotado\nparar()  pausa(seg)  registrar(...)  aleatorio(1, 6)  escolher(lista)  agora()\nlembrar(\"amanhã 9h …\")  cancelar_lembretes()  enviar_texto(…, para=ID)"</string>
+    <string name="code_help_reference">"mensagem.tipo == texto / foto / video / audio / voz / documento / botao\nmensagem.texto  mensagem.foto  mensagem.arquivo  mensagem.dado\narquivo.baixar()   base64(arquivo)\nusuario.nome  usuario.id  usuario.arroba  usuario.admin\nchat.id  chat.privado  argumentos  variaveis[\"x\"]\nenviar_texto(texto, botoes=[...])   responder(texto)\nenviar_foto(foto, legenda=\"\")   enviar_arquivo(caminho)\nbotao(\"Texto\", link=..., dado=..., copiar=...)\nr = termux(\"cmd\", arg, arquivo, tempo=30, esperar=True, ambiente={...})\nr.ok  r.saida  r.erro  r.codigo  r.tempo_esgotado\nparar()  pausa(seg)  registrar(...)  aleatorio(1, 6)  escolher(lista)  agora()\nlembrar(\"amanhã 9h …\")  cancelar_lembretes()  enviar_texto(…, para=ID)\nr = buscar(url)  r.ok  r.json  preco(\"BTC\")  cambio(\"USD\")  clima(\"Recife\")"</string>
     <string name="code_sample">"# Python: roda quando o comando é usado.\nif argumentos:\n    enviar_texto(f\"Você escreveu: {argumentos}\")\nelse:\n    enviar_texto(f\"Olá, {usuario.nome}! Escreva algo depois do comando.\")\n"</string>
     <string name="code_sample_wait">"# Roda a cada mensagem recebida, até parar().\nif mensagem.tipo == foto:\n    enviar_texto(\"Foto recebida, obrigado!\")\n    parar()\nelse:\n    enviar_texto(\"Isso não é uma foto. Envie uma imagem, por favor.\")\n"</string>
     <string-array name="code_snippets">
@@ -1401,4 +1401,56 @@
     <string name="log_drip_sent">Sequência “%1$s” enviada para %2$s.</string>
     <string name="log_reminder_created">%1$s criou um lembrete para %2$s.</string>
     <string name="log_reminder_sent">Lembrete enviado.</string>
+
+    <!-- Internet sem Termux -->
+    <string name="block_http">Requisição HTTP</string>
+    <string name="block_http_sub">Busca dados numa API ou site (GET, POST…) e guarda o resultado numa variável para as próximas mensagens.</string>
+    <string name="preview_http">%1$s %2$s → {%3$s}</string>
+    <string name="http_url">Endereço (URL)</string>
+    <string name="http_url_placeholder">https://api.exemplo.com/item?q={args}</string>
+    <string name="http_url_hint">Pode usar variáveis, como {args} ou {id}: elas entram já codificadas.</string>
+    <string name="http_variable">Guardar o resultado em</string>
+    <string name="http_variable_hint">Use {%1$s} nas mensagens seguintes ({%1$s_status} = código HTTP).</string>
+    <string name="http_path">Pedaço do JSON (opcional)</string>
+    <string name="http_path_hint">Ex.: data.price, items.0.title ou [0].name. Vazio = a resposta inteira.</string>
+    <string name="http_advanced">Cabeçalhos e corpo</string>
+    <string name="http_headers">Cabeçalhos (um por linha: Nome: valor)</string>
+    <string name="http_body">Corpo</string>
+    <string name="http_body_json">JSON</string>
+    <string name="http_body_form">Formulário</string>
+    <string name="http_body_text">Texto</string>
+    <string name="http_test">Testar</string>
+    <string name="http_test_status">Resposta HTTP %1$d</string>
+    <string name="http_test_failed">Não deu para conectar: %1$s</string>
+    <string name="http_path_missing">O pedaço do JSON não foi encontrado. Veja o começo da resposta:</string>
+    <string name="cmd_err_block_http">O bloco %1$d (Requisição HTTP) precisa de um endereço que comece com https://</string>
+    <string name="err_http_failed_title">A requisição HTTP falhou</string>
+    <string name="err_http_failed_msg">O site ou API não respondeu como esperado (sem internet, endereço errado, chave inválida ou fora do ar). As próximas mensagens seguiram com a variável vazia. Use Testar no bloco para ver a resposta.</string>
+    <string name="err_feed_failed_title">Não deu para ler o feed de notícias</string>
+    <string name="err_feed_failed_msg">O endereço não respondeu ou não é um feed RSS/Atom. O bot tenta de novo na próxima verificação. Confira o link com o botão Testar.</string>
+    <string name="log_feed_posted">Notícias “%1$s”: novo post “%2$s”.</string>
+    <string name="add_internet_title">Internet</string>
+    <string name="trigger_feed">Notícias automáticas</string>
+    <string name="add_trigger_feed_sub">Posts novos de um site (RSS) ou canal do YouTube viram mensagens no seu canal ou grupo.</string>
+    <string name="trigger_feed_help">O bot confere o feed de tempos em tempos e manda cada post novo usando a resposta abaixo. Variáveis: {titulo}, {link}, {resumo}, {autor} e {imagem}.</string>
+    <string name="feed_url">Endereço do feed</string>
+    <string name="feed_url_hint">RSS ou Atom do site (muitos têm /feed). YouTube: youtube.com/channel/UC… ou o link do feed do canal.</string>
+    <string name="feed_test_ok">Feed encontrado: %1$d post(s) recentes</string>
+    <string name="feed_test_failed">Não é um feed ou não respondeu: %1$s</string>
+    <string name="feed_every">Conferir a cada</string>
+    <string name="feed_note">Na primeira verificação, os posts que já existem só são marcados como vistos: o canal recebe só o que sair depois. No máximo 5 posts novos por verificação.</string>
+    <string name="feed_err_url">Escreva o endereço do feed.</string>
+    <string name="feed_default_message">*{titulo}*\n{link}</string>
+    <string-array name="feed_variables">
+        <item>titulo</item>
+        <item>link</item>
+        <item>resumo</item>
+        <item>autor</item>
+        <item>imagem</item>
+    </string-array>
+    <string-array name="net_variables">
+        <item>preço:BTC</item>
+        <item>câmbio:USD</item>
+        <item>clima:São Paulo</item>
+    </string-array>
 </resources>

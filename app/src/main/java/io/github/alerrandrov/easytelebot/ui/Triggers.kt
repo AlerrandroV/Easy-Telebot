@@ -47,6 +47,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.alerrandrov.easytelebot.R
+import kotlinx.coroutines.launch
 import io.github.alerrandrov.easytelebot.data.ReplyKey
 import io.github.alerrandrov.easytelebot.data.ReplyKeyboard
 import io.github.alerrandrov.easytelebot.data.SimpleCommand
@@ -63,6 +64,7 @@ fun triggerIcon(kind: String): Int = when (kind) {
     TriggerKinds.INLINE -> R.drawable.ic_alternate_email
     TriggerKinds.SCHEDULE -> R.drawable.ic_schedule
     TriggerKinds.DRIP -> R.drawable.ic_history
+    TriggerKinds.FEED -> R.drawable.ic_rss_feed
     else -> R.drawable.ic_send
 }
 
@@ -76,6 +78,7 @@ fun triggerKindLabel(kind: String): String = stringResource(
         TriggerKinds.INLINE -> R.string.trigger_inline
         TriggerKinds.SCHEDULE -> R.string.trigger_schedule
         TriggerKinds.DRIP -> R.string.trigger_drip
+        TriggerKinds.FEED -> R.string.trigger_feed
         else -> R.string.add_simple_command
     }
 )
@@ -133,6 +136,7 @@ fun triggerSummary(cmd: SimpleCommand): String {
         TriggerKinds.INLINE -> t.title.ifBlank { t.words.joinToString(", ") }.ifBlank { stringResource(R.string.trigger_inline_any) }
         TriggerKinds.SCHEDULE -> cmd.description.ifBlank { scheduleSummary(t) }
         TriggerKinds.DRIP -> cmd.description.ifBlank { dripSummary(t) }
+        TriggerKinds.FEED -> cmd.description.ifBlank { t.url.substringAfter("://").substringBefore("/") }
         else -> cmd.triggers.joinToString("  ·  ") { "/$it" }
     }.ifBlank { triggerKindLabel(cmd.kind) }
 }
@@ -154,6 +158,10 @@ fun triggerErrors(context: android.content.Context, kind: String, spec: TriggerS
             if (!TriggerKinds.TIME.matches(spec.time)) out += context.getString(R.string.sched_err_time)
             if (spec.mode == "weekly" && spec.days.isEmpty()) out += context.getString(R.string.sched_err_days)
             if (spec.mode == "once" && spec.date.isBlank()) out += context.getString(R.string.sched_err_date)
+            if (spec.target == "chats" && spec.chats.isEmpty()) out += context.getString(R.string.sched_err_chats)
+        }
+        TriggerKinds.FEED -> {
+            if (!Regex("^(https?://)?[^\\s/]+\\.[^\\s]+$", RegexOption.IGNORE_CASE).matches(spec.url.trim())) out += context.getString(R.string.feed_err_url)
             if (spec.target == "chats" && spec.chats.isEmpty()) out += context.getString(R.string.sched_err_chats)
         }
     }
@@ -186,6 +194,7 @@ fun TriggerEditor(kind: String, spec: TriggerSpec, botId: Long, botUsername: Str
                         TriggerKinds.START -> R.string.trigger_start_help
                         TriggerKinds.SCHEDULE -> R.string.trigger_schedule_help
                         TriggerKinds.DRIP -> R.string.trigger_drip_help
+                        TriggerKinds.FEED -> R.string.trigger_feed_help
                         else -> R.string.trigger_inline_help
                     }
                 ),
@@ -212,6 +221,7 @@ fun TriggerEditor(kind: String, spec: TriggerSpec, botId: Long, botUsername: Str
                 TriggerKinds.INLINE -> InlineFields(spec, botUsername, onChange)
                 TriggerKinds.SCHEDULE -> ScheduleFields(spec, botId, onChange)
                 TriggerKinds.DRIP -> DripFields(spec, onChange)
+                TriggerKinds.FEED -> FeedFields(spec, botId, onChange)
             }
         }
     }
@@ -542,6 +552,14 @@ private fun ScheduleFields(spec: TriggerSpec, botId: Long, onChange: (TriggerSpe
         ButtonLabel(R.drawable.ic_schedule, stringResource(R.string.sched_at_time, spec.time))
     }
 
+    TargetPicker(spec, botId, onChange)
+    Note(stringResource(R.string.sched_note))
+}
+
+/** Para quem vão os agendamentos e as notícias: usuários, grupos, canais, todos, chats escolhidos ou ninguém. */
+@Composable
+private fun TargetPicker(spec: TriggerSpec, botId: Long, onChange: (TriggerSpec) -> Unit) {
+    val context = LocalContext.current
     Label(stringResource(R.string.sched_target))
     ChoiceChips(TriggerKinds.TARGETS, spec.target, { targetLabel(it, spec.chats.size) }) { onChange(spec.copy(target = it)) }
     Text(
@@ -585,7 +603,45 @@ private fun ScheduleFields(spec: TriggerSpec, botId: Long, onChange: (TriggerSpe
             }
         }
     }
-    Note(stringResource(R.string.sched_note))
+}
+
+@Composable
+private fun FeedFields(spec: TriggerSpec, botId: Long, onChange: (TriggerSpec) -> Unit) {
+    val context = LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var testing by remember { mutableStateOf(false) }
+    var preview by remember { mutableStateOf<io.github.alerrandrov.easytelebot.engine.PythonBridge.FeedPreview?>(null) }
+    OutlinedTextField(
+        value = spec.url,
+        onValueChange = { onChange(spec.copy(url = it.trim().take(1000))) },
+        label = { Text(stringResource(R.string.feed_url)) },
+        placeholder = { Text("https://site.com/feed") },
+        supportingText = { Text(stringResource(R.string.feed_url_hint)) },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    OutlinedButton(enabled = spec.url.isNotBlank() && !testing, onClick = {
+        testing = true
+        scope.launch {
+            preview = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                io.github.alerrandrov.easytelebot.engine.PythonBridge.previewFeed(context, spec.url)
+            }
+            testing = false
+        }
+    }) { ButtonLabel(R.drawable.ic_play_arrow, stringResource(if (testing) R.string.shop_testing else R.string.http_test)) }
+    preview?.let { p ->
+        Card(colors = CardDefaults.cardColors(containerColor = if (p.ok) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.errorContainer)) {
+            Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(if (p.ok) stringResource(R.string.feed_test_ok, p.titles.size) else stringResource(R.string.feed_test_failed, p.error),
+                    style = MaterialTheme.typography.labelLarge)
+                p.titles.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            }
+        }
+    }
+    Label(stringResource(R.string.feed_every))
+    ChoiceChips(listOf(10, 15, 30, 60, 180, 720, 1440), spec.every, { durationText(it) }) { onChange(spec.copy(every = it)) }
+    TargetPicker(spec, botId, onChange)
+    Note(stringResource(R.string.feed_note))
 }
 
 @Composable

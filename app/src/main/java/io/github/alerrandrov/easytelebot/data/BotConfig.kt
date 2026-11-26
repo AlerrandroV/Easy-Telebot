@@ -188,7 +188,8 @@ object TriggerKinds {
     const val INLINE = "inline"
     const val SCHEDULE = "schedule"
     const val DRIP = "drip"
-    val AUTOMATIC = listOf(KEYWORD, MEDIA, EVENT, START, INLINE, SCHEDULE, DRIP)
+    const val FEED = "feed"
+    val AUTOMATIC = listOf(KEYWORD, MEDIA, EVENT, START, INLINE, SCHEDULE, DRIP, FEED)
     /** Agendamentos (tópico "tempo"): aparecem num grupo próprio no menu Adicionar. */
     val TIMED = listOf(SCHEDULE, DRIP)
     val MODES = listOf("daily", "weekly", "monthly", "interval", "once")
@@ -233,6 +234,8 @@ data class TriggerSpec(
     /** Sequência: quanto tempo depois do primeiro /start. */
     val delay: Int = 1,
     val unit: String = "days",
+    /** Notícias: endereço do feed (RSS/Atom/YouTube). Usa [every] e o destino do agendamento. */
+    val url: String = "",
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("words", JSONArray(words)).put("match", match).put("case", caseSensitive).put("where", where)
@@ -240,6 +243,7 @@ data class TriggerSpec(
         .put("prefix", prefix).put("title", title).put("description", subtitle)
         .put("mode", mode).put("time", time).put("days", JSONArray(days)).put("every", every).put("day", day)
         .put("date", date).put("target", target).put("chats", JSONArray(chats)).put("delay", delay).put("unit", unit)
+        .put("url", url)
 
     companion object {
         private fun list(a: JSONArray?) = if (a == null) emptyList() else (0 until a.length()).map { a.optString(it) }.filter { it.isNotBlank() }
@@ -268,6 +272,7 @@ data class TriggerSpec(
                 chats = o.optJSONArray("chats")?.let { a -> (0 until a.length()).map { a.optLong(it) }.filter { it != 0L } }.orEmpty(),
                 delay = o.optInt("delay", 1).coerceIn(0, 3650),
                 unit = o.optString("unit").takeIf { it in TriggerKinds.UNITS } ?: "days",
+                url = o.optString("url"),
             )
         }
     }
@@ -323,6 +328,24 @@ sealed interface CommandBlock {
     /** Python facilitado: um pequeno código que decide o que responder. */
     data class Code(val code: String, override val key: String = newKey()) : CommandBlock
 
+    /** Requisição HTTP: o resultado vira {variavel} (e {variavel_status}) nos blocos seguintes. */
+    data class Http(
+        val method: String = "GET",
+        val url: String = "",
+        val headers: String = "",
+        val body: String = "",
+        val bodyType: String = "json",
+        val variable: String = "",
+        val path: String = "",
+        val timeout: Int = 15,
+        override val key: String = newKey(),
+    ) : CommandBlock {
+        companion object {
+            val METHODS = listOf("GET", "POST", "PUT", "PATCH", "DELETE")
+            val BODY_TYPES = listOf("json", "form", "text")
+        }
+    }
+
     companion object {
         fun newKey() = UUID.randomUUID().toString()
 
@@ -336,6 +359,9 @@ sealed interface CommandBlock {
             is Termux -> JSONObject().put("type", "termux").put("command", b.script.command).put("timeout", b.script.timeout)
             is Flow -> JSONObject().put("type", "flow").put("node", b.node)
             is Code -> JSONObject().put("type", "code").put("code", b.code)
+            is Http -> JSONObject().put("type", "http").put("method", b.method).put("url", b.url).put("headers", b.headers)
+                .put("body", b.body).put("body_type", b.bodyType).put("variable", b.variable).put("path", b.path)
+                .put("timeout", b.timeout)
             is Wait -> JSONObject().put("type", "wait")
                 .put("variable", b.variable)
                 .put("code", b.code)
@@ -356,6 +382,16 @@ sealed interface CommandBlock {
             "termux" -> Termux(CommandScript(o.optString("command"), o.optInt("timeout", 30).coerceIn(1, 300)))
             "flow" -> o.optString("node").takeIf { it.isNotBlank() }?.let { Flow(it) }
             "code" -> Code(o.optString("code"))
+            "http" -> Http(
+                method = o.optString("method").takeIf { it in Http.METHODS } ?: "GET",
+                url = o.optString("url"),
+                headers = o.optString("headers"),
+                body = o.optString("body"),
+                bodyType = o.optString("body_type").takeIf { it in Http.BODY_TYPES } ?: "json",
+                variable = o.optString("variable"),
+                path = o.optString("path"),
+                timeout = o.optInt("timeout", 15).coerceIn(1, 30),
+            )
             "wait" -> {
                 val rules = o.optJSONArray("rules") ?: JSONArray()
                 Wait(
@@ -386,12 +422,13 @@ sealed interface CommandBlock {
             }
         }
 
-        /** Variáveis criadas pelos blocos Aguardar resposta (em qualquer pasta). */
+        /** Variáveis criadas pelos blocos Aguardar resposta e Requisição HTTP (em qualquer pasta). */
         fun waitVariables(blocks: List<CommandBlock>): Set<String> {
             val out = mutableSetOf<String>()
             fun walk(list: List<CommandBlock>) {
                 list.forEach { b ->
                     when (b) {
+                        is Http -> { val v = b.variable.ifBlank { "http" }; out += v; out += v + "_status" }
                         is Wait -> {
                             if (b.variable.isNotBlank()) { out += b.variable; out += "resposta" }
                             b.rules.forEach { walk(it.blocks) }

@@ -116,6 +116,23 @@ No menu **Adicionar › Agendamentos**:
   apaga os pendentes). No Python: `lembrar(...)`, `cancelar_lembretes()` e
   `enviar_texto(..., para=ID)` para mandar em outra conversa.
 
+## Internet sem Termux
+
+- **Bloco "Requisição HTTP"** (na resposta de qualquer comando ou gatilho): GET, POST,
+  PUT, PATCH ou DELETE para uma API ou site, com cabeçalhos e corpo (JSON, formulário
+  ou texto). O resultado vira uma variável — `{cotacao}` e `{cotacao_status}` — e dá para
+  pegar só um pedaço do JSON (`data.price`, `items.0.title`). O botão **Testar** mostra a
+  resposta na hora.
+- **Variáveis da internet**, direto no texto de qualquer mensagem, sem configurar nada:
+  `{preço:BTC}` (cripto, CoinGecko), `{câmbio:USD}` (moedas, Frankfurter/BCE) e
+  `{clima:São Paulo}` (Open-Meteo). Em inglês: `{price:ETH:USD}`, `{rate:EUR}`,
+  `{weather:London}`. Os valores ficam guardados por alguns minutos.
+- **Notícias automáticas** (Adicionar › Internet): posts novos de um site (RSS/Atom) ou de
+  um canal do YouTube viram mensagens no seu canal, grupo ou para os usuários, com
+  `{titulo}`, `{link}`, `{resumo}`, `{autor}` e `{imagem}`.
+- **No Python**: `buscar(url, json=..., cabecalhos=...)`, `preco("BTC")`,
+  `cambio("USD")` e `clima("Recife")`.
+
 ## Python facilitado
 
 Para quem quer um pouco mais que blocos, sem virar programador: um pedaço de Python

@@ -66,6 +66,8 @@ object ErrorExplainer {
             "pay_unknown" -> e(R.string.err_pay_unknown_title, R.string.err_pay_unknown_msg, null)
             "flow_missing" -> e(R.string.err_flow_missing_title, R.string.err_flow_missing_msg, null)
             "flow_loop" -> e(R.string.err_flow_loop_title, R.string.err_flow_loop_msg, null)
+            "http_failed" -> e(R.string.err_http_failed_title, R.string.err_http_failed_msg, null)
+            "feed_failed" -> e(R.string.err_feed_failed_title, R.string.err_feed_failed_msg, null)
             "host_config" -> e(R.string.err_host_config_title, R.string.err_host_config_msg, null)
             "host_auth" -> e(R.string.err_host_auth_title, R.string.err_host_auth_msg, R.array.storefront_github_steps)
             "host_network" -> e(R.string.err_host_network_title, R.string.err_host_network_msg, null)

@@ -185,6 +185,30 @@ object PythonBridge {
         CodeCheck(false, "", listOf(CodeIssue(0, e.message ?: e.toString())))
     }
 
+    // --- internet (webfetch.py / feeds.py) ---
+
+    data class HttpTest(val ok: Boolean, val status: Int, val value: String, val preview: String, val error: String)
+
+    /** Roda um bloco "Requisição HTTP" com valores de exemplo (botão Testar). */
+    fun testHttp(context: Context, blockJson: String): HttpTest = try {
+        val lang = context.resources.configuration.locales[0].language
+        val o = parse(module(context, "webfetch").callAttr("test_block", blockJson, lang))
+        HttpTest(o.optBoolean("ok"), o.optInt("status"), o.optString("value"), o.optString("preview"), o.optString("error"))
+    } catch (e: Exception) {
+        HttpTest(false, 0, "", "", e.message ?: e.toString())
+    }
+
+    data class FeedPreview(val ok: Boolean, val url: String, val error: String, val titles: List<String>)
+
+    fun previewFeed(context: Context, url: String): FeedPreview = try {
+        val o = parse(module(context, "feeds").callAttr("preview", url))
+        val arr = o.optJSONArray("items") ?: org.json.JSONArray()
+        FeedPreview(o.optBoolean("ok"), o.optString("url"), o.optString("error"),
+            (0 until arr.length()).map { arr.getJSONObject(it).optString("title") })
+    } catch (e: Exception) {
+        FeedPreview(false, url, e.message ?: e.toString(), emptyList())
+    }
+
     /** Cria o motor de um bot. Chame `run` numa thread própria; `stop`/`wake`/`request_reload` de qualquer thread. */
     fun createEngine(
         context: Context,

@@ -28,7 +28,7 @@ from .termux import TermuxBridge
 from .flows import FlowRunner
 from . import termux as termux_mod
 from . import config as config_mod
-from . import automations, code_runner, errors, i18n, template
+from . import automations, code_runner, errors, flows, i18n, template, webfetch
 from . import scheduler as scheduler_mod
 from .api import Aborted, NetworkError, TelegramApi, TelegramError
 
@@ -629,7 +629,7 @@ class Engine:
                      kind="command"):
         """Executa uma resposta (comando, gatilho, botão callback ou regra de espera)."""
         job = (blocks, name, chat_id, user, args, reply_to, update, edit_message)
-        if any(b["type"] in ("termux", "code") for b in blocks) and not self.termux.sync_scripts:
+        if any(b["type"] in ("termux", "code", "http") for b in blocks) and not self.termux.sync_scripts:
             # Script no meio: roda numa thread com conexão própria (o bot segue respondendo).
             threading.Thread(target=self.run_blocks, args=job, kwargs={"sender": self.termux._sender(), "kind": kind},
                              name="blocks", daemon=True).start()
@@ -642,6 +642,7 @@ class Engine:
         sender = sender or self
         update = update or {}
         context = self.flows._context(user, chat_id, args, update.get("message"))
+        context.update(update.get("vars") or {})  # ex.: dados de um post de feed
         sent = 0
         for i, block in enumerate(blocks):
             if self.stopping:
@@ -669,6 +670,14 @@ class Engine:
                     if block.get("listener"):  # parar() dentro de "Aguardar resposta": acabou a espera
                         self.flows.end_wait(user)
                     break
+            elif kind == "http":
+                values, res = webfetch.run_block(block, context)
+                context.update(values)
+                if user.get("id") is not None:
+                    flows._update(self.base_dir, user["id"], lambda st: st.setdefault("vars", {}).update(values))
+                if not res["ok"]:
+                    self.emit("error", context="http", command=name, retry_in=None, fatal=False, code="http_failed",
+                              detail="%s %s" % (res["status"] or "", res["error"] or res["text"][:300]), retry_after=None)
             elif kind == "flow":
                 self.flows.start(block["node"], chat_id, user, args, reply_to=reply_to)
                 sent += 1
@@ -833,7 +842,7 @@ class Engine:
 
     def send_message(self, chat_id, msg, context, command_name, reply_to=None):
         """Envia uma mensagem configurada (texto e/ou mídia + botões). ``True`` se deu certo."""
-        body = template.render(msg["text"], context) if msg["text"].strip() else ""
+        body = template.render(msg["text"], context, self.lang) if msg["text"].strip() else ""
         keyboard = build_keyboard(msg["buttons"], private=_is_private(chat_id)) or reply_keyboard(msg)
         base = {"chat_id": chat_id}
         if reply_to:

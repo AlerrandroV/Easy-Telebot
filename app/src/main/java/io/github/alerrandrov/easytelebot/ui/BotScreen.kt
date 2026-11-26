@@ -411,7 +411,8 @@ fun BotScreen(
                     },
                 )
                 Text(stringResource(R.string.add_triggers_title), style = MaterialTheme.typography.titleSmall)
-                (io.github.alerrandrov.easytelebot.data.TriggerKinds.AUTOMATIC - io.github.alerrandrov.easytelebot.data.TriggerKinds.TIMED.toSet()).forEach { kind ->
+                (io.github.alerrandrov.easytelebot.data.TriggerKinds.AUTOMATIC - io.github.alerrandrov.easytelebot.data.TriggerKinds.TIMED.toSet() -
+                    io.github.alerrandrov.easytelebot.data.TriggerKinds.FEED).forEach { kind ->
                     SectionCard(
                         icon = triggerIcon(kind),
                         title = triggerKindLabel(kind),
@@ -452,6 +453,16 @@ fun BotScreen(
                     onClick = {
                         showAddSheet = false
                         onNewTrigger(REMINDER_TEMPLATE)
+                    },
+                )
+                Text(stringResource(R.string.add_internet_title), style = MaterialTheme.typography.titleSmall)
+                SectionCard(
+                    icon = triggerIcon(io.github.alerrandrov.easytelebot.data.TriggerKinds.FEED),
+                    title = triggerKindLabel(io.github.alerrandrov.easytelebot.data.TriggerKinds.FEED),
+                    subtitle = stringResource(R.string.add_trigger_feed_sub),
+                    onClick = {
+                        showAddSheet = false
+                        onNewTrigger(io.github.alerrandrov.easytelebot.data.TriggerKinds.FEED)
                     },
                 )
                 Text(stringResource(R.string.add_more_title), style = MaterialTheme.typography.titleSmall)

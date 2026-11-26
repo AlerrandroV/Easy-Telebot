@@ -106,6 +106,10 @@ de los métodos comunes de texto (`.lower()`, `.split()`, `.replace()`…), list
 | `ahora()` | Fecha y hora del celular: `"25/11/2026 14:30"` |
 | `recordar(cuando_y_texto)` | Programa un recordatorio para quien escribió: `recordar("25/12 10:00 llamar a la abuela")` o `recordar(30, "sacar el pastel")` (minutos). Las fechas en palabras se entienden en portugués e inglés ("tomorrow 9am…"). Devuelve cuándo va a recordar o vacío si no entendió |
 | `cancelar_recordatorios()` | Borra los recordatorios pendientes de quien escribió y dice cuántos eran |
+| `consultar(url, metodo="GET", json={...}, cuerpo="", encabezados={...}, tiempo=15)` | Consulta un sitio o API. El resultado tiene `r.ok`, `r.estado`, `r.texto`, `r.json` y `r.error`. Con `json=` se vuelve POST. Hasta 20 por ejecución |
+| `precio("BTC")`, `precio("ETH", moneda="MXN")` | Cotización de criptomoneda (número) |
+| `tipo_de_cambio("USD", moneda="MXN")` | Cuánto vale 1 unidad de la moneda (número) |
+| `clima("Monterrey")` | Temperatura y tiempo ahora (descripción en portugués o inglés, según la app) |
 
 Todas las funciones de envío aceptan `para=ID_DEL_CHAT` (o `para="@canal"`) para mandar a otra conversación, por ejemplo en una programación sin destino.
 
@@ -183,6 +187,10 @@ explicación, en el idioma en que se escribió el código.
 | `escolher` | `choice` | `elegir` | `choisir` | `выбрать` |
 | `agora` | `now` | `ahora` | `maintenant` | `сейчас` |
 | `lembrar` | `remind` | `recordar` | `rappeler` | `напомнить` |
+| `buscar` | `fetch` | `consultar` | `recuperer` | `запрос` |
+| `preco` / `cotacao` | `price` | `precio` | `prix` | `цена` |
+| `cambio` | `exchange_rate` / `rate` | `tipo_de_cambio` / `cambio` | `taux_de_change` | `курс` |
+| `clima` | `weather` | `clima` | `meteo` | `погода` |
 | `cancelar_lembretes` | `cancel_reminders` | `cancelar_recordatorios` | `annuler_rappels` | `отменить_напоминания` |
 | `verdadeiro` | `true` | `verdadero` | `vrai` | `истина` |
 | `falso` | `false` | `falso` | `faux` | `ложь` |
@@ -215,6 +223,11 @@ explicación, en el idioma en que se escribió el código.
 | `tipo` | `type` | `tipo` | `type` | `тип` |
 | `titulo` / `nome` | `title` / `name` | `titulo` / `nombre` | `titre` / `nom` | `название` |
 | `privado` | `private` / `is_private` | `privado` | `prive` | `личный` |
+| `status` / `codigo` | `status` / `status_code` | `estado` / `codigo` | `statut` / `code` | `статус` / `код` |
+| `texto` | `text` | `texto` | `texte` | `текст` |
+| `json` / `dados` | `json` | `json` / `datos` | `json` / `donnees` | `json` / `данные` |
+| `ok` / `sucesso` | `ok` / `success` | `ok` / `exito` | `ok` / `succes` | `ок` / `успех` |
+| `erro` | `error` | `error` | `erreur` | `ошибка` |
 | `saida` | `output` / `stdout` | `salida` | `sortie` | `вывод` |
 | `erro` | `error` / `stderr` | `error` | `erreur` | `ошибка` |
 | `codigo` | `code` / `exit_code` | `codigo` | `code` | `код` |
@@ -234,6 +247,11 @@ explicación, en el idioma en que se escribió el código.
 | `dado` | `data` | `dato` | `donnee` | `данные` |
 | `copiar` | `copy` | `copiar` | `copier` | `копировать` |
 | `para` | `to` / `chat_id` | `para` | `vers` / `destinataire` | `кому` |
+| `metodo` | `method` | `metodo` | `methode` | `метод` |
+| `corpo` | `body` | `cuerpo` | `corps` | `тело` |
+| `json` | `json` | `json` | `json` | `json` |
+| `cabecalhos` | `headers` | `encabezados` | `entetes` | `заголовки` |
+| `moeda` | `currency` | `moneda` | `devise` | `валюта` |
 
 ### Tipos de mensaje
 

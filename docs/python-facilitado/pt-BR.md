@@ -102,6 +102,10 @@ dicionário (`.get()`…).
 | `agora()` | Data e hora do celular: `"25/11/2026 14:30"` |
 | `lembrar(quando_e_texto)` | Agenda um lembrete para quem mandou: `lembrar("amanhã 9h comprar pão")`, `lembrar("em 30 minutos tirar o bolo")` ou `lembrar(30, "tirar o bolo")` (minutos). Devolve quando vai lembrar (`"27/11 às 09:00"`) ou vazio se não entendeu |
 | `cancelar_lembretes()` | Apaga os lembretes pendentes de quem mandou e diz quantos eram |
+| `buscar(url, metodo="GET", json={...}, corpo="", cabecalhos={...}, tempo=15)` | Busca um site ou API. O resultado tem `r.ok`, `r.status`, `r.texto`, `r.json` e `r.erro`. Com `json=` vira POST. Até 20 por execução |
+| `preco("BTC")`, `preco("ETH", moeda="USD")` | Cotação de criptomoeda (número) |
+| `cambio("USD")`, `cambio("EUR", moeda="BRL")` | Quanto vale 1 unidade da moeda (número) |
+| `clima("São Paulo")` | Temperatura e tempo agora: `"23 °C, parcialmente nublado"` |
 
 Todas as funções de envio aceitam `para=ID_DO_CHAT` (ou `para="@canal"`) para mandar em outra conversa, por exemplo num agendamento sem destino.
 
@@ -179,6 +183,10 @@ idioma em que o código foi escrito.
 | `escolher` | `choice` | `elegir` | `choisir` | `выбрать` |
 | `agora` | `now` | `ahora` | `maintenant` | `сейчас` |
 | `lembrar` | `remind` | `recordar` | `rappeler` | `напомнить` |
+| `buscar` | `fetch` | `consultar` | `recuperer` | `запрос` |
+| `preco` / `cotacao` | `price` | `precio` | `prix` | `цена` |
+| `cambio` | `exchange_rate` / `rate` | `tipo_de_cambio` / `cambio` | `taux_de_change` | `курс` |
+| `clima` | `weather` | `clima` | `meteo` | `погода` |
 | `cancelar_lembretes` | `cancel_reminders` | `cancelar_recordatorios` | `annuler_rappels` | `отменить_напоминания` |
 | `verdadeiro` | `true` | `verdadero` | `vrai` | `истина` |
 | `falso` | `false` | `falso` | `faux` | `ложь` |
@@ -211,6 +219,11 @@ idioma em que o código foi escrito.
 | `tipo` | `type` | `tipo` | `type` | `тип` |
 | `titulo` / `nome` | `title` / `name` | `titulo` / `nombre` | `titre` / `nom` | `название` |
 | `privado` | `private` / `is_private` | `privado` | `prive` | `личный` |
+| `status` / `codigo` | `status` / `status_code` | `estado` / `codigo` | `statut` / `code` | `статус` / `код` |
+| `texto` | `text` | `texto` | `texte` | `текст` |
+| `json` / `dados` | `json` | `json` / `datos` | `json` / `donnees` | `json` / `данные` |
+| `ok` / `sucesso` | `ok` / `success` | `ok` / `exito` | `ok` / `succes` | `ок` / `успех` |
+| `erro` | `error` | `error` | `erreur` | `ошибка` |
 | `saida` | `output` / `stdout` | `salida` | `sortie` | `вывод` |
 | `erro` | `error` / `stderr` | `error` | `erreur` | `ошибка` |
 | `codigo` | `code` / `exit_code` | `codigo` | `code` | `код` |
@@ -230,6 +243,11 @@ idioma em que o código foi escrito.
 | `dado` | `data` | `dato` | `donnee` | `данные` |
 | `copiar` | `copy` | `copiar` | `copier` | `копировать` |
 | `para` | `to` / `chat_id` | `para` | `vers` / `destinataire` | `кому` |
+| `metodo` | `method` | `metodo` | `methode` | `метод` |
+| `corpo` | `body` | `cuerpo` | `corps` | `тело` |
+| `json` | `json` | `json` | `json` | `json` |
+| `cabecalhos` | `headers` | `encabezados` | `entetes` | `заголовки` |
+| `moeda` | `currency` | `moneda` | `devise` | `валюта` |
 
 ### Tipos de mensagem
 

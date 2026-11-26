@@ -107,6 +107,10 @@ plus les méthodes courantes de texte (`.lower()`, `.split()`, `.replace()`…),
 | `maintenant()` | Date et heure du téléphone : `"25/11/2026 14:30"` |
 | `rappeler(quand_et_texte)` | Programme un rappel pour l'expéditeur : `rappeler("25/12 10:00 appeler mamie")` ou `rappeler(30, "sortir le gâteau")` (minutes). Les dates en toutes lettres sont comprises en portugais et en anglais ("tomorrow 9am…"). Renvoie quand le rappel aura lieu, ou vide s'il n'a pas compris |
 | `annuler_rappels()` | Supprime les rappels en attente de l'expéditeur et dit combien il y en avait |
+| `recuperer(url, methode="GET", json={...}, corps="", entetes={...}, delai=15)` | Interroge un site ou une API. Le résultat a `r.ok`, `r.statut`, `r.texte`, `r.json` et `r.erreur`. Avec `json=`, c'est un POST. Jusqu'à 20 par exécution |
+| `prix("BTC")`, `prix("ETH", devise="EUR")` | Cours d'une cryptomonnaie (nombre) |
+| `taux_de_change("USD", devise="EUR")` | Valeur d'une unité de la devise (nombre) |
+| `meteo("Lyon")` | Température et temps actuels (description en portugais ou en anglais, selon l'application) |
 
 Toutes les fonctions d'envoi acceptent `vers=ID_DU_CHAT` (ou `vers="@canal"`) pour envoyer dans une autre conversation, par exemple dans une programmation sans destination.
 
@@ -184,6 +188,10 @@ ligne et une explication, dans la langue du code.
 | `escolher` | `choice` | `elegir` | `choisir` | `выбрать` |
 | `agora` | `now` | `ahora` | `maintenant` | `сейчас` |
 | `lembrar` | `remind` | `recordar` | `rappeler` | `напомнить` |
+| `buscar` | `fetch` | `consultar` | `recuperer` | `запрос` |
+| `preco` / `cotacao` | `price` | `precio` | `prix` | `цена` |
+| `cambio` | `exchange_rate` / `rate` | `tipo_de_cambio` / `cambio` | `taux_de_change` | `курс` |
+| `clima` | `weather` | `clima` | `meteo` | `погода` |
 | `cancelar_lembretes` | `cancel_reminders` | `cancelar_recordatorios` | `annuler_rappels` | `отменить_напоминания` |
 | `verdadeiro` | `true` | `verdadero` | `vrai` | `истина` |
 | `falso` | `false` | `falso` | `faux` | `ложь` |
@@ -216,6 +224,11 @@ ligne et une explication, dans la langue du code.
 | `tipo` | `type` | `tipo` | `type` | `тип` |
 | `titulo` / `nome` | `title` / `name` | `titulo` / `nombre` | `titre` / `nom` | `название` |
 | `privado` | `private` / `is_private` | `privado` | `prive` | `личный` |
+| `status` / `codigo` | `status` / `status_code` | `estado` / `codigo` | `statut` / `code` | `статус` / `код` |
+| `texto` | `text` | `texto` | `texte` | `текст` |
+| `json` / `dados` | `json` | `json` / `datos` | `json` / `donnees` | `json` / `данные` |
+| `ok` / `sucesso` | `ok` / `success` | `ok` / `exito` | `ok` / `succes` | `ок` / `успех` |
+| `erro` | `error` | `error` | `erreur` | `ошибка` |
 | `saida` | `output` / `stdout` | `salida` | `sortie` | `вывод` |
 | `erro` | `error` / `stderr` | `error` | `erreur` | `ошибка` |
 | `codigo` | `code` / `exit_code` | `codigo` | `code` | `код` |
@@ -235,6 +248,11 @@ ligne et une explication, dans la langue du code.
 | `dado` | `data` | `dato` | `donnee` | `данные` |
 | `copiar` | `copy` | `copiar` | `copier` | `копировать` |
 | `para` | `to` / `chat_id` | `para` | `vers` / `destinataire` | `кому` |
+| `metodo` | `method` | `metodo` | `methode` | `метод` |
+| `corpo` | `body` | `cuerpo` | `corps` | `тело` |
+| `json` | `json` | `json` | `json` | `json` |
+| `cabecalhos` | `headers` | `encabezados` | `entetes` | `заголовки` |
+| `moeda` | `currency` | `moneda` | `devise` | `валюта` |
 
 ### Types de message
 
