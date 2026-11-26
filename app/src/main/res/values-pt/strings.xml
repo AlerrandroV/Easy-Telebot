@@ -742,7 +742,7 @@
     <string name="shop_test_ok">Conectado: %1$s</string>
     <string name="shop_show_key">Mostrar</string>
     <string name="shop_save_keys">Salvar credenciais</string>
-    <string name="shop_keys_note">As credenciais ficam cifradas no celular e só são usadas para falar com o Mercado Pago e o Blink. Ao salvar, o bot é reiniciado se estiver ligado.</string>
+    <string name="shop_keys_note">As credenciais ficam cifradas no celular e só são usadas para falar com o gateway correspondente (Mercado Pago, Blink, Stripe, PayPal). Ao salvar, o bot é reiniciado se estiver ligado.</string>
     <string name="shop_miniapp">Vitrine (mini app)</string>
     <string name="shop_miniapp_enable">Botão Abrir loja</string>
     <string name="shop_miniapp_enable_sub">Além da lista no chat, o bot mostra um botão que abre a vitrine com fotos, carrinho e quantidades, dentro do próprio Telegram.</string>
@@ -1614,4 +1614,80 @@
     <string name="log_booking_created">Agenda: %1$s marcou %2$s.</string>
     <string name="log_booking_cancelled">Agenda: horário de %1$s cancelado (%2$s).</string>
     <string name="log_form_done">%1$s respondeu o formulário “%2$s”.</string>
+    <string name="log_coupon_used">Cupom %1$s usado no pedido %2$s</string>
+    <string name="log_cart_reminder">Lembrete de carrinho enviado: pedido %1$s (%2$s)</string>
+    <string name="product_type">Tipo</string>
+    <string name="product_type_digital">Digital</string>
+    <string name="product_type_physical">Físico</string>
+    <string name="product_type_donation">Doação</string>
+    <string name="product_intro_physical">Produto entregue por você (correio, motoboy, retirada). O bot pede o endereço antes do pagamento e soma o frete configurado na loja. Depois, marque o pedido como enviado para avisar a pessoa.</string>
+    <string name="product_intro_donation">A pessoa escolhe quanto quer dar: um dos valores sugeridos ou um valor livre (a partir do mínimo).</string>
+    <string name="product_amounts">Valores sugeridos (%1$s)</string>
+    <string name="product_amounts_hint">Até 6 valores separados por espaço, ex.: 5 10 25. Também aparece o botão \"Outro valor\".</string>
+    <string name="product_min_amount">Valor mínimo (%1$s)</string>
+    <string name="product_err_amounts">Valores sugeridos: use até 6 números maiores que zero, separados por espaço.</string>
+    <string name="product_delivery_hint_physical">Opcional. Mensagem extra enviada depois do pagamento (ex.: prazo de entrega). O bot já avisa que o pedido será enviado.</string>
+    <string name="product_delivery_hint_donation">Opcional. Agradecimento enviado depois da doação (texto, foto, link). Aceita as variáveis, como {nome}.</string>
+    <string name="shop_from_price">a partir de %1$s</string>
+    <string name="shop_gw_stripe">Stripe</string>
+    <string name="shop_gw_paypal">PayPal</string>
+    <string name="shop_gw_coupon">Cupom de 100%</string>
+    <string name="shop_gw_stripe_title">Stripe</string>
+    <string name="shop_gw_stripe_sub">Link de pagamento com cartão e as formas que a sua conta Stripe aceitar (no Brasil, Pix também). O bot confere sozinho quando é pago.</string>
+    <string name="shop_stripe_key">Chave secreta (sk_live_… ou rk_live_…)</string>
+    <string-array name="shop_stripe_steps">
+        <item>Entre em dashboard.stripe.com e abra Desenvolvedores, Chaves de API.</item>
+        <item>Recomendado: crie uma chave restrita com permissão de escrita em Checkout Sessions (e leitura em Saldo, para o teste).</item>
+        <item>Ou copie a chave secreta (sk_live_…). Use sk_test_… para testar sem cobrar de verdade.</item>
+    </string-array>
+    <string name="shop_gw_paypal_title">PayPal</string>
+    <string name="shop_gw_paypal_sub">A pessoa paga com a conta PayPal ou cartão. O bot confirma e recebe o pagamento sozinho.</string>
+    <string name="shop_paypal_client_id">Client ID</string>
+    <string name="shop_paypal_secret">Secret</string>
+    <string-array name="shop_paypal_steps">
+        <item>Entre em developer.paypal.com com a sua conta PayPal (de empresa) e abra Apps &amp; Credentials.</item>
+        <item>Escolha Live (ou Sandbox para testar), crie um app e copie o Client ID e o Secret.</item>
+        <item>Moedas aceitas aqui: BRL, USD, EUR e MXN.</item>
+    </string-array>
+    <string name="shop_paypal_sandbox">Modo de teste (sandbox)</string>
+    <string name="shop_paypal_sandbox_sub">Usa credenciais de Sandbox; nenhum dinheiro de verdade é cobrado.</string>
+    <string name="shop_gw_manual_title">Pix com a sua chave / pagamento combinado</string>
+    <string name="shop_gw_manual_sub">Sem cadastro em gateway: o bot mostra o Pix (QR e copia e cola) ou as suas instruções. A pessoa toca em \"Já paguei\" e você confirma no Telegram.</string>
+    <string name="shop_manual_explain">Com a chave Pix preenchida, o bot gera o QR code e o código copia e cola com o valor exato do pedido. Os admins recebem um aviso com os botões Confirmar e Recusar: confira no extrato do banco antes de confirmar.</string>
+    <string name="shop_pix_key">Chave Pix (opcional)</string>
+    <string name="shop_pix_name">Nome do recebedor</string>
+    <string name="shop_pix_city">Cidade</string>
+    <string name="shop_pix_key_hint">CPF/CNPJ só com números, e-mail, celular com +55 ou chave aleatória. Nome (até 25 letras) e cidade aparecem no app do banco de quem paga.</string>
+    <string name="shop_manual_label">Nome do botão (opcional)</string>
+    <string name="shop_manual_label_hint">Ex.: Transferência, Dinheiro na entrega</string>
+    <string name="shop_manual_instructions">Instruções (opcional)</string>
+    <string name="shop_sales_extras">Cupons, frete e lembretes</string>
+    <string name="shop_coupons">Cupons de desconto</string>
+    <string name="shop_coupons_sub">A pessoa toca em \"Tenho um cupom\" antes de pagar e digita o código.</string>
+    <string name="shop_coupon_add">Novo cupom</string>
+    <string name="shop_coupon_edit">Editar cupom</string>
+    <string name="shop_coupon_code">Código (ex.: PROMO10)</string>
+    <string name="shop_coupon_percent">Porcentagem</string>
+    <string name="shop_coupon_amount">Valor fixo (%1$s)</string>
+    <string name="shop_coupon_limit">Limite de usos (vazio = sem limite)</string>
+    <string name="shop_coupon_expires">Vale até (aaaa-mm-dd, opcional)</string>
+    <string name="shop_coupon_active">Ativo</string>
+    <string name="shop_coupon_uses_n">até %1$d usos</string>
+    <string name="shop_coupon_until">até %1$s</string>
+    <string name="shop_shipping">Frete (produtos físicos)</string>
+    <string name="shop_shipping_sub">Valor fixo somado ao pedido que tiver produto físico. Deixe vazio para não cobrar.</string>
+    <string name="shop_shipping_fee">Frete (%1$s)</string>
+    <string name="shop_shipping_free_over">Grátis a partir de</string>
+    <string name="shop_abandoned">Lembrar quem não terminou a compra</string>
+    <string name="shop_abandoned_sub">Uma mensagem só, \"Você esqueceu algo?\", com o botão para pagar.</string>
+    <string name="shop_after_minutes">depois de %1$d min</string>
+    <string name="shop_order_coupon">Cupom %1$s: -%2$s</string>
+    <string name="shop_order_shipping">Frete: %1$s</string>
+    <string name="shop_order_shipped">Enviado</string>
+    <string name="shop_order_shipped_code">Enviado · rastreio %1$s</string>
+    <string name="shop_status_to_ship">A enviar</string>
+    <string name="shop_mark_shipped">Marcar como enviado</string>
+    <string name="shop_ship_msg">O bot avisa a pessoa que o pedido saiu para entrega.</string>
+    <string name="shop_tracking_code">Código de rastreio (opcional)</string>
+    <string name="shop_ship_notify">Avisar</string>
 </resources>

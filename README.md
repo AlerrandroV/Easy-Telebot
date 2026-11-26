@@ -52,11 +52,20 @@ As mesmas variáveis também aceitam nomes em inglês: `{name}`, `{last_name}`,
 Em **Vendas**, na tela do bot:
 
 - **Catálogo**: produtos digitais (a entrega — texto, link, arquivo — sai sozinha
-  depois do pagamento) e **assinaturas de canais/grupos** (convite pessoal,
+  depois do pagamento), **produtos físicos** (o bot pede o endereço, soma o frete
+  e você marca o pedido como enviado, com código de rastreio), **doações** (valores
+  sugeridos ou valor livre) e **assinaturas de canais/grupos** (convite pessoal,
   lembrete antes de vencer e remoção automática de quem não renovou).
 - **Pagamentos**: Mercado Pago (link com Pix, cartão e boleto, ou Pix com QR
-  code no chat), Bitcoin pela Lightning (Blink) e Telegram Stars. O bot confere
-  os pagamentos sozinho, sem servidor nem webhook.
+  code no chat), Stripe, PayPal, Bitcoin pela Lightning (Blink) e Telegram Stars.
+  O bot confere os pagamentos sozinho, sem servidor nem webhook.
+- **Pix com a sua chave**, sem cadastro em gateway: o bot gera o QR code e o
+  copia e cola com o valor exato; a pessoa toca em *Já paguei* e um admin confirma
+  pelo Telegram. Também serve para qualquer pagamento combinado (transferência,
+  dinheiro na entrega), com as suas instruções.
+- **Cupons de desconto** (porcentagem ou valor, limite de usos e validade),
+  **frete** fixo com frete grátis a partir de um valor e lembrete de **carrinho
+  abandonado** ("Você esqueceu algo?").
 - **Vitrine (mini app)**: o botão *Abrir loja* abre uma vitrine com carrinho
   dentro do Telegram. A página fica em [`docs/loja`](docs/loja/index.html) e
   recebe o catálogo pelo próprio link. Para usar o endereço padrão, ative o
@@ -245,8 +254,9 @@ Easy Telebot lets anyone create a Telegram bot and run it **on their own Android
 phone**: no server, no domain, no monthly fee and no coding. Paste the token from
 @BotFather, create commands with ready replies (text, media, buttons, menus,
 "wait for reply" rules), and the bot answers while the phone is on and online.
-It also has a shop (Mercado Pago, Bitcoin Lightning, Telegram Stars, paid channel
-subscriptions), antispam, broadcasts, Termux scripts and **Simple Python**, a safe
+It also has a shop (Mercado Pago, Stripe, PayPal, Pix with your own key, Bitcoin
+Lightning, Telegram Stars; physical products with shipping, donations, coupons,
+abandoned-cart reminders and paid channel subscriptions), antispam, broadcasts, Termux scripts and **Simple Python**, a safe
 slice of Python for small decisions
 ([guide](docs/python-facilitado/en-US.md)). The app is available in English and
 Brazilian Portuguese.

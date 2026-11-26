@@ -15,7 +15,7 @@ data class ShopOrder(
     val total: Long,
     val currency: String,
     val stars: Int?,
-    /** "mp", "pix", "btc", "xtr" ou vazio (ainda não escolheu). */
+    /** "mp", "pix", "btc", "xtr", "manual", "stripe", "paypal", "coupon" ou vazio (ainda não escolheu). */
     val gateway: String,
     /** pending, paid, expired, cancelled */
     val status: String,
@@ -23,7 +23,16 @@ data class ShopOrder(
     val paidAt: Long,
     val delivered: Boolean,
     val note: String,
-)
+    val coupon: String = "",
+    val discount: Long = 0,
+    val shipping: Long = 0,
+    /** Endereço digitado pela pessoa (produto físico). */
+    val address: String = "",
+    /** Código de rastreio ("-" = enviado sem código); vazio = ainda não enviado. */
+    val shipped: String = "",
+) {
+    val hasPhysical get() = items.any { it.type == "physical" }
+}
 
 data class Subscriber(
     val userId: Long,
@@ -88,6 +97,11 @@ object ShopBridge {
                 paidAt = o.optLong("paid_at") * 1000,
                 delivered = o.optInt("delivered") == 1,
                 note = if (o.isNull("note")) "" else o.optString("note"),
+                coupon = if (o.isNull("coupon")) "" else o.optString("coupon"),
+                discount = o.optLong("discount"),
+                shipping = o.optLong("shipping"),
+                address = if (o.isNull("address")) "" else o.optString("address"),
+                shipped = if (o.isNull("shipped")) "" else o.optString("shipped"),
             )
         }
     } catch (e: Exception) {
@@ -126,6 +140,10 @@ object ShopBridge {
     fun confirmManually(context: Context, token: String, dir: String, orderId: String, paymentsJson: String) =
         guard { result(flow(context).callAttr("app_confirm", token, dir, orderId, paymentsJson).toString()) }
 
+    /** Produto físico enviado: avisa a pessoa, com o código de rastreio se houver. */
+    fun markShipped(context: Context, token: String, dir: String, orderId: String, tracking: String) =
+        guard { result(flow(context).callAttr("app_ship", token, dir, orderId, tracking).toString()) }
+
     fun extendSubscription(context: Context, token: String, dir: String, userId: Long, chatId: Long, days: Int) =
         guard { result(flow(context).callAttr("app_subscription", token, dir, userId, chatId, "extend", days).toString()) }
 
@@ -139,4 +157,12 @@ object ShopBridge {
     /** Testa a chave do Blink. Ok = `name` (usuário) e `balance` (sats). */
     fun testBlink(context: Context, key: String) =
         guard { result(gateways(context).callAttr("test_blink", key).toString()) }
+
+    /** Testa a chave secreta da Stripe. Ok = `name` (conta) e `currency`. */
+    fun testStripe(context: Context, key: String) =
+        guard { result(gateways(context).callAttr("test_stripe", key).toString()) }
+
+    /** Testa as credenciais do PayPal. Ok = `name`. */
+    fun testPaypal(context: Context, clientId: String, secret: String, sandbox: Boolean) =
+        guard { result(gateways(context).callAttr("test_paypal", clientId, secret, sandbox).toString()) }
 }

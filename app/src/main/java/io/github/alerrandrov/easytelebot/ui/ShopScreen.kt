@@ -59,6 +59,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.alerrandrov.easytelebot.R
 import io.github.alerrandrov.easytelebot.data.BotRepository
 import io.github.alerrandrov.easytelebot.data.ConfigRepository
+import io.github.alerrandrov.easytelebot.data.Coupon
 import io.github.alerrandrov.easytelebot.data.PaymentRepository
 import io.github.alerrandrov.easytelebot.data.PaymentSecrets
 import io.github.alerrandrov.easytelebot.data.Product
@@ -187,7 +188,12 @@ private fun ProductCard(p: Product, currency: String, onClick: () -> Unit) {
                 contentAlignment = Alignment.Center,
             ) {
                 AppIcon(
-                    if (p.isSubscription) R.drawable.ic_card_membership else R.drawable.ic_sell,
+                    when (p.type) {
+                        Product.TYPE_SUBSCRIPTION -> R.drawable.ic_card_membership
+                        Product.TYPE_PHYSICAL -> R.drawable.ic_local_shipping
+                        Product.TYPE_DONATION -> R.drawable.ic_volunteer_activism
+                        else -> R.drawable.ic_sell
+                    },
                     tint = MaterialTheme.colorScheme.onSecondaryContainer,
                 )
             }
@@ -195,7 +201,11 @@ private fun ProductCard(p: Product, currency: String, onClick: () -> Unit) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(p.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 val details = buildList {
-                    if (p.price > 0) add(ShopSettings.formatPrice(p.price, currency))
+                    if (p.isDonation) add(stringResource(R.string.product_type_donation))
+                    if (p.price > 0) add(
+                        if (p.isDonation) stringResource(R.string.shop_from_price, ShopSettings.formatPrice(p.price, currency))
+                        else ShopSettings.formatPrice(p.price, currency),
+                    )
                     p.stars?.let { add(stringResource(R.string.shop_stars_n, it)) }
                     if (p.isSubscription) add(stringResource(R.string.shop_sub_detail, p.days, p.chatTitle.ifEmpty { "?" }))
                     if (p.stock >= 0) add(stringResource(R.string.shop_stock_n, p.stock))
@@ -225,6 +235,7 @@ private fun OrdersTab(botId: Long, dir: String, version: Long, currency: String,
         value = withContext(Dispatchers.IO) { ShopBridge.orders(context, dir) to ShopBridge.stats(context, dir, since) }
     }
     var open by remember { mutableStateOf<ShopOrder?>(null) }
+    var shipping by remember { mutableStateOf<ShopOrder?>(null) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<EngineError?>(null) }
     val (orders, stats) = data ?: return
@@ -262,7 +273,26 @@ private fun OrdersTab(botId: Long, dir: String, version: Long, currency: String,
                     o.items.forEach { i ->
                         Text("${i.qty}x ${i.name} · ${ShopSettings.formatPrice(i.price * i.qty, o.currency)}", style = MaterialTheme.typography.bodyMedium)
                     }
+                    if (o.discount > 0) {
+                        IconLabel(R.drawable.ic_local_offer, stringResource(R.string.shop_order_coupon, o.coupon,
+                            ShopSettings.formatPrice(o.discount, o.currency)), style = MaterialTheme.typography.bodySmall)
+                    }
+                    if (o.shipping > 0) {
+                        Text(stringResource(R.string.shop_order_shipping, ShopSettings.formatPrice(o.shipping, o.currency)),
+                            style = MaterialTheme.typography.bodySmall)
+                    }
                     Text(orderTotal(o), fontWeight = FontWeight.Bold)
+                    if (o.address.isNotBlank()) {
+                        androidx.compose.foundation.text.selection.SelectionContainer {
+                            IconLabel(R.drawable.ic_local_shipping, o.address, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                    if (o.shipped.isNotBlank()) {
+                        IconLabel(R.drawable.ic_check_circle,
+                            if (o.shipped == "-") stringResource(R.string.shop_order_shipped)
+                            else stringResource(R.string.shop_order_shipped_code, o.shipped),
+                            style = MaterialTheme.typography.bodySmall, tint = MaterialTheme.colorScheme.primary)
+                    }
                     IconLabel(R.drawable.ic_account_balance_wallet, gatewayLabel(o.gateway), style = MaterialTheme.typography.bodySmall)
                     IconLabel(R.drawable.ic_schedule, formatDateTime(o.createdAt), style = MaterialTheme.typography.bodySmall)
                     if (o.status == "paid" && !o.delivered) {
@@ -287,6 +317,8 @@ private fun OrdersTab(botId: Long, dir: String, version: Long, currency: String,
                             }
                         }
                     }) { Text(stringResource(R.string.shop_confirm_manual)) }
+                } else if (o.status == "paid" && o.hasPhysical && o.shipped.isBlank()) {
+                    TextButton(onClick = { shipping = o; open = null }) { Text(stringResource(R.string.shop_mark_shipped)) }
                 } else {
                     TextButton(onClick = { open = null }) { Text(stringResource(R.string.close)) }
                 }
@@ -296,6 +328,45 @@ private fun OrdersTab(botId: Long, dir: String, version: Long, currency: String,
             },
         )
     }
+    shipping?.let { o -> ShipDialog(botId, dir, o, onDismiss = { shipping = null }) { shipping = null; onChanged() } }
+}
+
+@Composable
+private fun ShipDialog(botId: Long, dir: String, o: ShopOrder, onDismiss: () -> Unit, onDone: () -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var tracking by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<EngineError?>(null) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.shop_mark_shipped)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.shop_ship_msg), style = MaterialTheme.typography.bodyMedium)
+                OutlinedTextField(
+                    value = tracking, onValueChange = { tracking = it.take(100) },
+                    label = { Text(stringResource(R.string.shop_tracking_code)) }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                )
+                error?.let { ExplanationCard(ErrorExplainer.explain(context, it)) }
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = !busy, onClick = {
+                val token = TokenStore.load(context, botId) ?: return@TextButton
+                busy = true
+                scope.launch {
+                    val r = withContext(Dispatchers.IO) { ShopBridge.markShipped(context, token, dir, o.id, tracking.trim()) }
+                    busy = false
+                    when (r) {
+                        is PythonBridge.Result.Ok -> onDone()
+                        is PythonBridge.Result.Failed -> error = r.error
+                    }
+                }
+            }) { Text(stringResource(R.string.shop_ship_notify)) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
 }
 
 @Composable
@@ -317,6 +388,8 @@ private fun OrderRow(o: ShopOrder, onClick: () -> Unit) {
             Spacer(Modifier.width(8.dp))
             val cs = MaterialTheme.colorScheme
             when {
+                o.status == "paid" && o.hasPhysical && o.shipped.isBlank() ->
+                    StatusChip(stringResource(R.string.shop_status_to_ship), cs.tertiaryContainer, cs.onTertiaryContainer)
                 o.status == "paid" && !o.delivered -> StatusChip(stringResource(R.string.shop_status_problem), cs.errorContainer, cs.onErrorContainer)
                 o.status == "paid" -> StatusChip(stringResource(R.string.shop_status_paid), cs.primary, cs.onPrimary)
                 o.status == "pending" -> StatusChip(stringResource(R.string.shop_status_pending), cs.tertiaryContainer, cs.onTertiaryContainer)
@@ -339,6 +412,9 @@ private fun gatewayLabel(gateway: String): String = stringResource(
         "btc" -> R.string.shop_gw_btc
         "xtr" -> R.string.shop_gw_stars
         "manual" -> R.string.shop_gw_manual
+        "stripe" -> R.string.shop_gw_stripe
+        "paypal" -> R.string.shop_gw_paypal
+        "coupon" -> R.string.shop_gw_coupon
         else -> R.string.shop_gw_none
     },
 )
@@ -534,8 +610,12 @@ private fun ShopSettingsTab(botId: Long, shop: ShopSettings, save: ((ShopSetting
         testError = null
         scope.launch {
             val r = withContext(Dispatchers.IO) {
-                if (which == "mp") ShopBridge.testMercadoPago(context, secrets.mercadoPagoToken)
-                else ShopBridge.testBlink(context, secrets.blinkKey)
+                when (which) {
+                    "mp" -> ShopBridge.testMercadoPago(context, secrets.mercadoPagoToken)
+                    "stripe" -> ShopBridge.testStripe(context, secrets.stripeKey)
+                    "paypal" -> ShopBridge.testPaypal(context, secrets.paypalClientId, secrets.paypalSecret, shop.gateways.paypalSandbox)
+                    else -> ShopBridge.testBlink(context, secrets.blinkKey)
+                }
             }
             testing = null
             when (r) {
@@ -638,6 +718,55 @@ private fun ShopSettingsTab(botId: Long, shop: ShopSettings, save: ((ShopSetting
             onEnabled = { v -> save { it.copy(gateways = it.gateways.copy(stars = v)) } },
         ) {}
 
+        // Stripe
+        GatewayCard(
+            icon = R.drawable.ic_credit_card,
+            title = stringResource(R.string.shop_gw_stripe_title),
+            subtitle = stringResource(R.string.shop_gw_stripe_sub),
+            enabled = shop.gateways.stripe,
+            onEnabled = { v -> save { it.copy(gateways = it.gateways.copy(stripe = v)) } },
+        ) {
+            SecretField(stringResource(R.string.shop_stripe_key), secrets.stripeKey) { secrets = secrets.copy(stripeKey = it.trim()) }
+            StepList(stringArrayResource(R.array.shop_stripe_steps).toList())
+            TestRow(
+                testing = testing == "stripe",
+                ok = testResult?.takeIf { it.first == "stripe" }?.second,
+                canTest = secrets.stripeKey.isNotBlank(),
+                onTest = { test("stripe") },
+            )
+        }
+
+        // PayPal
+        GatewayCard(
+            icon = R.drawable.ic_account_balance_wallet,
+            title = stringResource(R.string.shop_gw_paypal_title),
+            subtitle = stringResource(R.string.shop_gw_paypal_sub),
+            enabled = shop.gateways.paypal,
+            onEnabled = { v -> save { it.copy(gateways = it.gateways.copy(paypal = v)) } },
+        ) {
+            SecretField(stringResource(R.string.shop_paypal_client_id), secrets.paypalClientId) { secrets = secrets.copy(paypalClientId = it.trim()) }
+            SecretField(stringResource(R.string.shop_paypal_secret), secrets.paypalSecret) { secrets = secrets.copy(paypalSecret = it.trim()) }
+            StepList(stringArrayResource(R.array.shop_paypal_steps).toList())
+            SwitchRow(stringResource(R.string.shop_paypal_sandbox), stringResource(R.string.shop_paypal_sandbox_sub), shop.gateways.paypalSandbox) { v ->
+                save { it.copy(gateways = it.gateways.copy(paypalSandbox = v)) }
+            }
+            TestRow(
+                testing = testing == "paypal",
+                ok = testResult?.takeIf { it.first == "paypal" }?.second,
+                canTest = secrets.paypalClientId.isNotBlank() && secrets.paypalSecret.isNotBlank(),
+                onTest = { test("paypal") },
+            )
+        }
+
+        // Pix com chave própria / pagamento combinado
+        GatewayCard(
+            icon = R.drawable.ic_qr_code_2,
+            title = stringResource(R.string.shop_gw_manual_title),
+            subtitle = stringResource(R.string.shop_gw_manual_sub),
+            enabled = shop.gateways.manual,
+            onEnabled = { v -> save { it.copy(gateways = it.gateways.copy(manual = v)) } },
+        ) { ManualGatewayFields(shop, save) }
+
         if (secrets != saved.value) {
             Button(onClick = { saveSecrets(secrets) }, modifier = Modifier.fillMaxWidth()) {
                 ButtonLabel(R.drawable.ic_key, stringResource(R.string.shop_save_keys))
@@ -645,6 +774,27 @@ private fun ShopSettingsTab(botId: Long, shop: ShopSettings, save: ((ShopSetting
         }
         Text(stringResource(R.string.shop_keys_note), style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+        SectionTitle(stringResource(R.string.shop_sales_extras))
+        CouponsCard(shop, save)
+        ShippingCard(shop, save)
+        Card(Modifier.fillMaxWidth()) {
+            Column {
+                SwitchRow(stringResource(R.string.shop_abandoned), stringResource(R.string.shop_abandoned_sub), shop.abandoned) { v ->
+                    save { it.copy(abandoned = v) }
+                }
+                if (shop.abandoned) {
+                    FlowRow(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        listOf(10, 20, 30, 50).forEach { m ->
+                            FilterChip(
+                                selected = shop.abandonedMinutes == m, onClick = { save { it.copy(abandonedMinutes = m) } },
+                                label = { Text(stringResource(R.string.shop_after_minutes, m)) },
+                            )
+                        }
+                    }
+                }
+            }
+        }
 
         SectionTitle(stringResource(R.string.shop_miniapp))
         Card(Modifier.fillMaxWidth()) {
@@ -747,6 +897,219 @@ private fun TestRow(testing: Boolean, ok: String?, canTest: Boolean, onTest: () 
                 R.drawable.ic_check_circle, stringResource(R.string.shop_test_ok, ok.ifEmpty { "-" }),
                 style = MaterialTheme.typography.bodySmall, tint = MaterialTheme.colorScheme.primary,
             )
+        }
+    }
+}
+
+// -- Pix com chave própria, cupons e frete ----------------------------------------------------
+
+@Composable
+private fun ManualGatewayFields(shop: ShopSettings, save: ((ShopSettings) -> ShopSettings) -> Unit) {
+    val g = shop.gateways
+    var pixKey by remember { mutableStateOf(g.pixKey) }
+    var pixName by remember { mutableStateOf(g.pixName) }
+    var pixCity by remember { mutableStateOf(g.pixCity) }
+    var label by remember { mutableStateOf(g.manualLabel) }
+    var instructions by remember { mutableStateOf(g.manualInstructions) }
+    val changed = pixKey != g.pixKey || pixName != g.pixName || pixCity != g.pixCity ||
+        label != g.manualLabel || instructions != g.manualInstructions
+    val pixIncomplete = pixKey.isNotBlank() && (pixName.isBlank() || pixCity.isBlank())
+
+    Text(stringResource(R.string.shop_manual_explain), style = MaterialTheme.typography.bodySmall)
+    OutlinedTextField(
+        value = pixKey, onValueChange = { pixKey = it.trim().take(77) },
+        label = { Text(stringResource(R.string.shop_pix_key)) }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+    )
+    if (pixKey.isNotBlank()) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+                value = pixName, onValueChange = { pixName = it.take(25) },
+                label = { Text(stringResource(R.string.shop_pix_name)) }, singleLine = true, modifier = Modifier.weight(1f),
+                isError = pixName.isBlank(),
+            )
+            OutlinedTextField(
+                value = pixCity, onValueChange = { pixCity = it.take(15) },
+                label = { Text(stringResource(R.string.shop_pix_city)) }, singleLine = true, modifier = Modifier.weight(1f),
+                isError = pixCity.isBlank(),
+            )
+        }
+        Text(stringResource(R.string.shop_pix_key_hint), style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    OutlinedTextField(
+        value = label, onValueChange = { label = it.take(40) },
+        label = { Text(stringResource(R.string.shop_manual_label)) }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+        placeholder = { Text(stringResource(R.string.shop_manual_label_hint)) },
+    )
+    OutlinedTextField(
+        value = instructions, onValueChange = { instructions = it.take(2000) },
+        label = { Text(stringResource(R.string.shop_manual_instructions)) }, minLines = 2, modifier = Modifier.fillMaxWidth(),
+    )
+    if (changed) {
+        Button(enabled = !pixIncomplete, onClick = {
+            save {
+                it.copy(gateways = it.gateways.copy(pixKey = pixKey, pixName = pixName.trim(), pixCity = pixCity.trim(),
+                    manualLabel = label.trim(), manualInstructions = instructions))
+            }
+        }) { Text(stringResource(R.string.save)) }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CouponsCard(shop: ShopSettings, save: ((ShopSettings) -> ShopSettings) -> Unit) {
+    var editing by remember { mutableStateOf<Pair<Int, Coupon>?>(null) }
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            IconLabel(R.drawable.ic_local_offer, stringResource(R.string.shop_coupons), style = MaterialTheme.typography.titleSmall)
+            Text(stringResource(R.string.shop_coupons_sub), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            shop.coupons.forEachIndexed { i, c ->
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { editing = i to c }.padding(vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(c.code, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        val parts = buildList {
+                            add(if (c.percent > 0) "-${c.percent}%" else "-" + ShopSettings.formatPrice(c.amount, shop.currency))
+                            if (c.maxUses >= 0) add(stringResource(R.string.shop_coupon_uses_n, c.maxUses))
+                            if (c.expires.isNotEmpty()) add(stringResource(R.string.shop_coupon_until, c.expires))
+                        }
+                        Text(parts.joinToString(" · "), style = MaterialTheme.typography.bodySmall)
+                    }
+                    if (!c.active) StatusChip(stringResource(R.string.shop_inactive), MaterialTheme.colorScheme.surfaceVariant,
+                        MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            OutlinedButton(onClick = { editing = -1 to Coupon() }) {
+                ButtonLabel(R.drawable.ic_add, stringResource(R.string.shop_coupon_add))
+            }
+        }
+    }
+    editing?.let { (index, coupon) ->
+        CouponDialog(
+            coupon, shop.currency, canDelete = index >= 0,
+            onDismiss = { editing = null },
+            onDelete = { save { s -> s.copy(coupons = s.coupons.filterIndexed { i, _ -> i != index }) }; editing = null },
+        ) { c ->
+            save { s ->
+                val list = s.coupons.filterIndexed { i, _ -> i != index }.filter { it.code != c.code }
+                s.copy(coupons = if (index >= 0) list.toMutableList().apply { add(index.coerceAtMost(size), c) } else list + c)
+            }
+            editing = null
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CouponDialog(
+    coupon: Coupon,
+    currency: String,
+    canDelete: Boolean,
+    onDismiss: () -> Unit,
+    onDelete: () -> Unit,
+    onSave: (Coupon) -> Unit,
+) {
+    var code by remember { mutableStateOf(coupon.code) }
+    var isPercent by remember { mutableStateOf(coupon.amount <= 0) }
+    var value by remember {
+        mutableStateOf(if (coupon.amount > 0) ShopSettings.priceText(coupon.amount) else coupon.percent.takeIf { it > 0 }?.toString() ?: "10")
+    }
+    var limit by remember { mutableStateOf(coupon.maxUses.takeIf { it >= 0 }?.toString() ?: "") }
+    var expires by remember { mutableStateOf(coupon.expires) }
+    var active by remember { mutableStateOf(coupon.active) }
+    val percent = value.toIntOrNull()
+    val amount = ShopSettings.parsePrice(value)
+    val dateOk = expires.isBlank() || Regex("""^\d{4}-\d{2}-\d{2}$""").matches(expires.trim())
+    val valid = code.isNotBlank() && dateOk &&
+        (if (isPercent) percent != null && percent in 1..100 else amount != null && amount > 0)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(if (canDelete) R.string.shop_coupon_edit else R.string.shop_coupon_add)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = code, onValueChange = { code = Coupon.cleanCode(it) },
+                    label = { Text(stringResource(R.string.shop_coupon_code)) }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                )
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    FilterChip(selected = isPercent, onClick = { isPercent = true }, label = { Text(stringResource(R.string.shop_coupon_percent)) })
+                    FilterChip(selected = !isPercent, onClick = { isPercent = false },
+                        label = { Text(stringResource(R.string.shop_coupon_amount, currency)) })
+                }
+                OutlinedTextField(
+                    value = value, onValueChange = { value = it.filter { c -> c.isDigit() || (!isPercent && (c == ',' || c == '.')) }.take(10) },
+                    label = { Text(if (isPercent) "%" else currency) }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
+                )
+                OutlinedTextField(
+                    value = limit, onValueChange = { limit = it.filter(Char::isDigit).take(6) },
+                    label = { Text(stringResource(R.string.shop_coupon_limit)) }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                )
+                OutlinedTextField(
+                    value = expires, onValueChange = { expires = it.filter { c -> c.isDigit() || c == '-' }.take(10) },
+                    label = { Text(stringResource(R.string.shop_coupon_expires)) }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("2026-12-31") }, isError = !dateOk,
+                )
+                SwitchRow(stringResource(R.string.shop_coupon_active), null, active) { active = it }
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = valid, onClick = {
+                onSave(Coupon(
+                    code = code, percent = if (isPercent) percent ?: 0 else 0, amount = if (isPercent) 0 else amount ?: 0,
+                    maxUses = limit.toIntOrNull() ?: -1, expires = expires.trim(), active = active,
+                ))
+            }) { Text(stringResource(R.string.save)) }
+        },
+        dismissButton = {
+            Row {
+                if (canDelete) {
+                    TextButton(onClick = onDelete) { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) }
+                }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            }
+        },
+    )
+}
+
+@Composable
+private fun ShippingCard(shop: ShopSettings, save: ((ShopSettings) -> ShopSettings) -> Unit) {
+    var fee by remember { mutableStateOf(if (shop.shippingFee > 0) ShopSettings.priceText(shop.shippingFee) else "") }
+    var freeOver by remember { mutableStateOf(if (shop.freeShippingOver > 0) ShopSettings.priceText(shop.freeShippingOver) else "") }
+    val feeValue = if (fee.isBlank()) 0L else ShopSettings.parsePrice(fee)
+    val freeValue = if (freeOver.isBlank()) 0L else ShopSettings.parsePrice(freeOver)
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            IconLabel(R.drawable.ic_local_shipping, stringResource(R.string.shop_shipping), style = MaterialTheme.typography.titleSmall)
+            Text(stringResource(R.string.shop_shipping_sub), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = fee, onValueChange = { fee = it.filter { c -> c.isDigit() || c == ',' || c == '.' }.take(10) },
+                    label = { Text(stringResource(R.string.shop_shipping_fee, shop.currency)) }, singleLine = true,
+                    modifier = Modifier.weight(1f), isError = feeValue == null,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
+                )
+                OutlinedTextField(
+                    value = freeOver, onValueChange = { freeOver = it.filter { c -> c.isDigit() || c == ',' || c == '.' }.take(10) },
+                    label = { Text(stringResource(R.string.shop_shipping_free_over)) }, singleLine = true,
+                    modifier = Modifier.weight(1f), isError = freeValue == null,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
+                )
+            }
+            if (feeValue != null && freeValue != null && (feeValue != shop.shippingFee || freeValue != shop.freeShippingOver)) {
+                Button(onClick = { save { it.copy(shippingFee = feeValue, freeShippingOver = freeValue) } }) {
+                    Text(stringResource(R.string.save))
+                }
+            }
         }
     }
 }

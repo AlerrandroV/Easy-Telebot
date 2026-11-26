@@ -214,3 +214,184 @@ def test_blink(api_key):
         _, balance, username = Blink(api_key).wallet()
         return {"name": username, "balance": balance}
     return _result(run)
+
+
+def test_stripe(key):
+    return _result(lambda: Stripe(key).me())
+
+
+def test_paypal(client_id, secret, sandbox=False):
+    return _result(lambda: PayPal(client_id, secret, sandbox).me())
+
+
+# -- Stripe (Checkout) --------------------------------------------------------------------
+
+# Moedas sem centavos na Stripe (o valor vai em unidades inteiras).
+STRIPE_ZERO_DECIMAL = {"CLP", "JPY", "KRW", "PYG", "VND", "XOF", "XAF", "UGX", "RWF"}
+
+
+class Stripe:
+    """Link de pagamento (Checkout Session) com cartão, Pix (Brasil), carteiras... conforme a conta.
+
+    Chave secreta (``sk_live_...`` ou restrita ``rk_live_...`` com Checkout Sessions: escrita)."""
+
+    BASE = "https://api.stripe.com/v1"
+
+    def __init__(self, key, request=None):
+        if not key:
+            raise PaymentError(CONFIG, i18n.t("detail.stripe_no_key"))
+        self.key = key.strip()
+        self.request = request or _request
+
+    def _call(self, method, path, form=None):
+        import urllib.parse
+        body = urllib.parse.urlencode(form, doseq=True) if form else None
+        headers = {"Authorization": "Bearer " + self.key}
+        if body:
+            headers["Content-Type"] = "application/x-www-form-urlencoded"
+        return self.request(method, self.BASE + path, body, headers) or {}
+
+    def me(self):
+        data = self._call("GET", "/account")
+        name = ((data.get("business_profile") or {}).get("name") or (data.get("settings") or {}).get("dashboard", {}).get("display_name")
+                or data.get("email") or data.get("id") or "")
+        return {"name": name, "currency": str(data.get("default_currency") or "").upper()}
+
+    @staticmethod
+    def unit_amount(cents, currency):
+        return int(cents // 100) if currency.upper() in STRIPE_ZERO_DECIMAL else int(cents)
+
+    def checkout(self, order, title, return_url, minutes=60):
+        form = {"mode": "payment", "success_url": return_url, "cancel_url": return_url,
+                "client_reference_id": order["id"], "expires_at": int(time.time()) + max(30, minutes) * 60,
+                "metadata[order]": order["id"]}
+        for n, line in enumerate(_lines(order)):
+            prefix = "line_items[%d]" % n
+            form[prefix + "[quantity]"] = line["qty"]
+            form[prefix + "[price_data][currency]"] = order["currency"].lower()
+            form[prefix + "[price_data][unit_amount]"] = self.unit_amount(line["price"], order["currency"])
+            form[prefix + "[price_data][product_data][name]"] = line["name"][:250]
+        data = self._call("POST", "/checkout/sessions", form)
+        if not data.get("url"):
+            raise PaymentError(UNKNOWN, "Stripe: sem url")
+        return data["id"], data["url"]
+
+    def status(self, session_id):
+        data = self._call("GET", "/checkout/sessions/" + session_id)
+        if data.get("payment_status") == "paid":
+            return PAID
+        if data.get("status") == "expired":
+            return EXPIRED
+        return PENDING
+
+
+# -- PayPal (Orders v2) ---------------------------------------------------------------------
+
+PAYPAL_CURRENCIES = {"BRL", "USD", "EUR", "MXN", "GBP", "CAD", "AUD", "JPY"}
+
+
+class PayPal:
+    """Pedido do PayPal: a pessoa aprova no link; o motor captura o pagamento ao conferir.
+
+    Credenciais de um app REST (developer.paypal.com): Client ID e Secret (modo Live)."""
+
+    def __init__(self, client_id, secret, sandbox=False, request=None):
+        if not client_id or not secret:
+            raise PaymentError(CONFIG, i18n.t("detail.paypal_no_key"))
+        self.client_id, self.secret = client_id.strip(), secret.strip()
+        self.base = "https://api-m.sandbox.paypal.com" if sandbox else "https://api-m.paypal.com"
+        self.request = request or _request
+        self._token = None
+
+    def _auth(self):
+        if self._token is None:
+            basic = base64.b64encode(("%s:%s" % (self.client_id, self.secret)).encode()).decode()
+            data = self.request("POST", self.base + "/v1/oauth2/token", "grant_type=client_credentials",
+                                {"Authorization": "Basic " + basic, "Content-Type": "application/x-www-form-urlencoded"}) or {}
+            if not data.get("access_token"):
+                raise PaymentError(AUTH, "PayPal: sem token")
+            self._token = data["access_token"]
+        return self._token
+
+    def _call(self, method, path, body=None):
+        headers = {"Authorization": "Bearer " + self._auth(), "Content-Type": "application/json"}
+        return self.request(method, self.base + path, body, headers) or {}
+
+    def me(self):
+        self._auth()
+        return {"name": "PayPal" + (" (sandbox)" if "sandbox" in self.base else "")}
+
+    def checkout(self, order, title, return_url):
+        cur = order["currency"].upper()
+        if cur not in PAYPAL_CURRENCIES:
+            raise PaymentError(REJECTED, i18n.t("detail.paypal_currency", None, cur))
+        value = "%d" % (order["total"] // 100) if cur == "JPY" else "%.2f" % (order["total"] / 100.0)
+        data = self._call("POST", "/v2/checkout/orders", {
+            "intent": "CAPTURE",
+            "purchase_units": [{"reference_id": order["id"], "description": (title + " - " + order["id"])[:127],
+                                "amount": {"currency_code": cur, "value": value}}],
+            "payment_source": {"paypal": {"experience_context": {
+                "return_url": return_url, "cancel_url": return_url, "user_action": "PAY_NOW",
+                "shipping_preference": "NO_SHIPPING", "brand_name": title[:127]}}},
+        })
+        link = next((l["href"] for l in data.get("links") or [] if l.get("rel") in ("payer-action", "approve")), None)
+        if not link:
+            raise PaymentError(UNKNOWN, "PayPal: sem link")
+        return data["id"], link
+
+    def status(self, paypal_id):
+        data = self._call("GET", "/v2/checkout/orders/" + paypal_id)
+        status = data.get("status")
+        if status == "APPROVED":
+            captured = self._call("POST", "/v2/checkout/orders/%s/capture" % paypal_id, {})
+            status = captured.get("status")
+        if status == "COMPLETED":
+            return PAID
+        if status in ("VOIDED",):
+            return EXPIRED
+        return PENDING
+
+
+def _lines(order):
+    """Itens com o desconto e o frete do pedido (a soma bate com o total)."""
+    lines = [{"name": i["name"], "qty": i["qty"], "price": i["price"]} for i in order["items"]]
+    discount = int(order.get("discount") or 0)
+    shipping = int(order.get("shipping") or 0)
+    if discount:
+        # Stripe/PayPal não aceitam linha negativa: vira um item só com o valor final.
+        return [{"name": ", ".join(i["name"] for i in order["items"])[:200], "qty": 1, "price": int(order["total"])}]
+    if shipping:
+        lines.append({"name": i18n.t("shop.shipping_line"), "qty": 1, "price": shipping})
+    return lines
+
+
+# -- Pix "copia e cola" sem banco no meio (BR Code estático) --------------------------------
+
+def _emv(tag, value):
+    value = str(value)
+    return "%s%02d%s" % (tag, len(value), value)
+
+
+def _crc16(data):
+    crc = 0xFFFF
+    for b in data.encode("utf-8"):
+        crc ^= b << 8
+        for _ in range(8):
+            crc = ((crc << 1) ^ 0x1021) if crc & 0x8000 else (crc << 1)
+            crc &= 0xFFFF
+    return "%04X" % crc
+
+
+def pix_code(key, name, city, cents, txid):
+    """Código Pix copia e cola (BR Code estático com valor), aceito por qualquer banco."""
+    import unicodedata
+
+    def clean(text, size):
+        text = unicodedata.normalize("NFKD", str(text)).encode("ascii", "ignore").decode()
+        return "".join(c for c in text if c.isalnum() or c == " ").strip()[:size] or "NA"
+    txid = "".join(c for c in str(txid) if c.isalnum())[:25] or "***"
+    account = _emv("00", "br.gov.bcb.pix") + _emv("01", str(key).strip()[:77])
+    payload = (_emv("00", "01") + _emv("26", account) + _emv("52", "0000") + _emv("53", "986") +
+               _emv("54", "%.2f" % (cents / 100.0)) + _emv("58", "BR") + _emv("59", clean(name, 25)) +
+               _emv("60", clean(city, 15)) + _emv("62", _emv("05", txid)) + "6304")
+    return payload + _crc16(payload)

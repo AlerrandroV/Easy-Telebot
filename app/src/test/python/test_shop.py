@@ -71,7 +71,7 @@ def product(pid, **kw):
     return base
 
 
-class ShopTests(unittest.TestCase):
+class ShopBase(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.mkdtemp()
         self._mp, self._blink = flow.MercadoPago, flow.Blink
@@ -102,6 +102,9 @@ class ShopTests(unittest.TestCase):
             "id": "q%d" % update_id, "from": {"id": user, "first_name": "Ana"}, "data": data,
             "message": {"message_id": 1, "chat": {"id": user, "type": "private"}}}}
 
+
+
+class ShopTests(ShopBase):
     def test_catalog_and_miniapp_url(self):
         eng, api, cb = self.make([[msg("/loja")]], {
             "products": [product("a"), product("b", active=False), product("c", stock=0)],

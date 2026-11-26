@@ -278,6 +278,8 @@ object BotRuntime {
                 )
                 bumpShop(id)
             }
+            "coupon_used" -> add(id, LogEntry.Level.INFO, s(R.string.log_coupon_used, e.optString("code"), e.optString("order")))
+            "cart_reminder" -> add(id, LogEntry.Level.INFO, s(R.string.log_cart_reminder, e.optString("order"), e.optString("buyer")))
             "local_api" -> {
                 if (e.optString("state") == "listening") {
                     _localApi.update { it + (id to e.optInt("port")) }

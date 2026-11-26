@@ -21,7 +21,7 @@ CURRENCIES = {
     "CLP": "CLP$", "COP": "COP$", "PEN": "S/", "UYU": "UY$",
 }
 NO_CENTS = ("CLP", "COP")  # moedas sem centavos no Mercado Pago
-PRODUCT_TYPES = ("digital", "subscription")
+PRODUCT_TYPES = ("digital", "subscription", "physical", "donation")
 DEFAULT_STORE_URL = "https://alerrandrov.github.io/Easy-Telebot/loja/"
 DEFAULT_TRIGGERS = ["loja", "catalogo"]
 SUBS_TRIGGER = "assinaturas"
@@ -60,6 +60,8 @@ def _product(item, index, message_normalizer):
         "chat_title": str(item.get("chat_title") or ""),
         "days": _int(item.get("days"), 30, lo=1, hi=3650),
         "delivery": delivery,
+        # doação: valores sugeridos em centavos (o preço vira o mínimo)
+        "amounts": [a for a in (_int(x, 0, lo=0) for x in item.get("amounts") or []) if a > 0][:6],
     }
 
 
@@ -74,6 +76,11 @@ def normalize(data, message_normalizer):
     products = [p for p in (_product(x, i, message_normalizer)
                             for i, x in enumerate(data.get("products") or [])) if p]
     triggers = [str(t).strip().lstrip("/").lower() for t in data.get("triggers") or DEFAULT_TRIGGERS]
+    manual = gw.get("manual") if isinstance(gw.get("manual"), dict) else {}
+    stripe = gw.get("stripe") if isinstance(gw.get("stripe"), dict) else {}
+    paypal = gw.get("paypal") if isinstance(gw.get("paypal"), dict) else {}
+    ship = data.get("shipping") if isinstance(data.get("shipping"), dict) else {}
+    aband = data.get("abandoned") if isinstance(data.get("abandoned"), dict) else {}
     return {
         "enabled": bool(data.get("enabled", False)),
         "currency": currency if currency in CURRENCIES else "BRL",
@@ -91,8 +98,41 @@ def normalize(data, message_normalizer):
                             "payer_email": str(mp.get("payer_email") or "").strip()},
             "blink": {"enabled": bool(blink.get("enabled"))},
             "stars": {"enabled": bool(stars.get("enabled"))},
+            "manual": {"enabled": bool(manual.get("enabled")), "label": str(manual.get("label") or "").strip()[:40],
+                       "instructions": str(manual.get("instructions") or "")[:2000],
+                       "pix_key": str(manual.get("pix_key") or "").strip()[:77],
+                       "pix_name": str(manual.get("pix_name") or "").strip()[:25],
+                       "pix_city": str(manual.get("pix_city") or "").strip()[:15]},
+            "stripe": {"enabled": bool(stripe.get("enabled"))},
+            "paypal": {"enabled": bool(paypal.get("enabled")), "sandbox": bool(paypal.get("sandbox"))},
         },
+        "coupons": [c for c in (_coupon(x) for x in data.get("coupons") or []) if c][:100],
+        "shipping": {"fee": _int(ship.get("fee"), 0, lo=0), "free_over": _int(ship.get("free_over"), 0, lo=0)},
+        "abandoned": {"enabled": bool(aband.get("enabled", False)), "minutes": _int(aband.get("minutes"), 30, lo=10, hi=50)},
     }
+
+
+def _coupon(c):
+    """``{"code", "percent", "amount", "max_uses", "expires", "active"}`` (``amount`` em centavos)."""
+    if not isinstance(c, dict):
+        return None
+    import re
+    code = re.sub(r"[^A-Z0-9_-]", "", str(c.get("code") or "").upper())[:32]
+    percent, amount = _int(c.get("percent"), 0, lo=0, hi=100), _int(c.get("amount"), 0, lo=0)
+    if not code or not (percent or amount):
+        return None
+    expires = str(c.get("expires") or "")
+    if not re.match(r"^\d{4}-\d{2}-\d{2}$", expires):
+        expires = ""
+    return {"code": code, "percent": percent, "amount": 0 if percent else amount,
+            "max_uses": _int(c.get("max_uses"), -1, lo=-1), "expires": expires, "active": bool(c.get("active", True))}
+
+
+def shipping_for(shop, subtotal):
+    s = shop["shipping"]
+    if s["free_over"] and subtotal >= s["free_over"]:
+        return 0
+    return s["fee"]
 
 
 def _catalog_url(value):
@@ -124,6 +164,8 @@ def storefront_data(shop, title, images=None, sold=None):
     images, sold = images or {}, sold or {}
     items = []
     for p in available(shop):
+        if p["type"] == "donation":
+            continue  # doação pede o valor no chat
         left = -1 if p["stock"] < 0 else max(0, p["stock"] - sold.get(p["id"], 0))
         if left == 0:
             continue

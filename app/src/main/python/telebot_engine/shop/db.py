@@ -43,6 +43,12 @@ def _db(bot_dir):
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA journal_mode=WAL")
         conn.executescript(_SCHEMA)
+        for column in ("coupon TEXT", "discount INTEGER DEFAULT 0", "shipping INTEGER DEFAULT 0", "address TEXT",
+                       "reminded INTEGER DEFAULT 0", "shipped TEXT"):
+            try:  # bancos antigos: colunas novas
+                conn.execute("ALTER TABLE orders ADD COLUMN " + column)
+            except sqlite3.OperationalError:
+                pass
         _conns[key] = conn
     return conn
 
@@ -89,6 +95,59 @@ def get_order(bot_dir, order_id):
         return _order(_db(bot_dir).execute("SELECT * FROM orders WHERE id=?", (str(order_id),)).fetchone())
 
 
+def subtotal(order):
+    return sum(i["price"] * i["qty"] for i in order["items"])
+
+
+def _recalc(conn, order_id):
+    row = _order(conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone())
+    if row is None:
+        return
+    total = max(0, subtotal(row) - int(row.get("discount") or 0)) + int(row.get("shipping") or 0)
+    conn.execute("UPDATE orders SET total=? WHERE id=?", (total, order_id))
+
+
+def set_coupon(bot_dir, order_id, code, discount):
+    with _lock:
+        conn = _db(bot_dir)
+        conn.execute("UPDATE orders SET coupon=?, discount=? WHERE id=? AND status='pending'", (code, int(discount), order_id))
+        _recalc(conn, order_id)
+    return get_order(bot_dir, order_id)
+
+
+def set_address(bot_dir, order_id, address, shipping):
+    with _lock:
+        conn = _db(bot_dir)
+        conn.execute("UPDATE orders SET address=?, shipping=? WHERE id=? AND status='pending'",
+                     (str(address)[:1000], int(shipping), order_id))
+        _recalc(conn, order_id)
+    return get_order(bot_dir, order_id)
+
+
+def coupon_uses(bot_dir, code):
+    with _lock:
+        return _db(bot_dir).execute("SELECT COUNT(*) FROM orders WHERE coupon=? AND status='paid'", (code,)).fetchone()[0]
+
+
+def abandoned(bot_dir, older_than, newer_than):
+    """Pedidos pendentes criados entre ``newer_than`` e ``older_than`` que ainda não receberam lembrete."""
+    with _lock:
+        rows = _db(bot_dir).execute(
+            "SELECT * FROM orders WHERE status='pending' AND reminded=0 AND created_at<=? AND created_at>=? "
+            "AND (gateway IS NULL OR gateway != 'xtr')", (int(older_than), int(newer_than))).fetchall()
+    return [_order(r) for r in rows]
+
+
+def set_reminded(bot_dir, order_id):
+    with _lock:
+        _db(bot_dir).execute("UPDATE orders SET reminded=1 WHERE id=?", (order_id,))
+
+
+def set_shipped(bot_dir, order_id, tracking):
+    with _lock:
+        _db(bot_dir).execute("UPDATE orders SET shipped=? WHERE id=?", (str(tracking or "-")[:200], order_id))
+
+
 def set_payment(bot_dir, order_id, gateway, ref, url=""):
     with _lock:
         _db(bot_dir).execute("UPDATE orders SET gateway=?, gateway_ref=?, pay_url=? WHERE id=?",
@@ -121,7 +180,7 @@ def pending_with_charge(bot_dir):
     """Pedidos esperando pagamento que já têm cobrança no Mercado Pago ou no Blink."""
     with _lock:
         rows = _db(bot_dir).execute(
-            "SELECT * FROM orders WHERE status='pending' AND gateway IN ('mp', 'pix', 'btc')").fetchall()
+            "SELECT * FROM orders WHERE status='pending' AND gateway IN ('mp', 'pix', 'btc', 'stripe', 'paypal')").fetchall()
     return [_order(r) for r in rows]
 
 

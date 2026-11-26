@@ -13,7 +13,7 @@ data class Product(
     val price: Long = 0,
     /** Preço em Telegram Stars (opcional). */
     val stars: Int? = null,
-    /** "digital" ou "subscription". */
+    /** "digital", "subscription", "physical" ou "donation". */
     val type: String = TYPE_DIGITAL,
     val active: Boolean = true,
     /** Unidades à venda no total; -1 = ilimitado. */
@@ -27,12 +27,42 @@ data class Product(
     val days: Int = 30,
     /** O que a pessoa recebe depois de pagar (produto digital). */
     val delivery: BotMessage? = null,
+    /** Doação: valores sugeridos em centavos (o preço é o mínimo). */
+    val amounts: List<Long> = emptyList(),
 ) {
     val isSubscription get() = type == TYPE_SUBSCRIPTION
+    val isPhysical get() = type == TYPE_PHYSICAL
+    val isDonation get() = type == TYPE_DONATION
 
     companion object {
         const val TYPE_DIGITAL = "digital"
         const val TYPE_SUBSCRIPTION = "subscription"
+        const val TYPE_PHYSICAL = "physical"
+        const val TYPE_DONATION = "donation"
+        val TYPES = listOf(TYPE_DIGITAL, TYPE_PHYSICAL, TYPE_SUBSCRIPTION, TYPE_DONATION)
+    }
+}
+
+/** Cupom de desconto: [percent] OU [amount] (centavos). [expires] = "aaaa-mm-dd" ou vazio. */
+data class Coupon(
+    val code: String = "",
+    val percent: Int = 0,
+    val amount: Long = 0,
+    /** -1 = sem limite. */
+    val maxUses: Int = -1,
+    val expires: String = "",
+    val active: Boolean = true,
+) {
+    fun toJson(): JSONObject = JSONObject().put("code", code).put("percent", percent).put("amount", amount)
+        .put("max_uses", maxUses).put("expires", expires).put("active", active)
+
+    companion object {
+        fun cleanCode(text: String) = text.uppercase().filter { it in 'A'..'Z' || it in '0'..'9' || it == '_' || it == '-' }.take(32)
+
+        fun fromJson(o: JSONObject) = Coupon(
+            code = o.optString("code"), percent = o.optInt("percent").coerceIn(0, 100), amount = o.optLong("amount"),
+            maxUses = o.optInt("max_uses", -1), expires = o.optString("expires"), active = o.optBoolean("active", true),
+        )
     }
 }
 
@@ -43,7 +73,19 @@ data class ShopGateways(
     val payerEmail: String = "",
     val blink: Boolean = false,
     val stars: Boolean = false,
-)
+    /** Pagamento combinado: chave Pix (QR gerado no próprio app) ou instruções livres; o admin confirma. */
+    val manual: Boolean = false,
+    val manualLabel: String = "",
+    val manualInstructions: String = "",
+    val pixKey: String = "",
+    val pixName: String = "",
+    val pixCity: String = "",
+    val stripe: Boolean = false,
+    val paypal: Boolean = false,
+    val paypalSandbox: Boolean = false,
+) {
+    val any get() = mercadoPago || blink || stars || manual || stripe || paypal
+}
 
 data class ShopSettings(
     val enabled: Boolean = false,
@@ -62,6 +104,13 @@ data class ShopSettings(
     val gistId: String = "",
     /** Assinatura do que foi publicado, para saber se a vitrine está desatualizada. */
     val publishedHash: String = "",
+    val coupons: List<Coupon> = emptyList(),
+    /** Frete fixo em centavos para produtos físicos; grátis a partir de [freeShippingOver] (0 = nunca). */
+    val shippingFee: Long = 0,
+    val freeShippingOver: Long = 0,
+    /** Lembrete "você esqueceu algo" para quem não terminou o pagamento. */
+    val abandoned: Boolean = false,
+    val abandonedMinutes: Int = 30,
 ) {
     /** Assinatura do conteúdo que aparece na vitrine (produtos, moeda). */
     fun storefrontHash(title: String): String =
@@ -102,14 +151,23 @@ data class ShopSettings(
                     .put("chat_id", p.chatId ?: JSONObject.NULL)
                     .put("chat_title", p.chatTitle)
                     .put("days", p.days)
-                    .put("delivery", p.delivery?.let { BotConfig.messageJson(it) } ?: JSONObject.NULL))
+                    .put("delivery", p.delivery?.let { BotConfig.messageJson(it) } ?: JSONObject.NULL)
+                    .put("amounts", JSONArray(p.amounts)))
             }
         })
         .put("gateways", JSONObject()
             .put("mercadopago", JSONObject().put("enabled", gateways.mercadoPago).put("pix", gateways.pix)
                 .put("payer_email", gateways.payerEmail))
             .put("blink", JSONObject().put("enabled", gateways.blink))
-            .put("stars", JSONObject().put("enabled", gateways.stars)))
+            .put("stars", JSONObject().put("enabled", gateways.stars))
+            .put("manual", JSONObject().put("enabled", gateways.manual).put("label", gateways.manualLabel)
+                .put("instructions", gateways.manualInstructions).put("pix_key", gateways.pixKey)
+                .put("pix_name", gateways.pixName).put("pix_city", gateways.pixCity))
+            .put("stripe", JSONObject().put("enabled", gateways.stripe))
+            .put("paypal", JSONObject().put("enabled", gateways.paypal).put("sandbox", gateways.paypalSandbox)))
+        .put("coupons", JSONArray().apply { coupons.forEach { put(it.toJson()) } })
+        .put("shipping", JSONObject().put("fee", shippingFee).put("free_over", freeShippingOver))
+        .put("abandoned", JSONObject().put("enabled", abandoned).put("minutes", abandonedMinutes))
 
     companion object {
         const val DEFAULT_STORE_URL = "https://alerrandrov.github.io/Easy-Telebot/loja/"
@@ -155,7 +213,7 @@ data class ShopSettings(
                     description = p.optString("description"),
                     price = p.optLong("price"),
                     stars = if (p.isNull("stars")) null else p.optInt("stars").takeIf { it > 0 },
-                    type = if (p.optString("type") == Product.TYPE_SUBSCRIPTION) Product.TYPE_SUBSCRIPTION else Product.TYPE_DIGITAL,
+                    type = p.optString("type").takeIf { it in Product.TYPES } ?: Product.TYPE_DIGITAL,
                     active = p.optBoolean("active", true),
                     stock = p.optInt("stock", -1),
                     photo = if (p.isNull("photo")) null else p.optString("photo").ifEmpty { null },
@@ -164,8 +222,15 @@ data class ShopSettings(
                     chatTitle = p.optString("chat_title"),
                     days = p.optInt("days", 30),
                     delivery = p.optJSONObject("delivery")?.let { BotConfig.parseMessage(it) },
+                    amounts = p.optJSONArray("amounts")?.let { a -> (0 until a.length()).map { a.optLong(it) }.filter { it > 0 } } ?: emptyList(),
                 )
             }
+            val manual = g.optJSONObject("manual") ?: JSONObject()
+            val coupons = o.optJSONArray("coupons")?.let { a ->
+                (0 until a.length()).mapNotNull { a.optJSONObject(it)?.let(Coupon::fromJson) }.filter { it.code.isNotEmpty() }
+            } ?: emptyList()
+            val ship = o.optJSONObject("shipping") ?: JSONObject()
+            val aband = o.optJSONObject("abandoned") ?: JSONObject()
             return ShopSettings(
                 enabled = o.optBoolean("enabled", false),
                 currency = o.optString("currency", "BRL").takeIf { it in CURRENCIES } ?: "BRL",
@@ -184,7 +249,21 @@ data class ShopSettings(
                     payerEmail = mp.optString("payer_email"),
                     blink = g.optJSONObject("blink")?.optBoolean("enabled") ?: false,
                     stars = g.optJSONObject("stars")?.optBoolean("enabled") ?: false,
+                    manual = manual.optBoolean("enabled"),
+                    manualLabel = manual.optString("label"),
+                    manualInstructions = manual.optString("instructions"),
+                    pixKey = manual.optString("pix_key"),
+                    pixName = manual.optString("pix_name"),
+                    pixCity = manual.optString("pix_city"),
+                    stripe = g.optJSONObject("stripe")?.optBoolean("enabled") ?: false,
+                    paypal = g.optJSONObject("paypal")?.optBoolean("enabled") ?: false,
+                    paypalSandbox = g.optJSONObject("paypal")?.optBoolean("sandbox") ?: false,
                 ),
+                coupons = coupons,
+                shippingFee = ship.optLong("fee").coerceAtLeast(0),
+                freeShippingOver = ship.optLong("free_over").coerceAtLeast(0),
+                abandoned = aband.optBoolean("enabled", false),
+                abandonedMinutes = aband.optInt("minutes", 30).coerceIn(10, 50),
             )
         }
     }
@@ -197,9 +276,13 @@ data class PaymentSecrets(
     /** Vitrine: chave do imgbb (fotos) e token do GitHub só com permissão de Gists (catálogo). */
     val imgbbKey: String = "",
     val githubToken: String = "",
+    val stripeKey: String = "",
+    val paypalClientId: String = "",
+    val paypalSecret: String = "",
 ) {
     fun toJson(): JSONObject = JSONObject().put("mp_token", mercadoPagoToken).put("blink_key", blinkKey)
-        .put("imgbb_key", imgbbKey).put("github_token", githubToken)
+        .put("imgbb_key", imgbbKey).put("github_token", githubToken).put("stripe_key", stripeKey)
+        .put("paypal_client_id", paypalClientId).put("paypal_secret", paypalSecret)
 }
 
 object PaymentRepository {
@@ -209,7 +292,8 @@ object PaymentRepository {
         TokenStore.loadSecret(context, name(botId))?.let {
             try {
                 val o = JSONObject(it)
-                PaymentSecrets(o.optString("mp_token"), o.optString("blink_key"), o.optString("imgbb_key"), o.optString("github_token"))
+                PaymentSecrets(o.optString("mp_token"), o.optString("blink_key"), o.optString("imgbb_key"), o.optString("github_token"),
+                    o.optString("stripe_key"), o.optString("paypal_client_id"), o.optString("paypal_secret"))
             } catch (e: Exception) {
                 null
             }

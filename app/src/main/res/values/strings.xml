@@ -743,7 +743,7 @@
     <string name="shop_test_ok">Connected: %1$s</string>
     <string name="shop_show_key">Show</string>
     <string name="shop_save_keys">Save credentials</string>
-    <string name="shop_keys_note">Credentials are stored encrypted on the phone and only used to talk to Mercado Pago and Blink. When you save, the bot restarts if it’s on.</string>
+    <string name="shop_keys_note">Credentials are encrypted on the phone and only used to talk to the matching gateway (Mercado Pago, Blink, Stripe, PayPal). When you save, the bot restarts if it\'s on.</string>
     <string name="shop_miniapp">Storefront (mini app)</string>
     <string name="shop_miniapp_enable">Open shop button</string>
     <string name="shop_miniapp_enable_sub">Besides the list in the chat, the bot shows a button that opens the storefront with photos, cart and quantities, right inside Telegram.</string>
@@ -1617,4 +1617,80 @@
     <string name="log_booking_created">Appointments: %1$s booked %2$s.</string>
     <string name="log_booking_cancelled">Appointments: %1$s\'s booking cancelled (%2$s).</string>
     <string name="log_form_done">%1$s answered the form “%2$s”.</string>
+    <string name="log_coupon_used">Coupon %1$s used on order %2$s</string>
+    <string name="log_cart_reminder">Cart reminder sent: order %1$s (%2$s)</string>
+    <string name="product_type">Type</string>
+    <string name="product_type_digital">Digital</string>
+    <string name="product_type_physical">Physical</string>
+    <string name="product_type_donation">Donation</string>
+    <string name="product_intro_physical">A product you deliver yourself (mail, courier, pickup). The bot asks for the address before payment and adds the shipping fee set in the shop. Then mark the order as shipped to let the person know.</string>
+    <string name="product_intro_donation">The person chooses how much to give: one of the suggested amounts or any amount (from the minimum).</string>
+    <string name="product_amounts">Suggested amounts (%1$s)</string>
+    <string name="product_amounts_hint">Up to 6 amounts separated by spaces, e.g. 5 10 25. An \"Other amount\" button also appears.</string>
+    <string name="product_min_amount">Minimum amount (%1$s)</string>
+    <string name="product_err_amounts">Suggested amounts: use up to 6 numbers above zero, separated by spaces.</string>
+    <string name="product_delivery_hint_physical">Optional. Extra message sent after payment (e.g. delivery time). The bot already says the order will be shipped.</string>
+    <string name="product_delivery_hint_donation">Optional. Thank-you message sent after the donation (text, photo, link). Accepts variables such as {name}.</string>
+    <string name="shop_from_price">from %1$s</string>
+    <string name="shop_gw_stripe">Stripe</string>
+    <string name="shop_gw_paypal">PayPal</string>
+    <string name="shop_gw_coupon">100% coupon</string>
+    <string name="shop_gw_stripe_title">Stripe</string>
+    <string name="shop_gw_stripe_sub">Payment link with card and whatever methods your Stripe account accepts. The bot checks by itself when it\'s paid.</string>
+    <string name="shop_stripe_key">Secret key (sk_live_… or rk_live_…)</string>
+    <string-array name="shop_stripe_steps">
+        <item>Go to dashboard.stripe.com and open Developers, API keys.</item>
+        <item>Recommended: create a restricted key with write access to Checkout Sessions (and read access to Balance, for the test).</item>
+        <item>Or copy the secret key (sk_live_…). Use sk_test_… to test without real charges.</item>
+    </string-array>
+    <string name="shop_gw_paypal_title">PayPal</string>
+    <string name="shop_gw_paypal_sub">The person pays with their PayPal account or a card. The bot confirms and captures the payment by itself.</string>
+    <string name="shop_paypal_client_id">Client ID</string>
+    <string name="shop_paypal_secret">Secret</string>
+    <string-array name="shop_paypal_steps">
+        <item>Go to developer.paypal.com with your (business) PayPal account and open Apps &amp; Credentials.</item>
+        <item>Choose Live (or Sandbox for testing), create an app and copy the Client ID and Secret.</item>
+        <item>Currencies accepted here: BRL, USD, EUR and MXN.</item>
+    </string-array>
+    <string name="shop_paypal_sandbox">Test mode (sandbox)</string>
+    <string name="shop_paypal_sandbox_sub">Uses Sandbox credentials; no real money is charged.</string>
+    <string name="shop_gw_manual_title">Pix with your key / arranged payment</string>
+    <string name="shop_gw_manual_sub">No gateway account: the bot shows your instructions (or a Brazilian Pix QR code). The person taps \"I\'ve paid\" and you confirm on Telegram.</string>
+    <string name="shop_manual_explain">With a Pix key filled in, the bot generates the QR code and copy-paste code with the exact order amount. Admins get a notice with Confirm and Decline buttons: check your bank statement before confirming.</string>
+    <string name="shop_pix_key">Pix key (optional)</string>
+    <string name="shop_pix_name">Receiver name</string>
+    <string name="shop_pix_city">City</string>
+    <string name="shop_pix_key_hint">Brazilian Pix key (CPF/CNPJ digits, e-mail, +55 phone or random key). Name (up to 25 letters) and city show in the payer\'s bank app.</string>
+    <string name="shop_manual_label">Button name (optional)</string>
+    <string name="shop_manual_label_hint">E.g. Bank transfer, Cash on delivery</string>
+    <string name="shop_manual_instructions">Instructions (optional)</string>
+    <string name="shop_sales_extras">Coupons, shipping and reminders</string>
+    <string name="shop_coupons">Discount coupons</string>
+    <string name="shop_coupons_sub">The person taps \"I have a coupon\" before paying and types the code.</string>
+    <string name="shop_coupon_add">New coupon</string>
+    <string name="shop_coupon_edit">Edit coupon</string>
+    <string name="shop_coupon_code">Code (e.g. PROMO10)</string>
+    <string name="shop_coupon_percent">Percentage</string>
+    <string name="shop_coupon_amount">Fixed amount (%1$s)</string>
+    <string name="shop_coupon_limit">Usage limit (empty = unlimited)</string>
+    <string name="shop_coupon_expires">Valid until (yyyy-mm-dd, optional)</string>
+    <string name="shop_coupon_active">Active</string>
+    <string name="shop_coupon_uses_n">up to %1$d uses</string>
+    <string name="shop_coupon_until">until %1$s</string>
+    <string name="shop_shipping">Shipping (physical products)</string>
+    <string name="shop_shipping_sub">Fixed fee added to orders with a physical product. Leave empty for no fee.</string>
+    <string name="shop_shipping_fee">Fee (%1$s)</string>
+    <string name="shop_shipping_free_over">Free from</string>
+    <string name="shop_abandoned">Remind people who didn\'t finish</string>
+    <string name="shop_abandoned_sub">A single \"Did you forget something?\" message, with a button to pay.</string>
+    <string name="shop_after_minutes">after %1$d min</string>
+    <string name="shop_order_coupon">Coupon %1$s: -%2$s</string>
+    <string name="shop_order_shipping">Shipping: %1$s</string>
+    <string name="shop_order_shipped">Shipped</string>
+    <string name="shop_order_shipped_code">Shipped · tracking %1$s</string>
+    <string name="shop_status_to_ship">To ship</string>
+    <string name="shop_mark_shipped">Mark as shipped</string>
+    <string name="shop_ship_msg">The bot tells the person the order is on its way.</string>
+    <string name="shop_tracking_code">Tracking code (optional)</string>
+    <string name="shop_ship_notify">Notify</string>
 </resources>

@@ -17,19 +17,21 @@ import json
 import os
 import threading
 import time
+import urllib.parse
 
 from .. import admins as admins_mod
 from .. import errors, i18n, template
 from ..api import Aborted, TelegramApi, TelegramError
 from . import catalog, db
-from .gateways import EXPIRED, PAID, Blink, MercadoPago, PaymentError
+from .gateways import EXPIRED, PAID, Blink, MercadoPago, PaymentError, PayPal, Stripe, pix_code
 
 CB = "shop:"
 ORDER_TTL = 60 * 60       # pedido sem pagamento expira em 1 h
 CHECK_EVERY = 15          # segundos entre verificações de pagamento
 SUBS_EVERY = 5 * 60       # segundos entre verificações de assinaturas
 MAX_QTY = 20
-GATEWAYS = ("pix", "mp", "btc", "xtr")  # nomes na tela: i18n "shop.gw_<código>"
+GATEWAYS = ("pix", "mp", "btc", "xtr", "manual", "stripe", "paypal")  # nomes na tela: i18n "shop.gw_<código>"
+QR_URL = "https://api.qrserver.com/v1/create-qr-code/?size=480x480&margin=12&data="
 
 
 def parse_payments(payments):
@@ -39,7 +41,7 @@ def parse_payments(payments):
         except ValueError:
             payments = {}
     payments = payments if isinstance(payments, dict) else {}
-    return {"mp_token": str(payments.get("mp_token") or ""), "blink_key": str(payments.get("blink_key") or "")}
+    return {k: str(payments.get(k) or "") for k in ("mp_token", "blink_key", "stripe_key", "paypal_client_id", "paypal_secret")}
 
 
 def _name(user):
@@ -140,9 +142,26 @@ class ShopFlow:
             out.append("mp")
         if g["blink"]["enabled"] and self.secrets["blink_key"]:
             out.append("btc")
-        if g["stars"]["enabled"] and order.get("stars"):
+        if g["stripe"]["enabled"] and self.secrets["stripe_key"]:
+            out.append("stripe")
+        if g["paypal"]["enabled"] and self.secrets["paypal_client_id"] and self.secrets["paypal_secret"]:
+            out.append("paypal")
+        if g["manual"]["enabled"] and (g["manual"]["instructions"] or g["manual"]["pix_key"]):
+            out.append("manual")
+        if g["stars"]["enabled"] and order.get("stars") and not order.get("discount") and not order.get("shipping"):
             out.append("xtr")
         return out
+
+    def gw_label(self, gateway, order=None):
+        if gateway == "xtr" and order:
+            return self.t("shop.gw_xtr_n", order["stars"])
+        if gateway == "manual" and self.shop["gateways"]["manual"]["label"]:
+            return self.shop["gateways"]["manual"]["label"]
+        return self.t("shop.gw_" + gateway)
+
+    def return_url(self):
+        username = (self.engine.bot or {}).get("username")
+        return "https://t.me/%s" % username if username else "https://telegram.org"
 
     # -- entrada (thread do motor) --------------------------------------------------------
 
@@ -182,7 +201,32 @@ class ShopFlow:
             self.show_product(chat_id, arg)
         elif action == "b":
             self._answer(query)
-            self.buy(user, chat_id, [{"i": arg, "q": 1}])
+            p = catalog.find(self.shop, arg)
+            if p is not None and p["type"] == "donation":
+                self.ask_amount(user, chat_id, p)
+            else:
+                self.buy(user, chat_id, [{"i": arg, "q": 1}])
+        elif action == "a":  # doação: valor escolhido (ou "outro")
+            self._answer(query)
+            p = catalog.find(self.shop, arg)
+            value = parts[2] if len(parts) > 2 else ""
+            if p is not None and value == "other":
+                self._wait(user, chat_id, "amount", product=p["id"])
+                self._send(self.engine, chat_id, self.t("shop.donation_other", self.price(p["price"])))
+            elif p is not None and value.isdigit():
+                self.buy(user, chat_id, [{"i": p["id"], "q": 1, "amount": int(value)}])
+        elif action == "m":  # admin confirma (ok) ou não (no) um pagamento manual
+            self.admin_manual(query, arg, parts[2] if len(parts) > 2 else "")
+        elif action in ("k", "r"):
+            order = db.get_order(self.base_dir, parts[1] if len(parts) > 1 else "")
+            self._answer(query)
+            if order is None or order["user_id"] != user.get("id") or order["status"] != "pending":
+                self._send(self.engine, chat_id, self.t("shop.order_expired"))
+            elif action == "k":
+                self._wait(user, chat_id, "coupon", order=order["id"])
+                self._send(self.engine, chat_id, self.t("shop.coupon_ask"))
+            else:
+                self.offer_payment(order)
         elif action in ("g", "c", "x"):
             order = db.get_order(self.base_dir, arg)
             if order is None or order["user_id"] != user.get("id"):
@@ -252,14 +296,19 @@ class ShopFlow:
         lines = ["<b>%s</b>" % template.escape(p["name"])]
         if p["description"]:
             lines += ["", template.escape(p["description"])]
-        lines += ["", "<b>%s</b>" % self.price(p["price"])]
+        if p["type"] == "donation":
+            lines += ["", self.t("shop.donation_min", self.price(p["price"])) if p["price"] else ""]
+        else:
+            lines += ["", "<b>%s</b>" % self.price(p["price"])]
         if p["type"] == "subscription":
-            lines[-1] += " · acesso por %d dias a %s" % (p["days"], template.escape(p["chat_title"] or "canal VIP"))
+            lines[-1] += self.t("shop.sub_access", p["days"], template.escape(p["chat_title"] or self.t("shop.channel")))
+        if p["type"] == "physical":
+            lines.append(self.t("shop.physical_note"))
         left = self.remaining(p)
         if left is not None:
-            lines.append("%d em estoque" % left)
-        keyboard = [[{"text": "Assinar" if p["type"] == "subscription" else "Comprar",
-                      "callback_data": CB + "b:" + p["id"]}]]
+            lines.append(self.t("shop.in_stock", left))
+        label = {"subscription": "shop.btn_subscribe", "donation": "shop.btn_donate"}.get(p["type"], "shop.btn_buy")
+        keyboard = [[{"text": self.t(label), "callback_data": CB + "b:" + p["id"]}]]
         text = "\n".join(lines)
         photo = p.get("photo")
         if photo and len(template.html_to_plain(text)) <= 1024:
@@ -313,13 +362,22 @@ class ShopFlow:
             p = catalog.find(self.shop, str(entry.get("i") or ""))
             if p is None or not p["active"]:
                 continue
-            qty = 1 if p["type"] == "subscription" else max(1, min(MAX_QTY, int(entry.get("q") or 1)))
+            qty = 1 if p["type"] in ("subscription", "donation") else max(1, min(MAX_QTY, int(entry.get("q") or 1)))
+            price = p["price"]
+            if p["type"] == "donation":
+                try:
+                    price = max(p["price"], int(entry.get("amount") or 0))
+                except (TypeError, ValueError):
+                    continue
+                if price <= 0:
+                    continue
             left = self.remaining(p, sold)
             if left is not None:
                 qty = min(qty, left)
             if qty <= 0:
                 continue
-            items.append({"id": p["id"], "name": p["name"], "qty": qty, "price": p["price"], "stars": p["stars"],
+            items.append({"id": p["id"], "name": p["name"], "qty": qty, "price": price,
+                          "stars": p["stars"] if p["type"] != "donation" else None,
                           "type": p["type"], "chat_id": p["chat_id"], "chat_title": p["chat_title"],
                           "days": p["days"]})
         if not items:
@@ -337,22 +395,120 @@ class ShopFlow:
         for i in order["items"]:
             lines.append("%s%s · %s" % ("%dx " % i["qty"] if i["qty"] > 1 else "", template.escape(i["name"]),
                                         self.price(i["price"] * i["qty"])))
+        if order.get("discount"):
+            lines.append(self.t("shop.discount_line", template.escape(order.get("coupon") or ""), self.price(order["discount"])))
+        if order.get("shipping"):
+            lines.append(self.t("shop.shipping_sum", self.price(order["shipping"])))
+        if order.get("address"):
+            lines.append(self.t("shop.address_line", template.escape(order["address"])))
         lines.append(self.t("shop.total_bold", self.price(order["total"])))
         return "\n".join(lines)
 
+    # -- doação, cupom e endereço (perguntas no chat) ---------------------------------------
+
+    def _wait(self, user, chat_id, kind, **extra):
+        from ..flows import _update
+        waiting = dict({"shop": kind, "chat_id": chat_id, "since": int(time.time())}, **extra)
+        _update(self.base_dir, user.get("id"), lambda st: st.__setitem__("waiting", waiting))
+
+    def _done_waiting(self, user):
+        from ..flows import _update
+        _update(self.base_dir, user.get("id"), lambda st: st.pop("waiting", None))
+
+    def ask_amount(self, user, chat_id, p):
+        cur = self.shop["currency"]
+        amounts = [a for a in (p.get("amounts") or []) if a >= p["price"]] or \
+            [v * 100 for v in (5, 10, 20, 50) if v * 100 >= p["price"]][:4]
+        row = [{"text": catalog.format_price(a, cur), "callback_data": "%sa:%s:%d" % (CB, p["id"], a)} for a in amounts]
+        kb = [row[i:i + 3] for i in range(0, len(row), 3)]
+        kb.append([{"text": self.t("shop.donation_other_btn"), "callback_data": "%sa:%s:other" % (CB, p["id"])}])
+        self._send(self.engine, chat_id, self.t("shop.donation_ask", template.escape(p["name"])), kb)
+
+    def on_waiting(self, waiting, message, user, chat):
+        """Resposta a uma pergunta da loja (cupom, endereço ou valor da doação)."""
+        kind = waiting.get("shop")
+        text = (message.get("text") or "").strip()
+        chat_id = chat.get("id")
+        self._done_waiting(user)
+        if kind == "amount":
+            p = catalog.find(self.shop, waiting.get("product") or "")
+            cents = None
+            try:
+                cents = int(round(float(text.replace("R$", "").replace("$", "").replace(" ", "").replace(",", ".")) * 100))
+            except ValueError:
+                pass
+            if p is None:
+                return True
+            if cents is None or cents < max(p["price"], 1):
+                self._wait(user, chat_id, "amount", product=p["id"])
+                self._send(self.engine, chat_id, self.t("shop.donation_invalid", self.price(max(p["price"], 100))))
+                return True
+            self.buy(user, chat_id, [{"i": p["id"], "q": 1, "amount": cents}])
+            return True
+        order = db.get_order(self.base_dir, waiting.get("order") or "")
+        if order is None or order["status"] != "pending":
+            self._send(self.engine, chat_id, self.t("shop.order_expired"))
+            return True
+        if kind == "address":
+            if len(text) < 10:
+                self._wait(user, chat_id, "address", order=order["id"])
+                self._send(self.engine, chat_id, self.t("shop.address_short"))
+                return True
+            fee = catalog.shipping_for(self.shop, db.subtotal(order))
+            order = db.set_address(self.base_dir, order["id"], text, fee)
+            self.offer_payment(order)
+            return True
+        # cupom
+        coupon, error = self.find_coupon(text)
+        if coupon is None:
+            self._send(self.engine, chat_id, self.t(error))
+        else:
+            sub = db.subtotal(order)
+            discount = min(sub, sub * coupon["percent"] // 100 if coupon["percent"] else coupon["amount"])
+            order = db.set_coupon(self.base_dir, order["id"], coupon["code"], discount)
+            self._send(self.engine, chat_id, self.t("shop.coupon_ok", coupon["code"], self.price(discount)))
+            self.engine.emit("coupon_used", code=coupon["code"], order=order["id"])
+        self.offer_payment(order)
+        return True
+
+    def find_coupon(self, text):
+        code = "".join(c for c in text.upper() if c.isalnum() or c in "_-")
+        c = next((c for c in self.shop["coupons"] if c["code"] == code and c["active"]), None)
+        if c is None:
+            return None, "shop.coupon_invalid"
+        if c["expires"]:
+            today = self.engine.scheduler.to_local(time.time()).strftime("%Y-%m-%d")
+            if today > c["expires"]:
+                return None, "shop.coupon_expired"
+        if c["max_uses"] >= 0 and db.coupon_uses(self.base_dir, c["code"]) >= c["max_uses"]:
+            return None, "shop.coupon_used_up"
+        return c, None
+
     def offer_payment(self, order):
-        options = self.gateways(order)
         chat_id = order["chat_id"]
+        if any(i.get("type") == "physical" for i in order["items"]) and not order.get("address"):
+            user = {"id": order["user_id"]}
+            self._wait(user, chat_id, "address", order=order["id"])
+            fee = catalog.shipping_for(self.shop, db.subtotal(order))
+            note = self.t("shop.shipping_fee", self.price(fee)) if fee else self.t("shop.shipping_free")
+            self._send(self.engine, chat_id, self.summary(order) + "\n\n" + self.t("shop.address_ask") + "\n" + note)
+            return
+        if order["total"] <= 0 and (order.get("discount") or 0) > 0:
+            self.complete(order["id"], self.engine, "coupon", order.get("coupon"))  # cupom de 100%
+            return
+        options = self.gateways(order)
         if not options:
             self._send(self.engine, chat_id, self.summary(order) + "\n\n" + self.t("shop.no_payments"))
             self.engine.emit("error", context="shop", command="loja", retry_in=None, fatal=False,
                              code="pay_no_gateway", detail="", retry_after=None)
             return
-        if len(options) == 1:
+        can_coupon = bool([c for c in self.shop["coupons"] if c["active"]]) and not order.get("coupon")
+        if len(options) == 1 and not can_coupon:
             self.charge(order, options[0], self.engine)
             return
-        keyboard = [[{"text": self.t("shop.gw_" + g) if g != "xtr" else self.t("shop.gw_xtr_n", order["stars"]),
-                      "callback_data": "%sg:%s:%s" % (CB, order["id"], g)}] for g in options]
+        keyboard = [[{"text": self.gw_label(g, order), "callback_data": "%sg:%s:%s" % (CB, order["id"], g)}] for g in options]
+        if can_coupon:
+            keyboard.append([{"text": self.t("shop.coupon_btn"), "callback_data": "%sk:%s" % (CB, order["id"])}])
         keyboard.append([{"text": self.t("shop.cancel_order"), "callback_data": "%sx:%s" % (CB, order["id"])}])
         self._send(self.engine, chat_id, self.summary(order) + "\n\n" + self.t("shop.how_to_pay"), keyboard)
 
@@ -383,6 +539,19 @@ class ShopFlow:
                 self._send(sender, chat_id, self.summary(order) + "\n\n" + self.t(
                     "shop.pay_btc", "{:,}".format(sats).replace(",", self.t("shop.thousands_sep")),
                     template.escape(pr)), [paid_btn])
+            elif gateway == "stripe":
+                ref, url = Stripe(self.secrets["stripe_key"]).checkout(order, self.title(), self.return_url())
+                db.set_payment(self.base_dir, order["id"], "stripe", ref, url)
+                self._send(sender, chat_id, self.summary(order) + "\n\n" + self.t("shop.pay_link"),
+                           [[{"text": self.t("shop.pay_amount", self.price(order["total"])), "url": url}], paid_btn])
+            elif gateway == "paypal":
+                pp = PayPal(self.secrets["paypal_client_id"], self.secrets["paypal_secret"], self.shop["gateways"]["paypal"]["sandbox"])
+                ref, url = pp.checkout(order, self.title(), self.return_url())
+                db.set_payment(self.base_dir, order["id"], "paypal", ref, url)
+                self._send(sender, chat_id, self.summary(order) + "\n\n" + self.t("shop.pay_paypal"),
+                           [[{"text": self.t("shop.pay_amount", self.price(order["total"])), "url": url}], paid_btn])
+            elif gateway == "manual":
+                self.charge_manual(order, sender, paid_btn)
             elif gateway == "xtr":
                 db.set_payment(self.base_dir, order["id"], "xtr", "")
                 title = order["items"][0]["name"] if len(order["items"]) == 1 else self.t("shop.order_plain", order["id"])
@@ -396,6 +565,59 @@ class ShopFlow:
         except PaymentError as exc:
             sender.emit("error", context="shop", command="loja", retry_in=None, fatal=False, **exc.to_dict())
             self._send(sender, chat_id, self.t("shop.charge_failed"))
+
+    def charge_manual(self, order, sender, paid_btn):
+        """Pix por chave (copia e cola gerado aqui) ou instruções livres; o admin confirma o pagamento."""
+        m = self.shop["gateways"]["manual"]
+        chat_id = order["chat_id"]
+        db.set_payment(self.base_dir, order["id"], "manual", "")
+        parts = [self.summary(order)]
+        if m["instructions"]:
+            ctx = self._context({"id": order["user_id"], "first_name": order["first_name"]}, chat_id)
+            parts.append(template.render(m["instructions"], ctx, self.engine.lang))
+        if m["pix_key"] and order["currency"] == "BRL":
+            code = pix_code(m["pix_key"], m["pix_name"] or self.title(), m["pix_city"] or "BRASIL", order["total"], order["id"])
+            self._raw(sender, "sendPhoto", {"chat_id": chat_id, "photo": QR_URL + urllib.parse.quote(code),
+                                            "caption": self.t("shop.pix_caption", self.price(order["total"]), order["id"])})
+            parts.append(self.t("shop.pix_manual", template.escape(code)))
+        parts.append(self.t("shop.manual_then"))
+        self._send(sender, chat_id, "\n\n".join(parts), [paid_btn])
+
+    def claim_manual(self, query, order):
+        """A pessoa tocou em "Já paguei" num pagamento manual: os admins confirmam."""
+        if order.get("note") == "claimed":
+            self._answer(query, self.t("shop.manual_waiting"), alert=True)
+            return
+        db.set_status(self.base_dir, order["id"], "pending", "claimed")
+        self._answer(query, self.t("shop.manual_waiting"), alert=True)
+        text = self.t("shop.manual_admin", template.escape(_name(order)), order["id"], self.price(order["total"]))
+        kb = [[{"text": self.t("shop.manual_ok"), "callback_data": "%sm:%s:ok" % (CB, order["id"])},
+               {"text": self.t("shop.manual_no"), "callback_data": "%sm:%s:no" % (CB, order["id"])}]]
+        self.engine.maybe_reload_admins()
+        for admin_id, admin in sorted(self.engine.admins.items()):
+            if admins_mod.can_use(admin.get("level"), self.shop["notify_level"]):
+                self._send(self.engine, admin_id, text, kb)
+
+    def admin_manual(self, query, order_id, answer):
+        admin = self.engine.admins.get((query.get("from") or {}).get("id"))
+        if admin is None:
+            self._answer(query)
+            return
+        order = db.get_order(self.base_dir, order_id)
+        if order is None or order["status"] != "pending":
+            self._answer(query, self.t("shop.order_paid"))
+            return
+        self._answer(query)
+        msg = query.get("message") or {}
+        if answer == "ok":
+            self.complete(order_id, self.engine, "manual", "admin")
+            done = self.t("shop.manual_confirmed", order_id)
+        else:
+            db.set_status(self.base_dir, order_id, "pending", "")
+            self._send(self.engine, order["chat_id"], self.t("shop.manual_not_found", order_id))
+            done = self.t("shop.manual_rejected", order_id)
+        self._raw(self.engine, "editMessageText", {"chat_id": (msg.get("chat") or {}).get("id"), "message_id": msg.get("message_id"),
+                                                   "text": done})
 
     def _send_png(self, sender, chat_id, png, order):
         folder = os.path.join(self.base_dir, "shop_tmp")
@@ -418,9 +640,17 @@ class ShopFlow:
             return MercadoPago(self.secrets["mp_token"]).status(gw, ref, order["id"])
         if gw == "btc":
             return Blink(self.secrets["blink_key"]).status(ref)
+        if gw == "stripe":
+            return Stripe(self.secrets["stripe_key"]).status(ref)
+        if gw == "paypal":
+            return PayPal(self.secrets["paypal_client_id"], self.secrets["paypal_secret"],
+                          self.shop["gateways"]["paypal"]["sandbox"]).status(ref)
         return None
 
     def check_now(self, query, order):
+        if order.get("gateway") == "manual":
+            self.claim_manual(query, order)
+            return
         try:
             status = self.status_of(order)
         except PaymentError as exc:
@@ -455,6 +685,8 @@ class ShopFlow:
                 "username": order["username"]}
         chat_id = order["chat_id"]
         self._send(sender, chat_id, self.t("shop.thanks") + "\n\n" + self.summary(order))
+        if order.get("address"):
+            self._send(sender, chat_id, self.t("shop.physical_paid"))
         problems = []
         context = self._context(user, chat_id)
         for item in order["items"]:
@@ -501,11 +733,15 @@ class ShopFlow:
     def notify_admins(self, order, problems, sender):
         lines = [self.t("shop.admin_new_sale", order["id"]), self.t("shop.admin_buyer", _name(order), order["user_id"])]
         lines += ["%dx %s" % (i["qty"], i["name"]) for i in order["items"]]
+        if order.get("coupon"):
+            lines.append(self.t("shop.admin_coupon", order["coupon"], self.price(order.get("discount") or 0)))
+        if order.get("address"):
+            lines.append(self.t("shop.admin_address", order["address"], self.price(order.get("shipping") or 0)))
         if order["gateway"] == "xtr":
             lines.append(self.t("shop.admin_total_stars", order["stars"] or 0))
         else:
             gw = order["gateway"]
-            lines.append(self.t("shop.admin_total", self.price(order["total"]), self.t("shop.gw_" + gw) if gw in GATEWAYS else ""))
+            lines.append(self.t("shop.admin_total", self.price(order["total"]), self.gw_label(gw) if gw in GATEWAYS else gw or ""))
         if problems:
             lines += ["", self.t("shop.admin_problem")] + problems
         text = "\n".join(lines)
@@ -562,6 +798,13 @@ class ShopFlow:
                 db.set_status(self.base_dir, order["id"], "expired")
         for order in db.expire_old(self.base_dir, ORDER_TTL, now):
             self._checked.pop(order["id"], None)
+        ab = self.shop["abandoned"]
+        if ab["enabled"]:
+            for order in db.abandoned(self.base_dir, now - ab["minutes"] * 60, now - ORDER_TTL + 300):
+                db.set_reminded(self.base_dir, order["id"])
+                self._send(sender, order["chat_id"], self.t("shop.abandoned", order["id"]) + "\n\n" + self.summary(order),
+                           [[{"text": self.t("shop.abandoned_btn"), "callback_data": "%sr:%s" % (CB, order["id"])}]])
+                self.engine.emit("cart_reminder", order=order["id"], buyer=_name(order))
         if now - self._last_subs >= SUBS_EVERY:
             self._last_subs = now
             self.check_subscriptions(sender, now)
@@ -641,6 +884,22 @@ def app_confirm(token, bot_dir, order_id, payments=None):
             return {"ok": False, "error": {"code": "pay_already", "detail": "", "retry_after": None}}
         eng.shop.complete(order_id, eng, order.get("gateway") or "manual", "manual")
         return {"delivered": bool(db.get_order(bot_dir, order_id)["delivered"])}
+    return _app_result(run)
+
+
+def app_ship(token, bot_dir, order_id, tracking=""):
+    """Produto físico enviado: avisa a pessoa (com o código de rastreio, se houver)."""
+    def run():
+        eng, cb = _app_engine(token, bot_dir)
+        order = db.get_order(bot_dir, order_id)
+        if order is None:
+            return {"ok": False, "error": {"code": "pay_not_found", "detail": "", "retry_after": None}}
+        db.set_shipped(bot_dir, order_id, tracking or "-")
+        text = eng.shop.t("shop.shipped", order_id)
+        if tracking:
+            text += "\n" + eng.shop.t("shop.tracking", template.escape(tracking))
+        eng.shop._send(eng, order["chat_id"], text)
+        return {}
     return _app_result(run)
 
 

@@ -84,6 +84,10 @@ fun ProductEditorScreen(botId: Long, productId: String?, subscription: Boolean, 
     var photo by remember { mutableStateOf(original?.photo) }
     var imageUrl by remember { mutableStateOf(original?.imageUrl ?: "") }
     val isSubscription = original?.isSubscription ?: subscription
+    var type by remember { mutableStateOf(original?.type ?: if (subscription) Product.TYPE_SUBSCRIPTION else Product.TYPE_DIGITAL) }
+    val isDonation = type == Product.TYPE_DONATION
+    val isPhysical = type == Product.TYPE_PHYSICAL
+    var amounts by remember { mutableStateOf(original?.amounts?.joinToString("  ") { ShopSettings.priceText(it) } ?: "") }
     var chatId by remember { mutableStateOf(original?.chatId) }
     var chatTitle by remember { mutableStateOf(original?.chatTitle ?: "") }
     var days by remember { mutableStateOf(original?.days?.toString() ?: "30") }
@@ -114,6 +118,7 @@ fun ProductEditorScreen(botId: Long, productId: String?, subscription: Boolean, 
     val errDays = stringResource(R.string.product_err_days)
     val errStock = stringResource(R.string.product_err_stock)
     val errDelivery = stringResource(R.string.product_err_delivery)
+    val errAmounts = stringResource(R.string.product_err_amounts)
 
     fun save() {
         val cents = ShopSettings.parsePrice(price)
@@ -121,28 +126,34 @@ fun ProductEditorScreen(botId: Long, productId: String?, subscription: Boolean, 
         val daysValue = days.trim().toIntOrNull()
         val stockValue = stock.trim().toIntOrNull()
         val msg = delivery.msg
+        val amountValues = amounts.split(' ', ';', '\n').filter { it.isNotBlank() }.map { ShopSettings.parsePrice(it) }
         errors = buildList {
             if (name.isBlank()) add(errName)
-            if ((cents == null || cents <= 0) && (starsValue == null || starsValue <= 0)) add(errPrice)
+            if (isDonation) {
+                if (amountValues.any { it == null || it <= 0 } || amountValues.size > 6) add(errAmounts)
+            } else if ((cents == null || cents <= 0) && (starsValue == null || starsValue <= 0)) add(errPrice)
             if (isSubscription && chatId == null) add(errChat)
             if (isSubscription && (daysValue == null || daysValue !in 1..3650)) add(errDays)
             if (limited && (stockValue == null || stockValue < 0)) add(errStock)
-            if (!isSubscription && msg.text.isBlank() && msg.media == null) add(errDelivery)
+            if (type == Product.TYPE_DIGITAL && msg.text.isBlank() && msg.media == null) add(errDelivery)
         }
         if (errors.isNotEmpty()) return
-        val product = (original ?: Product(type = if (isSubscription) Product.TYPE_SUBSCRIPTION else Product.TYPE_DIGITAL)).copy(
+        val hasDelivery = msg.text.isNotBlank() || msg.media != null
+        val product = (original ?: Product()).copy(
+            type = type,
             name = name.trim(),
             description = description.trim(),
             price = cents ?: 0,
-            stars = starsValue?.takeIf { it > 0 },
+            stars = if (isDonation) null else starsValue?.takeIf { it > 0 },
+            amounts = if (isDonation) amountValues.filterNotNull().sorted() else emptyList(),
             active = active,
-            stock = if (limited) stockValue ?: 0 else -1,
+            stock = if (limited && !isDonation) stockValue ?: 0 else -1,
             photo = photo,
             imageUrl = imageUrl.trim(),
             chatId = if (isSubscription) chatId else null,
             chatTitle = if (isSubscription) chatTitle else "",
             days = if (isSubscription) daysValue ?: 30 else 30,
-            delivery = if (isSubscription) null else msg,
+            delivery = if (isSubscription || (type != Product.TYPE_DIGITAL && !hasDelivery)) null else msg,
         )
         val current = ConfigRepository.load(botId)
         val list = current.shop.products
@@ -180,10 +191,35 @@ fun ProductEditorScreen(botId: Long, productId: String?, subscription: Boolean, 
         ) {
             item {
                 Text(
-                    stringResource(if (isSubscription) R.string.product_intro_subscription else R.string.product_intro_digital),
+                    stringResource(
+                        when (type) {
+                            Product.TYPE_SUBSCRIPTION -> R.string.product_intro_subscription
+                            Product.TYPE_PHYSICAL -> R.string.product_intro_physical
+                            Product.TYPE_DONATION -> R.string.product_intro_donation
+                            else -> R.string.product_intro_digital
+                        },
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+            if (!isSubscription) {
+                item {
+                    Text(stringResource(R.string.product_type), style = MaterialTheme.typography.titleSmall)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        listOf(
+                            Triple(Product.TYPE_DIGITAL, R.string.product_type_digital, R.drawable.ic_sell),
+                            Triple(Product.TYPE_PHYSICAL, R.string.product_type_physical, R.drawable.ic_local_shipping),
+                            Triple(Product.TYPE_DONATION, R.string.product_type_donation, R.drawable.ic_volunteer_activism),
+                        ).forEach { (t, label, icon) ->
+                            FilterChip(
+                                selected = type == t, onClick = { type = t },
+                                label = { Text(stringResource(label)) },
+                                leadingIcon = { AppIcon(icon, Modifier.size(18.dp)) },
+                            )
+                        }
+                    }
+                }
             }
             item {
                 OutlinedTextField(
@@ -200,21 +236,34 @@ fun ProductEditorScreen(botId: Long, productId: String?, subscription: Boolean, 
                 )
             }
             item {
+                if (isDonation) {
+                    OutlinedTextField(
+                        value = amounts, onValueChange = { amounts = it.filter { c -> c.isDigit() || c == ',' || c == '.' || c == ' ' }.take(80) },
+                        label = { Text(stringResource(R.string.product_amounts, currency)) },
+                        singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Text(
+                        stringResource(R.string.product_amounts_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedTextField(
                         value = price, onValueChange = { price = it.filter { c -> c.isDigit() || c == ',' || c == '.' }.take(12) },
-                        label = { Text(stringResource(R.string.product_price, currency)) },
+                        label = { Text(stringResource(if (isDonation) R.string.product_min_amount else R.string.product_price, currency)) },
                         singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         modifier = Modifier.weight(1f),
                     )
-                    OutlinedTextField(
+                    if (!isDonation) OutlinedTextField(
                         value = stars, onValueChange = { stars = it.filter(Char::isDigit).take(6) },
                         label = { Text(stringResource(R.string.product_stars)) },
                         singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.weight(1f),
                     )
                 }
-                Text(
+                if (!isDonation) Text(
                     stringResource(R.string.product_stars_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -309,7 +358,7 @@ fun ProductEditorScreen(botId: Long, productId: String?, subscription: Boolean, 
                 Card(Modifier.fillMaxWidth()) {
                     Column {
                         SwitchRow(stringResource(R.string.product_active), stringResource(R.string.product_active_sub), active) { active = it }
-                        if (!isSubscription) {
+                        if (!isSubscription && !isDonation) {
                             HorizontalDivider()
                             SwitchRow(stringResource(R.string.product_limited), stringResource(R.string.product_limited_sub), limited) { limited = it }
                             if (limited) {
@@ -329,7 +378,13 @@ fun ProductEditorScreen(botId: Long, productId: String?, subscription: Boolean, 
                 item { SectionTitle(stringResource(R.string.product_delivery)) }
                 item {
                     Text(
-                        stringResource(R.string.product_delivery_hint),
+                        stringResource(
+                            when (type) {
+                                Product.TYPE_PHYSICAL -> R.string.product_delivery_hint_physical
+                                Product.TYPE_DONATION -> R.string.product_delivery_hint_donation
+                                else -> R.string.product_delivery_hint
+                            },
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
