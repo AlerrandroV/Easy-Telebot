@@ -61,6 +61,8 @@ fun triggerIcon(kind: String): Int = when (kind) {
     TriggerKinds.EVENT -> R.drawable.ic_group_add
     TriggerKinds.START -> R.drawable.ic_link
     TriggerKinds.INLINE -> R.drawable.ic_alternate_email
+    TriggerKinds.SCHEDULE -> R.drawable.ic_schedule
+    TriggerKinds.DRIP -> R.drawable.ic_history
     else -> R.drawable.ic_send
 }
 
@@ -72,6 +74,8 @@ fun triggerKindLabel(kind: String): String = stringResource(
         TriggerKinds.EVENT -> R.string.trigger_event
         TriggerKinds.START -> R.string.trigger_start
         TriggerKinds.INLINE -> R.string.trigger_inline
+        TriggerKinds.SCHEDULE -> R.string.trigger_schedule
+        TriggerKinds.DRIP -> R.string.trigger_drip
         else -> R.string.add_simple_command
     }
 )
@@ -127,6 +131,8 @@ fun triggerSummary(cmd: SimpleCommand): String {
         TriggerKinds.EVENT -> eventLabel(t.event)
         TriggerKinds.START -> t.words.joinToString(", ") { "?start=$it" + if (t.prefix) "…" else "" }
         TriggerKinds.INLINE -> t.title.ifBlank { t.words.joinToString(", ") }.ifBlank { stringResource(R.string.trigger_inline_any) }
+        TriggerKinds.SCHEDULE -> cmd.description.ifBlank { scheduleSummary(t) }
+        TriggerKinds.DRIP -> cmd.description.ifBlank { dripSummary(t) }
         else -> cmd.triggers.joinToString("  ·  ") { "/$it" }
     }.ifBlank { triggerKindLabel(cmd.kind) }
 }
@@ -144,6 +150,12 @@ fun triggerErrors(context: android.content.Context, kind: String, spec: TriggerS
         TriggerKinds.MEDIA -> if (spec.kinds.isEmpty()) out += context.getString(R.string.trigger_err_kinds)
         TriggerKinds.START -> if (spec.words.isEmpty()) out += context.getString(R.string.trigger_err_params)
         TriggerKinds.INLINE -> if (!hasMessage) out += context.getString(R.string.trigger_err_inline)
+        TriggerKinds.SCHEDULE -> {
+            if (!TriggerKinds.TIME.matches(spec.time)) out += context.getString(R.string.sched_err_time)
+            if (spec.mode == "weekly" && spec.days.isEmpty()) out += context.getString(R.string.sched_err_days)
+            if (spec.mode == "once" && spec.date.isBlank()) out += context.getString(R.string.sched_err_date)
+            if (spec.target == "chats" && spec.chats.isEmpty()) out += context.getString(R.string.sched_err_chats)
+        }
     }
     val onlyApproves = kind == TriggerKinds.EVENT && spec.event == "join_request" && spec.approve != "none"
     if (!hasBlocks && kind != TriggerKinds.INLINE && !onlyApproves) out += context.getString(R.string.cmd_err_no_blocks)
@@ -155,8 +167,8 @@ fun triggerErrors(context: android.content.Context, kind: String, spec: TriggerS
 /** O "quando" de um gatilho automático (o "o que fazer" são os blocos de sempre). */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun TriggerEditor(kind: String, spec: TriggerSpec, botUsername: String, enabled: Boolean, onEnabled: (Boolean) -> Unit,
-                  onChange: (TriggerSpec) -> Unit) {
+fun TriggerEditor(kind: String, spec: TriggerSpec, botId: Long, botUsername: String, enabled: Boolean,
+                  onEnabled: (Boolean) -> Unit, onChange: (TriggerSpec) -> Unit) {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -172,6 +184,8 @@ fun TriggerEditor(kind: String, spec: TriggerSpec, botUsername: String, enabled:
                         TriggerKinds.MEDIA -> R.string.trigger_media_help
                         TriggerKinds.EVENT -> R.string.trigger_event_help
                         TriggerKinds.START -> R.string.trigger_start_help
+                        TriggerKinds.SCHEDULE -> R.string.trigger_schedule_help
+                        TriggerKinds.DRIP -> R.string.trigger_drip_help
                         else -> R.string.trigger_inline_help
                     }
                 ),
@@ -196,6 +210,8 @@ fun TriggerEditor(kind: String, spec: TriggerSpec, botUsername: String, enabled:
                 TriggerKinds.EVENT -> EventFields(spec, onChange)
                 TriggerKinds.START -> StartFields(spec, botUsername, onChange)
                 TriggerKinds.INLINE -> InlineFields(spec, botUsername, onChange)
+                TriggerKinds.SCHEDULE -> ScheduleFields(spec, botId, onChange)
+                TriggerKinds.DRIP -> DripFields(spec, onChange)
             }
         }
     }
@@ -396,6 +412,203 @@ private fun Note(text: String) {
             Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
         }
     }
+}
+
+// -- Agendamentos ----------------------------------------------------------------------------------
+
+@Composable
+private fun weekdayNames(): List<String> {
+    val locale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
+    return java.time.DayOfWeek.values().map { it.getDisplayName(java.time.format.TextStyle.SHORT, locale) }
+}
+
+@Composable
+fun durationText(minutes: Int): String = when {
+    minutes % 1440 == 0 -> stringResource(R.string.dur_days, minutes / 1440)
+    minutes % 60 == 0 -> stringResource(R.string.dur_hours, minutes / 60)
+    minutes > 60 -> stringResource(R.string.dur_hours_min, minutes / 60, minutes % 60)
+    else -> stringResource(R.string.dur_minutes, minutes)
+}
+
+@Composable
+private fun dateText(iso: String): String {
+    val locale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
+    return runCatching {
+        java.time.LocalDate.parse(iso).format(
+            java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.MEDIUM).withLocale(locale)
+        )
+    }.getOrDefault(iso)
+}
+
+@Composable
+fun scheduleSummary(t: TriggerSpec): String {
+    val names = weekdayNames()
+    val whenText = when (t.mode) {
+        "weekly" -> stringResource(R.string.sched_sum_weekly, t.days.sorted().joinToString(", ") { names[it] }, t.time)
+        "monthly" -> stringResource(R.string.sched_sum_monthly, t.day, t.time)
+        "interval" -> stringResource(R.string.sched_sum_interval, durationText(t.every))
+        "once" -> stringResource(R.string.sched_sum_once, dateText(t.date), t.time)
+        else -> stringResource(R.string.sched_sum_daily, t.time)
+    }
+    return whenText + " · " + targetLabel(t.target, t.chats.size)
+}
+
+@Composable
+private fun targetLabel(target: String, count: Int = 0): String = when (target) {
+    "groups" -> stringResource(R.string.sched_target_groups)
+    "channels" -> stringResource(R.string.sched_target_channels)
+    "all" -> stringResource(R.string.sched_target_all)
+    "chats" -> stringResource(R.string.sched_target_chats_n, count)
+    "none" -> stringResource(R.string.sched_target_none)
+    else -> stringResource(R.string.sched_target_users)
+}
+
+@Composable
+fun dripSummary(t: TriggerSpec): String {
+    if (t.delay == 0) return stringResource(R.string.drip_sum_now)
+    val amount = when (t.unit) {
+        "minutes" -> durationText(t.delay)
+        "hours" -> durationText(t.delay * 60)
+        else -> durationText(t.delay * 1440)
+    }
+    return stringResource(R.string.drip_sum_after, amount)
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ScheduleFields(spec: TriggerSpec, botId: Long, onChange: (TriggerSpec) -> Unit) {
+    val context = LocalContext.current
+    Label(stringResource(R.string.sched_when))
+    ChoiceChips(TriggerKinds.MODES, spec.mode, { m ->
+        stringResource(
+            when (m) {
+                "weekly" -> R.string.sched_mode_weekly
+                "monthly" -> R.string.sched_mode_monthly
+                "interval" -> R.string.sched_mode_interval
+                "once" -> R.string.sched_mode_once
+                else -> R.string.sched_mode_daily
+            }
+        )
+    }) { onChange(spec.copy(mode = it)) }
+
+    when (spec.mode) {
+        "weekly" -> {
+            val names = weekdayNames()
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                (0..6).forEach { d ->
+                    FilterChip(
+                        selected = d in spec.days,
+                        onClick = { onChange(spec.copy(days = if (d in spec.days) spec.days - d else (spec.days + d).sorted())) },
+                        label = { Text(names[d]) },
+                    )
+                }
+            }
+        }
+        "monthly" -> OutlinedTextField(
+            value = spec.day.toString(),
+            onValueChange = { v -> v.filter { it.isDigit() }.take(2).toIntOrNull()?.let { onChange(spec.copy(day = it.coerceIn(1, 31))) } },
+            label = { Text(stringResource(R.string.sched_day_of_month)) },
+            supportingText = { Text(stringResource(R.string.sched_day_of_month_hint)) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        "interval" -> {
+            ChoiceChips(listOf(15, 30, 60, 180, 360, 720, 1440), spec.every, { durationText(it) }) { onChange(spec.copy(every = it)) }
+            OutlinedTextField(
+                value = spec.every.toString(),
+                onValueChange = { v -> v.filter { it.isDigit() }.take(5).toIntOrNull()?.let { onChange(spec.copy(every = it.coerceIn(5, 7 * 1440))) } },
+                label = { Text(stringResource(R.string.sched_every_minutes)) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        "once" -> OutlinedButton(onClick = {
+            val today = java.time.LocalDate.now()
+            val d = runCatching { java.time.LocalDate.parse(spec.date) }.getOrDefault(today)
+            android.app.DatePickerDialog(context, { _, y, mo, day ->
+                onChange(spec.copy(date = "%04d-%02d-%02d".format(y, mo + 1, day)))
+            }, d.year, d.monthValue - 1, d.dayOfMonth).apply { datePicker.minDate = System.currentTimeMillis() - 1000 }.show()
+        }, modifier = Modifier.fillMaxWidth()) {
+            ButtonLabel(R.drawable.ic_schedule, if (spec.date.isBlank()) stringResource(R.string.sched_pick_date) else dateText(spec.date))
+        }
+    }
+    if (spec.mode != "interval") OutlinedButton(onClick = {
+        val (h, m) = spec.time.split(":").map { it.toIntOrNull() ?: 0 }.let { it[0] to it.getOrElse(1) { 0 } }
+        android.app.TimePickerDialog(context, { _, hh, mm -> onChange(spec.copy(time = "%02d:%02d".format(hh, mm))) },
+            h, m, android.text.format.DateFormat.is24HourFormat(context)).show()
+    }, modifier = Modifier.fillMaxWidth()) {
+        ButtonLabel(R.drawable.ic_schedule, stringResource(R.string.sched_at_time, spec.time))
+    }
+
+    Label(stringResource(R.string.sched_target))
+    ChoiceChips(TriggerKinds.TARGETS, spec.target, { targetLabel(it, spec.chats.size) }) { onChange(spec.copy(target = it)) }
+    Text(
+        stringResource(
+            when (spec.target) {
+                "none" -> R.string.sched_target_none_help
+                "chats" -> R.string.sched_target_chats_help
+                else -> R.string.sched_target_help
+            }
+        ),
+        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    if (spec.target == "chats") {
+        val known by androidx.compose.runtime.produceState<List<io.github.alerrandrov.easytelebot.engine.ChatSummary>>(emptyList(), botId) {
+            value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching {
+                    io.github.alerrandrov.easytelebot.engine.ChatsBridge.listChats(
+                        context, io.github.alerrandrov.easytelebot.data.BotRepository.dir(botId).path,
+                    )
+                }.getOrDefault(emptyList())
+            }
+        }
+        if (known.isEmpty()) Text(stringResource(R.string.sched_no_chats), style = MaterialTheme.typography.bodySmall)
+        // Grupos e canais primeiro; depois as pessoas.
+        known.sortedBy { if (it.type == "private") 1 else 0 }.take(200).forEach { c ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                androidx.compose.material3.Checkbox(
+                    checked = c.chatId in spec.chats,
+                    onCheckedChange = { on -> onChange(spec.copy(chats = if (on) spec.chats + c.chatId else spec.chats - c.chatId)) },
+                )
+                AppIcon(
+                    when {
+                        c.type == "channel" -> R.drawable.ic_campaign
+                        c.isGroup -> R.drawable.ic_group
+                        else -> R.drawable.ic_person
+                    },
+                    Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(c.displayName, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+    Note(stringResource(R.string.sched_note))
+}
+
+@Composable
+private fun DripFields(spec: TriggerSpec, onChange: (TriggerSpec) -> Unit) {
+    OutlinedTextField(
+        value = spec.delay.toString(),
+        onValueChange = { v -> v.filter { it.isDigit() }.take(4).let { onChange(spec.copy(delay = (it.toIntOrNull() ?: 0).coerceIn(0, 3650))) } },
+        label = { Text(stringResource(R.string.drip_delay)) },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+        modifier = Modifier.fillMaxWidth(),
+    )
+    ChoiceChips(TriggerKinds.UNITS, spec.unit, { u ->
+        stringResource(
+            when (u) {
+                "minutes" -> R.string.unit_minutes
+                "hours" -> R.string.unit_hours
+                else -> R.string.unit_days
+            }
+        )
+    }) { onChange(spec.copy(unit = it)) }
+    Text(dripSummary(spec), style = MaterialTheme.typography.bodyMedium)
+    Note(stringResource(R.string.drip_note))
 }
 
 // -- Lista na tela do bot ----------------------------------------------------------------------------

@@ -99,6 +99,23 @@ Além dos comandos, o bot reage sozinho (menu **Adicionar › Gatilhos**):
   teclado do celular (texto, pedir contato, pedir localização) — combine com uma
   palavra-chave "é igual a" para responder cada tecla.
 
+## Agendamentos
+
+No menu **Adicionar › Agendamentos**:
+
+- **Mensagem agendada**: todo dia, em dias da semana, todo mês, a cada X minutos ou
+  numa data, para usuários, grupos, canais, chats escolhidos ou ninguém (só roda os
+  blocos — por exemplo um script do Termux que gera um relatório). Usa o relógio do
+  celular; se o bot estiver desligado na hora, ainda envia se voltar em até 1 hora.
+- **Sequência depois do /start**: cada pessoa nova recebe mensagens no tempo escolhido
+  (logo, 1 dia depois, 3 dias depois…). Só vale para quem começar depois de o item
+  existir.
+- **Lembretes (/lembrar)**: comando pronto em Python. A pessoa escreve
+  `/lembrar amanhã 9h comprar pão`, `/lembrar em 30 minutos tirar o bolo` ou
+  `/lembrar 25/12 10:00 ligar para a vó` e o bot avisa na hora (`/lembrar cancelar`
+  apaga os pendentes). No Python: `lembrar(...)`, `cancelar_lembretes()` e
+  `enviar_texto(..., para=ID)` para mandar em outra conversa.
+
 ## Python facilitado
 
 Para quem quer um pouco mais que blocos, sem virar programador: um pedaço de Python

@@ -29,6 +29,7 @@ from .flows import FlowRunner
 from . import termux as termux_mod
 from . import config as config_mod
 from . import automations, code_runner, errors, i18n, template
+from . import scheduler as scheduler_mod
 from .api import Aborted, NetworkError, TelegramApi, TelegramError
 
 POLL_TIMEOUT = 50  # segundos que o Telegram segura a conexão esperando mensagens
@@ -225,6 +226,7 @@ class Engine:
         self.termux = TermuxBridge(self)
         self.flows = FlowRunner(self)
         self.auto = automations.AutomationRunner(self)
+        self.scheduler = scheduler_mod.Scheduler(self)
         self.send_source = "auto"  # "auto" = resposta de comando; "manual" = enviada pelo app
         self.storage = None
         if storage:
@@ -423,6 +425,7 @@ class Engine:
         if not self._connect():
             return
         self.shop.start_worker()
+        self.scheduler.start()
         self.maybe_reload_config(force=True)
         self.termux.sync()
         self.set_state("running")
@@ -591,6 +594,8 @@ class Engine:
         if parsed is None:
             return self.auto.handle_message(message)
         name, args = parsed
+        if name == "start" and chat.get("type") == "private":
+            self.scheduler.record_start(user)  # começa a sequência (drip) dessa pessoa
         if name == "start" and args.strip() and self.auto.handle_start(message, args.strip()):
             return True
         sender = _display_name(user)

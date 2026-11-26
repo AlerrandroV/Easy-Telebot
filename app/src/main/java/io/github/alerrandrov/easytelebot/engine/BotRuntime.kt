@@ -278,6 +278,10 @@ object BotRuntime {
                 id, LogEntry.Level.OUT,
                 s(R.string.log_script_done, e.optString("command"), e.optDouble("seconds").toString().replace('.', ','), e.optInt("messages")),
             )
+            "schedule_fired" -> add(id, LogEntry.Level.OUT, s(R.string.log_schedule_fired, e.optString("label"), e.optInt("recipients")))
+            "drip_sent" -> add(id, LogEntry.Level.OUT, s(R.string.log_drip_sent, e.optString("label"), e.optString("user")))
+            "reminder_created" -> add(id, LogEntry.Level.INFO, s(R.string.log_reminder_created, e.optString("user"), e.optString("when")))
+            "reminder_sent" -> add(id, LogEntry.Level.OUT, s(R.string.log_reminder_sent))
             "code_log" -> add(id, LogEntry.Level.INFO, s(R.string.log_code_log, e.optString("command"), e.optString("text")))
             "code_error" -> add(id, LogEntry.Level.ERROR, s(R.string.log_code_error, e.optString("command"), e.optString("message")))
             "spam_decided" -> {

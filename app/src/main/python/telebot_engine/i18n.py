@@ -312,4 +312,13 @@ TEXTS = {
     "detail.https_required": _t("endereço precisa começar com https://", "the address must start with https://"),
     "detail.bad_response": _t("resposta inválida (HTTP %s)", "invalid response (HTTP %s)"),
     "detail.exit_code": _t("código %d. %s", "exit code %d. %s"),
+
+    # -- agendamentos e lembretes --
+    "fmt.date_short": _t("%d/%m", "%m/%d"),
+    "reminder.when": _t("%s às %s", "%s at %s"),
+    "reminder.fire": _t("⏰ Lembrete: %s", "⏰ Reminder: %s"),
+    "reminder.fire_empty": _t("⏰ Lembrete!", "⏰ Reminder!"),
+    "label.schedule": _t("agendamento", "schedule"),
+    "label.drip": _t("sequência", "sequence"),
+    "label.reminder": _t("lembrete", "reminder"),
 }

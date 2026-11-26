@@ -20,7 +20,7 @@ from . import admins as admins_mod
 from . import chats, template
 from .pyfacil_names import fold
 
-KINDS = ("command", "keyword", "media", "event", "start", "inline")
+KINDS = ("command", "keyword", "media", "event", "start", "inline", "schedule", "drip")
 MATCHES = ("contains", "word", "starts", "equals", "regex")
 WHERE = ("all", "private", "groups")
 MEDIA_KINDS = ("photo", "video", "animation", "voice", "audio", "video_note", "document", "sticker",
@@ -71,6 +71,9 @@ def normalize_spec(kind, raw):
     if kind == "start":
         params = [p for p in _words(raw.get("words"), 64) if START_PARAM.match(p)]
         return {"words": params, "prefix": bool(raw.get("prefix", False))} if params else None
+    if kind in ("schedule", "drip"):
+        from . import scheduler
+        return scheduler.normalize_schedule(raw) if kind == "schedule" else scheduler.normalize_drip(raw)
     if kind == "inline":
         return {"words": _words(raw.get("words")), "title": str(raw.get("title") or "").strip()[:64],
                 "description": str(raw.get("description") or "").strip()[:128]}

@@ -51,6 +51,9 @@ GLOBALS = {
     "random": _t(["aleatorio"], ["random"], ["aleatorio"], ["aleatoire"], ["случайное"]),
     "choice": _t(["escolher"], ["choice"], ["elegir"], ["choisir"], ["выбрать"]),
     "now": _t(["agora"], ["now"], ["ahora"], ["maintenant"], ["сейчас"]),
+    "remind": _t(["lembrar"], ["remind"], ["recordar"], ["rappeler"], ["напомнить"]),
+    "cancel_reminders": _t(["cancelar_lembretes"], ["cancel_reminders"], ["cancelar_recordatorios"],
+                           ["annuler_rappels"], ["отменить_напоминания"]),
     # constantes
     "true": _t(["verdadeiro"], ["true"], ["verdadero"], ["vrai"], ["истина"]),
     "false": _t(["falso"], ["false"], ["falso"], ["faux"], ["ложь"]),
@@ -143,6 +146,7 @@ KWARGS = {
     "link": _t(["link"], ["link", "url"], ["enlace", "link"], ["lien"], ["ссылка"]),
     "data": _t(["dado"], ["data"], ["dato"], ["donnee"], ["данные"]),
     "copy": _t(["copiar"], ["copy"], ["copiar"], ["copier"], ["копировать"]),
+    "to": _t(["para"], ["to", "chat_id"], ["para"], ["vers", "destinataire"], ["кому"]),
 }
 
 # -- mensagens de erro ------------------------------------------------------------------------
@@ -292,6 +296,12 @@ ERRORS = {
         "Las variables guardadas pasaron el límite de {n} KB o tienen un valor que no se puede guardar (solo texto, números, listas y diccionarios).",
         "Les variables enregistrées dépassent {n} Ko ou contiennent une valeur impossible à enregistrer (texte, nombres, listes et dictionnaires seulement).",
         "Сохранённые переменные превысили {n} КБ или содержат значение, которое нельзя сохранить (только текст, числа, списки и словари)."),
+    "no_chat": _t(
+        "Linha {line}: aqui não há conversa para responder (agendamento sem destino). Diga para onde: para=ID_DO_CHAT.",
+        "Line {line}: there is no chat to reply to here (schedule without a target). Say where: to=CHAT_ID.",
+        "Línea {line}: aquí no hay conversación a la que responder (programación sin destino). Indica a dónde: para=ID_DEL_CHAT.",
+        "Ligne {line} : pas de conversation à laquelle répondre ici (programmation sans destination). Indiquez où : vers=ID_DU_CHAT.",
+        "Строка {line}: здесь нет чата для ответа (расписание без получателя). Укажите куда: кому=ID_ЧАТА."),
     "internal": _t(
         "Linha {line}: erro inesperado ({detail}).",
         "Line {line}: unexpected error ({detail}).",

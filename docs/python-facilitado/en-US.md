@@ -99,6 +99,10 @@ and dictionary methods (`.get()`…).
 | `random(1, 6)` | A random number from 1 to 6 |
 | `choice(items)` | A random item from the list |
 | `now()` | The phone's date and time: `"25/11/2026 14:30"` (day/month/year) |
+| `remind(when_and_text)` | Schedules a reminder for the sender: `remind("tomorrow 9am buy bread")`, `remind("in 30 minutes take the cake out")` or `remind(30, "take the cake out")` (minutes). Returns when it will remind (`"11/27 at 09:00"`) or empty if it didn't understand |
+| `cancel_reminders()` | Deletes the sender's pending reminders and says how many there were |
+
+Every send function accepts `to=CHAT_ID` (or `to="@channel"`) to send to another chat, for example in a schedule without a target.
 
 ### Buttons
 
@@ -173,6 +177,8 @@ explanation, in the language the code was written in.
 | `aleatorio` | `random` | `aleatorio` | `aleatoire` | `случайное` |
 | `escolher` | `choice` | `elegir` | `choisir` | `выбрать` |
 | `agora` | `now` | `ahora` | `maintenant` | `сейчас` |
+| `lembrar` | `remind` | `recordar` | `rappeler` | `напомнить` |
+| `cancelar_lembretes` | `cancel_reminders` | `cancelar_recordatorios` | `annuler_rappels` | `отменить_напоминания` |
 | `verdadeiro` | `true` | `verdadero` | `vrai` | `истина` |
 | `falso` | `false` | `falso` | `faux` | `ложь` |
 
@@ -222,6 +228,7 @@ explanation, in the language the code was written in.
 | `link` | `link` / `url` | `enlace` / `link` | `lien` | `ссылка` |
 | `dado` | `data` | `dato` | `donnee` | `данные` |
 | `copiar` | `copy` | `copiar` | `copier` | `копировать` |
+| `para` | `to` / `chat_id` | `para` | `vers` / `destinataire` | `кому` |
 
 ### Message types
 

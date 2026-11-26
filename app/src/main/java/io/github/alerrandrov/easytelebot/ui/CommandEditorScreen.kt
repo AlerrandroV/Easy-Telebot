@@ -97,6 +97,9 @@ internal fun toRows(buttons: List<ButtonDraft>): List<List<LinkButton>> {
     return rows
 }
 
+/** `newKind` especial: abre um comando /lembrar pronto (Python com lembrar()). */
+const val REMINDER_TEMPLATE = "reminder_template"
+
 @Composable
 fun CommandEditorScreen(
     botId: Long,
@@ -113,7 +116,12 @@ fun CommandEditorScreen(
     val config = remember { ConfigRepository.load(botId) }
     val original = remember { config.commands.firstOrNull { it.id == commandId } }
     val start = remember {
-        original ?: SimpleCommand(
+        original ?: if (newKind == REMINDER_TEMPLATE) SimpleCommand(
+            // Modelo pronto: /lembrar amanhã 9h comprar pão
+            triggers = listOf(context.getString(R.string.reminder_cmd_name)),
+            description = context.getString(R.string.reminder_cmd_description),
+            blocks = listOf(CommandBlock.Code(context.getString(R.string.reminder_cmd_code))),
+        ) else SimpleCommand(
             adminLevel = if (newAsAdmin) 1 else null,
             showInMenu = true,
             blocks = if (newAsScript) listOf(CommandBlock.Termux(CommandScript())) else emptyList(),
@@ -284,7 +292,17 @@ fun CommandEditorScreen(
             }
 
             if (!isCommand) item {
-                TriggerEditor(start.kind, spec, botUsername, enabled, { enabled = it }) { spec = it }
+                TriggerEditor(start.kind, spec, botId, botUsername, enabled, { enabled = it }) { spec = it }
+            }
+            if (start.kind in TriggerKinds.TIMED) item {
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it.take(64) },
+                    label = { Text(stringResource(R.string.sched_name)) },
+                    supportingText = { Text(stringResource(R.string.sched_name_hint)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
             if (isCommand) item {
                 TriggersEditor(
@@ -317,7 +335,7 @@ fun CommandEditorScreen(
                     }
                 }
             }
-            if (start.kind != TriggerKinds.EVENT) item {
+            if (start.kind != TriggerKinds.EVENT && start.kind !in TriggerKinds.TIMED) item {
                 Card(
                     Modifier.fillMaxWidth(),
                     colors = if (adminLevel != null) {

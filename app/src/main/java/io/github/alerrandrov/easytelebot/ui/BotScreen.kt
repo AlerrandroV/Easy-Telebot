@@ -411,7 +411,7 @@ fun BotScreen(
                     },
                 )
                 Text(stringResource(R.string.add_triggers_title), style = MaterialTheme.typography.titleSmall)
-                io.github.alerrandrov.easytelebot.data.TriggerKinds.AUTOMATIC.forEach { kind ->
+                (io.github.alerrandrov.easytelebot.data.TriggerKinds.AUTOMATIC - io.github.alerrandrov.easytelebot.data.TriggerKinds.TIMED.toSet()).forEach { kind ->
                     SectionCard(
                         icon = triggerIcon(kind),
                         title = triggerKindLabel(kind),
@@ -430,6 +430,30 @@ fun BotScreen(
                         },
                     )
                 }
+                Text(stringResource(R.string.add_timed_title), style = MaterialTheme.typography.titleSmall)
+                io.github.alerrandrov.easytelebot.data.TriggerKinds.TIMED.forEach { kind ->
+                    SectionCard(
+                        icon = triggerIcon(kind),
+                        title = triggerKindLabel(kind),
+                        subtitle = stringResource(
+                            if (kind == io.github.alerrandrov.easytelebot.data.TriggerKinds.SCHEDULE) R.string.add_trigger_schedule_sub
+                            else R.string.add_trigger_drip_sub
+                        ),
+                        onClick = {
+                            showAddSheet = false
+                            onNewTrigger(kind)
+                        },
+                    )
+                }
+                SectionCard(
+                    icon = R.drawable.ic_notifications,
+                    title = stringResource(R.string.add_reminders),
+                    subtitle = stringResource(R.string.add_reminders_sub),
+                    onClick = {
+                        showAddSheet = false
+                        onNewTrigger(REMINDER_TEMPLATE)
+                    },
+                )
                 Text(stringResource(R.string.add_more_title), style = MaterialTheme.typography.titleSmall)
                 SectionCard(
                     icon = R.drawable.ic_sell,

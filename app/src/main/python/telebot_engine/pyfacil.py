@@ -552,20 +552,20 @@ def _slug(text):
     return (s or "botao")[:50]
 
 
-def f_send_text(interp, line, text, buttons=None):
-    return interp.send(line, "sendMessage", {"text": text}, buttons)
+def f_send_text(interp, line, text, buttons=None, to=None):
+    return interp.send(line, "sendMessage", {"text": text}, buttons, to=to)
 
 
 def f_reply(interp, line, text, buttons=None):
     return interp.send(line, "sendMessage", {"text": text}, buttons, reply=True)
 
 
-def f_send_photo(interp, line, photo, caption="", buttons=None):
-    return interp.send(line, "sendPhoto", {"caption": caption}, buttons, media=("photo", photo))
+def f_send_photo(interp, line, photo, caption="", buttons=None, to=None):
+    return interp.send(line, "sendPhoto", {"caption": caption}, buttons, media=("photo", photo), to=to)
 
 
-def f_send_file(interp, line, file, caption="", buttons=None):
-    return interp.send(line, "sendDocument", {"caption": caption}, buttons, media=("document", file))
+def f_send_file(interp, line, file, caption="", buttons=None, to=None):
+    return interp.send(line, "sendDocument", {"caption": caption}, buttons, media=("document", file), to=to)
 
 
 def f_button(interp, line, text, link=None, data=None, copy=None):
@@ -669,12 +669,26 @@ def f_now(interp, line):
     return interp.host.now()
 
 
+def f_remind(interp, line, when, text=None):
+    """``lembrar("amanhã 9h comprar pão")`` ou ``lembrar(30, "tirar o bolo")`` (minutos).
+    Devolve quando vai lembrar ("27/11 às 09:00") ou ``""`` se não entendeu."""
+    if interp.chat_id is None:
+        raise ScriptError("no_chat", line)
+    out = interp.external(interp.host.remind, when if isinstance(when, (int, float)) else str(when),
+                          None if text is None else str(text))
+    return out[0] if out else ""
+
+
+def f_cancel_reminders(interp, line):
+    return interp.external(interp.host.cancel_reminders)
+
+
 # canônico → (função, argumentos nomeados aceitos)
 FUNCTIONS = {
-    "send_text": (f_send_text, ("buttons",)),
+    "send_text": (f_send_text, ("buttons", "to")),
     "reply": (f_reply, ("buttons",)),
-    "send_photo": (f_send_photo, ("caption", "buttons")),
-    "send_file": (f_send_file, ("caption", "buttons")),
+    "send_photo": (f_send_photo, ("caption", "buttons", "to")),
+    "send_file": (f_send_file, ("caption", "buttons", "to")),
     "button": (f_button, ("link", "data", "copy")),
     "termux": (f_termux, ("timeout", "wait", "env")),
     "stop": (f_stop, ()),
@@ -684,6 +698,8 @@ FUNCTIONS = {
     "random": (f_random, ()),
     "choice": (f_choice, ()),
     "now": (f_now, ()),
+    "remind": (f_remind, ()),
+    "cancel_reminders": (f_cancel_reminders, ()),
 }
 
 
@@ -1071,7 +1087,10 @@ class Interpreter:
             raise ScriptError("zero", line) from None
 
     # -- ações -----------------------------------------------------------------------------
-    def send(self, line, method, params, buttons, reply=False, media=None):
+    def send(self, line, method, params, buttons, reply=False, media=None, to=None):
+        chat_id = self.chat_id if to is None else (to if isinstance(to, int) or str(to).startswith("@") else _int(to, line))
+        if chat_id is None:
+            raise ScriptError("no_chat", line)
         if self.sends >= MAX_SENDS:
             raise ScriptError("sends", line, n=MAX_SENDS)
         params = {k: v for k, v in params.items() if v not in (None, "")}
@@ -1084,7 +1103,7 @@ class Interpreter:
         kb = _rows(self, line, buttons)
         if kb:
             params["reply_markup"] = kb
-        if reply and self.reply_to:
+        if reply and self.reply_to and to is None:
             params["reply_parameters"] = self.reply_to
         files = None
         if media:
@@ -1101,7 +1120,7 @@ class Interpreter:
                 else:
                     params[key] = value
         self.sends += 1
-        return bool(self.external(self.host.send, self.chat_id, method, params, files))
+        return bool(self.external(self.host.send, chat_id, method, params, files))
 
     def download(self, ref, line):
         if not isinstance(ref, FileRef) or not ref.info.get("file_id"):
@@ -1116,6 +1135,13 @@ class Interpreter:
             raise ScriptError("download", line, detail=_clean(exc)) from None
         ref.path = path
         return ref
+
+
+def _int(value, line):
+    try:
+        return int(str(value).strip())
+    except ValueError:
+        raise ScriptError("value", line, detail=str(value)) from None
 
 
 def _type_name(v):

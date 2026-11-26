@@ -105,6 +105,10 @@ plus les méthodes courantes de texte (`.lower()`, `.split()`, `.replace()`…),
 | `aleatoire(1, 6)` | Un nombre au hasard entre 1 et 6 |
 | `choisir(liste)` | Un élément au hasard de la liste |
 | `maintenant()` | Date et heure du téléphone : `"25/11/2026 14:30"` |
+| `rappeler(quand_et_texte)` | Programme un rappel pour l'expéditeur : `rappeler("25/12 10:00 appeler mamie")` ou `rappeler(30, "sortir le gâteau")` (minutes). Les dates en toutes lettres sont comprises en portugais et en anglais ("tomorrow 9am…"). Renvoie quand le rappel aura lieu, ou vide s'il n'a pas compris |
+| `annuler_rappels()` | Supprime les rappels en attente de l'expéditeur et dit combien il y en avait |
+
+Toutes les fonctions d'envoi acceptent `vers=ID_DU_CHAT` (ou `vers="@canal"`) pour envoyer dans une autre conversation, par exemple dans une programmation sans destination.
 
 ### Boutons
 
@@ -179,6 +183,8 @@ ligne et une explication, dans la langue du code.
 | `aleatorio` | `random` | `aleatorio` | `aleatoire` | `случайное` |
 | `escolher` | `choice` | `elegir` | `choisir` | `выбрать` |
 | `agora` | `now` | `ahora` | `maintenant` | `сейчас` |
+| `lembrar` | `remind` | `recordar` | `rappeler` | `напомнить` |
+| `cancelar_lembretes` | `cancel_reminders` | `cancelar_recordatorios` | `annuler_rappels` | `отменить_напоминания` |
 | `verdadeiro` | `true` | `verdadero` | `vrai` | `истина` |
 | `falso` | `false` | `falso` | `faux` | `ложь` |
 
@@ -228,6 +234,7 @@ ligne et une explication, dans la langue du code.
 | `link` | `link` / `url` | `enlace` / `link` | `lien` | `ссылка` |
 | `dado` | `data` | `dato` | `donnee` | `данные` |
 | `copiar` | `copy` | `copiar` | `copier` | `копировать` |
+| `para` | `to` / `chat_id` | `para` | `vers` / `destinataire` | `кому` |
 
 ### Types de message
 

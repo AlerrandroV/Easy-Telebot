@@ -260,7 +260,7 @@
     <string name="add_title">O que você quer adicionar?</string>
     <string name="add_simple_command">Comando simples</string>
     <string name="add_simple_command_sub">Um ou mais comandos (ex.: /start e /iniciar) que respondem com uma ou mais mensagens: texto formatado, fotos, vídeos, arquivos e botões com links.</string>
-    <string name="add_more_soon">Em breve: mensagens agendadas, internet sem Termux, moderação de grupos e mais.</string>
+    <string name="add_more_soon">Em breve: internet sem Termux, moderação de grupos, atendimento, IA e mais.</string>
     <string name="add_admin_command">Comando de admin</string>
     <string name="add_admin_command_sub">Igual ao comando simples, mas só administradores da classe escolhida (ou acima) podem usar. Para os outros, o bot não responde nada.</string>
     <string name="add_admin">Adicionar administrador</string>
@@ -1191,7 +1191,7 @@
     <string name="code_help">Ajuda</string>
     <string name="code_ok">Código sem erros</string>
     <string name="code_help_body">Escreva em Python simples: if/elif/else, for, while, variáveis, textos, listas e f-strings. O código roda no próprio celular com limites de segurança: não acessa arquivos nem a internet (só pelo termux()). Os nomes valem em português, inglês, espanhol, francês e russo. Num \"Aguardar resposta\", o código roda a cada mensagem até chamar parar(). O guia completo está na pasta docs do projeto.</string>
-    <string name="code_help_reference">"mensagem.tipo == texto / foto / video / audio / voz / documento / botao\nmensagem.texto  mensagem.foto  mensagem.arquivo  mensagem.dado\narquivo.baixar()   base64(arquivo)\nusuario.nome  usuario.id  usuario.arroba  usuario.admin\nchat.id  chat.privado  argumentos  variaveis[\"x\"]\nenviar_texto(texto, botoes=[...])   responder(texto)\nenviar_foto(foto, legenda=\"\")   enviar_arquivo(caminho)\nbotao(\"Texto\", link=..., dado=..., copiar=...)\nr = termux(\"cmd\", arg, arquivo, tempo=30, esperar=True, ambiente={...})\nr.ok  r.saida  r.erro  r.codigo  r.tempo_esgotado\nparar()  pausa(seg)  registrar(...)  aleatorio(1, 6)  escolher(lista)  agora()"</string>
+    <string name="code_help_reference">"mensagem.tipo == texto / foto / video / audio / voz / documento / botao\nmensagem.texto  mensagem.foto  mensagem.arquivo  mensagem.dado\narquivo.baixar()   base64(arquivo)\nusuario.nome  usuario.id  usuario.arroba  usuario.admin\nchat.id  chat.privado  argumentos  variaveis[\"x\"]\nenviar_texto(texto, botoes=[...])   responder(texto)\nenviar_foto(foto, legenda=\"\")   enviar_arquivo(caminho)\nbotao(\"Texto\", link=..., dado=..., copiar=...)\nr = termux(\"cmd\", arg, arquivo, tempo=30, esperar=True, ambiente={...})\nr.ok  r.saida  r.erro  r.codigo  r.tempo_esgotado\nparar()  pausa(seg)  registrar(...)  aleatorio(1, 6)  escolher(lista)  agora()\nlembrar(\"amanhã 9h …\")  cancelar_lembretes()  enviar_texto(…, para=ID)"</string>
     <string name="code_sample">"# Python: roda quando o comando é usado.\nif argumentos:\n    enviar_texto(f\"Você escreveu: {argumentos}\")\nelse:\n    enviar_texto(f\"Olá, {usuario.nome}! Escreva algo depois do comando.\")\n"</string>
     <string name="code_sample_wait">"# Roda a cada mensagem recebida, até parar().\nif mensagem.tipo == foto:\n    enviar_texto(\"Foto recebida, obrigado!\")\n    parar()\nelse:\n    enviar_texto(\"Isso não é uma foto. Envie uma imagem, por favor.\")\n"</string>
     <string-array name="code_snippets">
@@ -1338,4 +1338,67 @@
     <string name="log_auto_media">Mensagem do tipo %1$s</string>
     <string name="log_auto_start">Link de convite ?start=%1$s</string>
     <string name="log_inline">%1$s buscou “%2$s” no modo inline (%3$d resultado(s)).</string>
+
+    <!-- Agendamentos, sequência e lembretes -->
+    <string name="trigger_schedule">Mensagem agendada</string>
+    <string name="trigger_drip">Sequência depois do /start</string>
+    <string name="add_timed_title">Agendamentos</string>
+    <string name="add_trigger_schedule_sub">Manda no horário: todo dia, em dias da semana, todo mês, a cada X minutos ou numa data. Para usuários, grupos, canais ou chats escolhidos.</string>
+    <string name="add_trigger_drip_sub">Mensagens em sequência para cada pessoa nova: logo no /start, 1 dia depois, 3 dias depois…</string>
+    <string name="add_reminders">Lembretes (/lembrar)</string>
+    <string name="add_reminders_sub">Comando pronto: a pessoa escreve “/lembrar amanhã 9h comprar pão” e o bot avisa na hora.</string>
+    <string name="trigger_schedule_help">O bot roda a resposta sozinho no horário, pelo relógio do celular. As variáveis de pessoa ({nome}…) valem quando o destino são usuários.</string>
+    <string name="trigger_drip_help">Cada pessoa que mandar /start pela primeira vez recebe esta resposta depois do tempo escolhido. Crie vários itens para montar a sequência (logo, 1 dia, 3 dias…).</string>
+    <string name="sched_name">Nome (opcional)</string>
+    <string name="sched_name_hint">Só para você reconhecer na lista e no registro.</string>
+    <string name="sched_when">Quando</string>
+    <string name="sched_mode_daily">Todo dia</string>
+    <string name="sched_mode_weekly">Dias da semana</string>
+    <string name="sched_mode_monthly">Todo mês</string>
+    <string name="sched_mode_interval">A cada…</string>
+    <string name="sched_mode_once">Uma vez</string>
+    <string name="sched_day_of_month">Dia do mês</string>
+    <string name="sched_day_of_month_hint">Em meses mais curtos, vale o último dia (31 vira 30 ou 28).</string>
+    <string name="sched_every_minutes">Minutos entre um envio e outro (mínimo 5)</string>
+    <string name="sched_pick_date">Escolher a data</string>
+    <string name="sched_at_time">Às %1$s</string>
+    <string name="sched_target">Para quem</string>
+    <string name="sched_target_users">Usuários</string>
+    <string name="sched_target_groups">Grupos</string>
+    <string name="sched_target_channels">Canais</string>
+    <string name="sched_target_all">Todos</string>
+    <string name="sched_target_chats_n">Chats escolhidos (%1$d)</string>
+    <string name="sched_target_none">Ninguém</string>
+    <string name="sched_target_help">Quem o bot já conhece: pessoas que falaram com ele e grupos/canais onde ele está. Quem bloqueou o bot fica de fora.</string>
+    <string name="sched_target_chats_help">Marque os grupos, canais ou pessoas que vão receber.</string>
+    <string name="sched_target_none_help">Só roda os blocos, sem conversa: bom para um script do Termux ou um código Python que manda para onde quiser (enviar_texto(..., para=ID)).</string>
+    <string name="sched_no_chats">Nenhuma conversa ainda. Elas aparecem quando alguém fala com o bot ou ele entra num grupo ou canal.</string>
+    <string name="sched_note">O bot precisa estar ligado no horário. Se o celular estiver desligado, o envio ainda sai se o bot voltar em até 1 hora; depois disso, aquele horário é pulado.</string>
+    <string name="sched_sum_daily">Todo dia às %1$s</string>
+    <string name="sched_sum_weekly">%1$s às %2$s</string>
+    <string name="sched_sum_monthly">Todo dia %1$d às %2$s</string>
+    <string name="sched_sum_interval">A cada %1$s</string>
+    <string name="sched_sum_once">%1$s às %2$s</string>
+    <string name="sched_err_time">Escolha um horário válido.</string>
+    <string name="sched_err_days">Marque pelo menos um dia da semana.</string>
+    <string name="sched_err_date">Escolha a data.</string>
+    <string name="sched_err_chats">Marque pelo menos um chat.</string>
+    <string name="dur_minutes">%1$d min</string>
+    <string name="dur_hours">%1$d h</string>
+    <string name="dur_hours_min">%1$d h %2$d min</string>
+    <string name="dur_days">%1$d d</string>
+    <string name="drip_delay">Quanto tempo depois do primeiro /start</string>
+    <string name="unit_minutes">minutos</string>
+    <string name="unit_hours">horas</string>
+    <string name="unit_days">dias</string>
+    <string name="drip_sum_now">Logo no primeiro /start</string>
+    <string name="drip_sum_after">%1$s depois do primeiro /start</string>
+    <string name="drip_note">Vale para quem mandar /start pela primeira vez depois que este item for salvo; ninguém recebe mensagens atrasadas. Use 0 para mandar logo no /start (junto com a resposta normal).</string>
+    <string name="reminder_cmd_name">lembrar</string>
+    <string name="reminder_cmd_description">Criar um lembrete</string>
+    <string name="reminder_cmd_code">"# /lembrar amanhã 9h comprar pão  ·  /lembrar em 30 minutos tirar o bolo\nif argumentos == \"cancelar\":\n    n = cancelar_lembretes()\n    enviar_texto(f\"{n} lembrete(s) cancelado(s).\")\n    parar()\nquando = lembrar(argumentos)\nif quando:\n    enviar_texto(f\"Combinado! Vou te lembrar {quando}.\")\nelse:\n    enviar_texto(\"Não entendi quando. Exemplos:\\n/lembrar amanhã 9h comprar pão\\n/lembrar em 30 minutos tirar o bolo\\n/lembrar 25/12 10:00 ligar para a vó\\n/lembrar cancelar\")\n"</string>
+    <string name="log_schedule_fired">Agendamento “%1$s” rodou (%2$d destino(s)).</string>
+    <string name="log_drip_sent">Sequência “%1$s” enviada para %2$s.</string>
+    <string name="log_reminder_created">%1$s criou um lembrete para %2$s.</string>
+    <string name="log_reminder_sent">Lembrete enviado.</string>
 </resources>

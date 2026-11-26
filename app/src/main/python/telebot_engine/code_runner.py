@@ -71,6 +71,15 @@ class EngineHost:
                      code=err.get("code") or "termux_failed", detail=err.get("detail") or "", retry_after=None)
         return result
 
+    def remind(self, when, text=None):
+        out = self.engine.scheduler.remind(self.chat_id, self.user, when, text)
+        if out:
+            self.engine.emit("reminder_created", user=self.user.get("first_name") or "", when=out[0])
+        return out
+
+    def cancel_reminders(self):
+        return self.engine.scheduler.cancel_reminders(self.user.get("id"))
+
     def log(self, text):
         self.engine.emit("code_log", command=self.name, text=text)
 

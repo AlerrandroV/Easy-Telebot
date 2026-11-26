@@ -104,6 +104,10 @@ de los métodos comunes de texto (`.lower()`, `.split()`, `.replace()`…), list
 | `aleatorio(1, 6)` | Número al azar entre 1 y 6 |
 | `elegir(lista)` | Un elemento al azar de la lista |
 | `ahora()` | Fecha y hora del celular: `"25/11/2026 14:30"` |
+| `recordar(cuando_y_texto)` | Programa un recordatorio para quien escribió: `recordar("25/12 10:00 llamar a la abuela")` o `recordar(30, "sacar el pastel")` (minutos). Las fechas en palabras se entienden en portugués e inglés ("tomorrow 9am…"). Devuelve cuándo va a recordar o vacío si no entendió |
+| `cancelar_recordatorios()` | Borra los recordatorios pendientes de quien escribió y dice cuántos eran |
+
+Todas las funciones de envío aceptan `para=ID_DEL_CHAT` (o `para="@canal"`) para mandar a otra conversación, por ejemplo en una programación sin destino.
 
 ### Botones
 
@@ -178,6 +182,8 @@ explicación, en el idioma en que se escribió el código.
 | `aleatorio` | `random` | `aleatorio` | `aleatoire` | `случайное` |
 | `escolher` | `choice` | `elegir` | `choisir` | `выбрать` |
 | `agora` | `now` | `ahora` | `maintenant` | `сейчас` |
+| `lembrar` | `remind` | `recordar` | `rappeler` | `напомнить` |
+| `cancelar_lembretes` | `cancel_reminders` | `cancelar_recordatorios` | `annuler_rappels` | `отменить_напоминания` |
 | `verdadeiro` | `true` | `verdadero` | `vrai` | `истина` |
 | `falso` | `false` | `falso` | `faux` | `ложь` |
 
@@ -227,6 +233,7 @@ explicación, en el idioma en que se escribió el código.
 | `link` | `link` / `url` | `enlace` / `link` | `lien` | `ссылка` |
 | `dado` | `data` | `dato` | `donnee` | `данные` |
 | `copiar` | `copy` | `copiar` | `copier` | `копировать` |
+| `para` | `to` / `chat_id` | `para` | `vers` / `destinataire` | `кому` |
 
 ### Tipos de mensaje
 

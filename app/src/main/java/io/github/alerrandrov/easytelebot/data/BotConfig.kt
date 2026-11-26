@@ -186,7 +186,15 @@ object TriggerKinds {
     const val EVENT = "event"
     const val START = "start"
     const val INLINE = "inline"
-    val AUTOMATIC = listOf(KEYWORD, MEDIA, EVENT, START, INLINE)
+    const val SCHEDULE = "schedule"
+    const val DRIP = "drip"
+    val AUTOMATIC = listOf(KEYWORD, MEDIA, EVENT, START, INLINE, SCHEDULE, DRIP)
+    /** Agendamentos (tópico "tempo"): aparecem num grupo próprio no menu Adicionar. */
+    val TIMED = listOf(SCHEDULE, DRIP)
+    val MODES = listOf("daily", "weekly", "monthly", "interval", "once")
+    val TARGETS = listOf("users", "groups", "channels", "all", "chats", "none")
+    val UNITS = listOf("minutes", "hours", "days")
+    val TIME = Regex("^([01]?\\d|2[0-3]):[0-5]\\d$")
     val MATCHES = listOf("contains", "word", "starts", "equals", "regex")
     val WHERE = listOf("all", "private", "groups")
     val MEDIA_KINDS = listOf("photo", "video", "animation", "voice", "audio", "video_note", "document", "sticker",
@@ -212,11 +220,26 @@ data class TriggerSpec(
     /** Modo inline: título e descrição do resultado. */
     val title: String = "",
     val subtitle: String = "",
+    /** Agendamento: quando (modo, hora "HH:MM", dias da semana 0=segunda, minutos, dia do mês, data "AAAA-MM-DD"). */
+    val mode: String = "daily",
+    val time: String = "09:00",
+    val days: List<Int> = emptyList(),
+    val every: Int = 60,
+    val day: Int = 1,
+    val date: String = "",
+    /** Agendamento: para quem (usuários, grupos, canais, todos, chats escolhidos ou nenhum). */
+    val target: String = "users",
+    val chats: List<Long> = emptyList(),
+    /** Sequência: quanto tempo depois do primeiro /start. */
+    val delay: Int = 1,
+    val unit: String = "days",
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("words", JSONArray(words)).put("match", match).put("case", caseSensitive).put("where", where)
         .put("kinds", JSONArray(kinds)).put("event", event).put("approve", approve).put("emojis", JSONArray(emojis))
         .put("prefix", prefix).put("title", title).put("description", subtitle)
+        .put("mode", mode).put("time", time).put("days", JSONArray(days)).put("every", every).put("day", day)
+        .put("date", date).put("target", target).put("chats", JSONArray(chats)).put("delay", delay).put("unit", unit)
 
     companion object {
         private fun list(a: JSONArray?) = if (a == null) emptyList() else (0 until a.length()).map { a.optString(it) }.filter { it.isNotBlank() }
@@ -235,6 +258,16 @@ data class TriggerSpec(
                 prefix = o.optBoolean("prefix", false),
                 title = o.optString("title"),
                 subtitle = o.optString("description"),
+                mode = o.optString("mode").takeIf { it in TriggerKinds.MODES } ?: "daily",
+                time = o.optString("time").takeIf { TriggerKinds.TIME.matches(it) } ?: "09:00",
+                days = o.optJSONArray("days")?.let { a -> (0 until a.length()).map { a.optInt(it) }.filter { it in 0..6 } }.orEmpty(),
+                every = o.optInt("every", 60).coerceIn(5, 7 * 24 * 60),
+                day = o.optInt("day", 1).coerceIn(1, 31),
+                date = o.optString("date"),
+                target = o.optString("target").takeIf { it in TriggerKinds.TARGETS } ?: "users",
+                chats = o.optJSONArray("chats")?.let { a -> (0 until a.length()).map { a.optLong(it) }.filter { it != 0L } }.orEmpty(),
+                delay = o.optInt("delay", 1).coerceIn(0, 3650),
+                unit = o.optString("unit").takeIf { it in TriggerKinds.UNITS } ?: "days",
             )
         }
     }
