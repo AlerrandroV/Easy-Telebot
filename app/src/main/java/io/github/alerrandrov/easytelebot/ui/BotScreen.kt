@@ -91,6 +91,7 @@ fun BotScreen(
     onChats: () -> Unit,
     onBroadcast: () -> Unit,
     onAntispam: () -> Unit,
+    onModeration: () -> Unit,
     onShop: () -> Unit,
     onTermux: () -> Unit,
     onNewScriptCommand: () -> Unit,
@@ -292,6 +293,14 @@ fun BotScreen(
                         else -> stringResource(R.string.bot_antispam_off)
                     },
                     onClick = onAntispam,
+                )
+            }
+            item {
+                SectionCard(
+                    icon = R.drawable.ic_gavel,
+                    title = stringResource(R.string.mod_title),
+                    subtitle = stringResource(if (config.moderation.enabled) R.string.bot_mod_on else R.string.bot_mod_off),
+                    onClick = onModeration,
                 )
             }
 

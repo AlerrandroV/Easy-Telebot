@@ -550,6 +550,70 @@ data class BroadcastSettings(
 )
 
 /** Antispam: bloqueio automático de quem inunda o bot (veja `antispam.py`). */
+/** Moderação de grupos (mesmo formato de `moderation.py`). Vale para todos os grupos em que o bot é admin. */
+data class ModerationSettings(
+    val enabled: Boolean = false,
+    val captcha: Boolean = false,
+    val captchaMode: String = "button",
+    val captchaTimeout: Int = 5,
+    val captchaFail: String = "kick",
+    val deleteService: Boolean = false,
+    val links: Boolean = false,
+    val allowedDomains: List<String> = emptyList(),
+    val words: List<String> = emptyList(),
+    val forwards: Boolean = false,
+    val newcomerHours: Int = 0,
+    val filterAction: String = "warn",
+    val warnLimit: Int = 3,
+    val warnAction: String = "mute",
+    val muteHours: Int = 24,
+    val commands: Boolean = true,
+    val slowmode: Int = 0,
+    val rules: String = "",
+) {
+    fun toJson(): JSONObject = JSONObject()
+        .put("enabled", enabled)
+        .put("captcha", JSONObject().put("enabled", captcha).put("mode", captchaMode).put("timeout", captchaTimeout).put("fail", captchaFail))
+        .put("delete_service", deleteService)
+        .put("filters", JSONObject().put("links", links).put("allowed_domains", JSONArray(allowedDomains)).put("words", JSONArray(words))
+            .put("forwards", forwards).put("newcomer_hours", newcomerHours).put("action", filterAction))
+        .put("warnings", JSONObject().put("limit", warnLimit).put("action", warnAction).put("mute_hours", muteHours))
+        .put("commands", commands)
+        .put("slowmode", slowmode)
+        .put("rules", rules)
+
+    companion object {
+        private fun list(a: JSONArray?) = if (a == null) emptyList() else (0 until a.length()).map { a.optString(it) }.filter { it.isNotBlank() }
+
+        fun fromJson(o: JSONObject?): ModerationSettings {
+            if (o == null) return ModerationSettings()
+            val c = o.optJSONObject("captcha") ?: JSONObject()
+            val f = o.optJSONObject("filters") ?: JSONObject()
+            val w = o.optJSONObject("warnings") ?: JSONObject()
+            return ModerationSettings(
+                enabled = o.optBoolean("enabled", false),
+                captcha = c.optBoolean("enabled", false),
+                captchaMode = c.optString("mode").takeIf { it in listOf("button", "math") } ?: "button",
+                captchaTimeout = c.optInt("timeout", 5).coerceIn(1, 30),
+                captchaFail = c.optString("fail").takeIf { it in listOf("kick", "mute") } ?: "kick",
+                deleteService = o.optBoolean("delete_service", false),
+                links = f.optBoolean("links", false),
+                allowedDomains = list(f.optJSONArray("allowed_domains")),
+                words = list(f.optJSONArray("words")),
+                forwards = f.optBoolean("forwards", false),
+                newcomerHours = f.optInt("newcomer_hours", 0).coerceIn(0, 24 * 30),
+                filterAction = f.optString("action").takeIf { it in listOf("warn", "delete") } ?: "warn",
+                warnLimit = w.optInt("limit", 3).coerceIn(1, 20),
+                warnAction = w.optString("action").takeIf { it in listOf("mute", "kick", "ban") } ?: "mute",
+                muteHours = w.optInt("mute_hours", 24).coerceIn(1, 24 * 366),
+                commands = o.optBoolean("commands", true),
+                slowmode = o.optInt("slowmode", 0).coerceIn(0, 3600),
+                rules = o.optString("rules"),
+            )
+        }
+    }
+}
+
 data class AntispamSettings(
     val enabled: Boolean = true,
     /** "baixa", "media" ou "alta". */
@@ -574,6 +638,7 @@ data class BotConfig(
     val flows: List<FlowNode> = emptyList(),
     /** Idioma das mensagens automáticas do bot (loja, antispam...). Vazio = idioma do app. */
     val language: String = "",
+    val moderation: ModerationSettings = ModerationSettings(),
 ) {
     /** Variáveis criadas pelas perguntas dos fluxos (ex.: {cidade}). */
     fun flowVariables(): Set<String> =
@@ -608,6 +673,7 @@ data class BotConfig(
             .put("admin_level", antispam.adminLevel)
             .put("warn_user", antispam.warnUser))
         put("shop", shop.toJson())
+        put("moderation", moderation.toJson())
         put("flows", JSONObject().put("nodes", JSONArray().apply {
             flows.forEach { n ->
                 put(JSONObject()
@@ -769,7 +835,8 @@ data class BotConfig(
                 )
             }
             return BotConfig(json.optBoolean("auto_menu", true), list, broadcast, antispam,
-                ShopSettings.fromJson(json.optJSONObject("shop")), termux, nodes, json.optString("language"))
+                ShopSettings.fromJson(json.optJSONObject("shop")), termux, nodes, json.optString("language"),
+                ModerationSettings.fromJson(json.optJSONObject("moderation")))
         }
     }
 }

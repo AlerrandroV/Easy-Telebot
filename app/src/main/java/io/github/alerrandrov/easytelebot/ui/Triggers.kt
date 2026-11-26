@@ -232,7 +232,7 @@ private fun Label(text: String) = Text(text, style = MaterialTheme.typography.ti
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun <T> ChoiceChips(options: List<T>, selected: T, label: @Composable (T) -> String, onSelect: (T) -> Unit) {
+internal fun <T> ChoiceChips(options: List<T>, selected: T, label: @Composable (T) -> String, onSelect: (T) -> Unit) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         options.forEach { o -> FilterChip(selected = o == selected, onClick = { onSelect(o) }, label = { Text(label(o)) }) }
     }
@@ -414,7 +414,7 @@ private fun SwitchRowCompact(title: String, checked: Boolean, onChange: (Boolean
 }
 
 @Composable
-private fun Note(text: String) {
+internal fun Note(text: String) {
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
         Row(Modifier.padding(10.dp)) {
             AppIcon(R.drawable.ic_info, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)

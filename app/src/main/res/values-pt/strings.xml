@@ -260,7 +260,7 @@
     <string name="add_title">O que você quer adicionar?</string>
     <string name="add_simple_command">Comando simples</string>
     <string name="add_simple_command_sub">Um ou mais comandos (ex.: /start e /iniciar) que respondem com uma ou mais mensagens: texto formatado, fotos, vídeos, arquivos e botões com links.</string>
-    <string name="add_more_soon">Em breve: moderação de grupos, atendimento, IA e mais.</string>
+    <string name="add_more_soon">Em breve: atendimento, IA, comunidade e mais.</string>
     <string name="add_admin_command">Comando de admin</string>
     <string name="add_admin_command_sub">Igual ao comando simples, mas só administradores da classe escolhida (ou acima) podem usar. Para os outros, o bot não responde nada.</string>
     <string name="add_admin">Adicionar administrador</string>
@@ -1453,4 +1453,90 @@
         <item>câmbio:USD</item>
         <item>clima:São Paulo</item>
     </string-array>
+
+    <!-- Moderação de grupos -->
+    <string name="mod_title">Moderação de grupos</string>
+    <string name="bot_mod_on">Ligada: verificação, filtros e advertências nos grupos</string>
+    <string name="bot_mod_off">Verificação na entrada, filtros, advertências, /ban e /mute (desligada)</string>
+    <string name="mod_intro">Vale para todos os grupos em que o bot é administrador. Administradores do grupo e do bot nunca são filtrados nem advertidos.</string>
+    <string name="mod_rights_note">Promova o bot a administrador do grupo com as permissões Apagar mensagens e Banir usuários. Como admin, ele também passa a ver todas as mensagens (necessário para os filtros).</string>
+    <string name="mod_enable">Moderação ligada</string>
+    <string name="mod_enable_sub">Desligada, nada abaixo vale (o /regras continua respondendo, se houver regras).</string>
+    <string name="mod_section_join">Entrada no grupo</string>
+    <string name="mod_captcha">Verificação “não sou robô”</string>
+    <string name="mod_captcha_sub">Quem entra fica sem poder escrever até tocar no botão. Quem foi adicionado por um admin não precisa.</string>
+    <string name="mod_captcha_mode">Tipo</string>
+    <string name="mod_captcha_button">Botão</string>
+    <string name="mod_captcha_math">Conta simples</string>
+    <string name="mod_captcha_timeout">Tempo para responder</string>
+    <string name="mod_captcha_fail">Se não responder</string>
+    <string name="mod_captcha_fail_kick">Remover do grupo</string>
+    <string name="mod_captcha_fail_mute">Deixar sem escrever</string>
+    <string name="mod_delete_service">Apagar avisos de entrada e saída</string>
+    <string name="mod_delete_service_sub">Some o “Fulano entrou no grupo” e o “saiu do grupo”.</string>
+    <string name="mod_section_filters">Filtros</string>
+    <string name="mod_links">Bloquear links</string>
+    <string name="mod_links_sub">Apaga mensagens com links (inclusive t.me), exceto dos sites liberados abaixo.</string>
+    <string name="mod_allowed_domains">Site liberado (ex.: meusite.com)</string>
+    <string name="mod_words">Palavras proibidas</string>
+    <string name="mod_words_sub">Palavra inteira, sem diferenciar acentos e maiúsculas.</string>
+    <string name="mod_word">Palavra</string>
+    <string name="mod_forwards">Bloquear mensagens encaminhadas</string>
+    <string name="mod_forwards_sub">Bom contra correntes e divulgação de outros canais.</string>
+    <string name="mod_newcomer">Novatos sem links e mídia</string>
+    <string name="mod_newcomer_sub">Quem acabou de entrar não pode mandar links, fotos, vídeos ou arquivos durante esse tempo.</string>
+    <string name="mod_off">Desligado</string>
+    <string name="mod_filter_action">O que fazer com a mensagem</string>
+    <string name="mod_action_warn">Apagar e advertir</string>
+    <string name="mod_action_delete">Só apagar</string>
+    <string name="mod_section_warnings">Advertências</string>
+    <string name="mod_warn_limit">Limite de advertências</string>
+    <string name="mod_warn_action">Ao chegar no limite</string>
+    <string name="mod_mute">Silenciar</string>
+    <string name="mod_kick">Remover</string>
+    <string name="mod_ban">Banir</string>
+    <string name="mod_mute_for">Silenciar por</string>
+    <string name="mod_warn_help">Na advertência %1$d, a ação acontece e a contagem volta a zero. Os avisos do bot somem do grupo depois de 1 minuto.</string>
+    <string name="mod_section_more">Comandos e modo lento</string>
+    <string name="mod_commands">Comandos de moderação</string>
+    <string name="mod_commands_sub">Admins do grupo (ou do bot) respondem à mensagem da pessoa com o comando. Para os outros, o comando some.</string>
+    <string-array name="mod_command_list">
+        <item>/ban (/banir) — banir</item>
+        <item>/unban ID (/desbanir) — desbanir</item>
+        <item>/kick (/expulsar) — remover (pode voltar)</item>
+        <item>/mute 2h (/silenciar) — silenciar (10m, 2h, 1d)</item>
+        <item>/unmute (/dessilenciar) — liberar</item>
+        <item>/warn motivo (/advertir) — advertir</item>
+        <item>/unwarn (/perdoar) — zerar advertências</item>
+        <item>/warns (/advertencias) — ver advertências</item>
+        <item>/del (/apagar) — apagar a mensagem</item>
+        <item>/regras (/rules) — mostrar as regras (todos)</item>
+    </string-array>
+    <string name="mod_slowmode">Modo lento</string>
+    <string name="mod_slowmode_sub">Cada pessoa só pode mandar uma mensagem nesse intervalo; as outras são apagadas.</string>
+    <string name="dur_seconds">%1$d s</string>
+    <string name="mod_rules">Regras do grupo</string>
+    <string name="mod_rules_text">Regras</string>
+    <string name="mod_rules_sub">Enviadas quando alguém manda /regras (ou /rules). Aceita formatação: *negrito*, _itálico_…</string>
+    <string name="err_mod_rights_title">O bot não tem permissão para moderar</string>
+    <string name="err_mod_rights_msg">A moderação tentou apagar, silenciar ou remover alguém, mas o bot não é administrador do grupo ou não tem a permissão.</string>
+    <string-array name="err_mod_rights_steps">
+        <item>Abra o grupo e toque no nome dele.</item>
+        <item>Administradores › Adicionar administrador › escolha o bot.</item>
+        <item>Ative Apagar mensagens e Banir usuários e salve.</item>
+    </string-array>
+    <string name="log_mod_action">Moderação: %1$s %2$s em %3$s</string>
+    <string name="log_mod_by">(por %1$s)</string>
+    <string name="mod_log_deleted">mensagem apagada de</string>
+    <string name="mod_log_warn">advertência para</string>
+    <string name="mod_log_mute">silenciou</string>
+    <string name="mod_log_unmute">liberou</string>
+    <string name="mod_log_kick">removeu</string>
+    <string name="mod_log_ban">baniu</string>
+    <string name="mod_log_unban">desbaniu</string>
+    <string name="mod_log_unwarn">zerou as advertências de</string>
+    <string name="mod_log_del">apagou mensagem de</string>
+    <string name="mod_log_verified">verificação concluída por</string>
+    <string name="mod_log_captcha_kick">removido por não fazer a verificação:</string>
+    <string name="mod_log_captcha_mute">segue sem escrever (sem verificação):</string>
 </resources>

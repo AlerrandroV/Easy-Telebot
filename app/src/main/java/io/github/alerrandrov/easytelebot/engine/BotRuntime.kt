@@ -150,6 +150,23 @@ object BotRuntime {
 
     private fun s(res: Int, vararg args: Any): String = app.getString(res, *args)
 
+    private fun modActionLabel(action: String): String = s(
+        when (action) {
+            "deleted" -> R.string.mod_log_deleted
+            "warn" -> R.string.mod_log_warn
+            "mute" -> R.string.mod_log_mute
+            "unmute" -> R.string.mod_log_unmute
+            "kick" -> R.string.mod_log_kick
+            "ban" -> R.string.mod_log_ban
+            "unban" -> R.string.mod_log_unban
+            "unwarn" -> R.string.mod_log_unwarn
+            "del" -> R.string.mod_log_del
+            "verified" -> R.string.mod_log_verified
+            "captcha_kick" -> R.string.mod_log_captcha_kick
+            else -> R.string.mod_log_captcha_mute
+        }
+    )
+
     private fun automationLabel(kind: String, event: String, label: String): String = when (kind) {
         "keyword" -> s(R.string.log_auto_keyword, label)
         "media" -> s(R.string.log_auto_media, s(
@@ -277,6 +294,12 @@ object BotRuntime {
             "script_done" -> add(
                 id, LogEntry.Level.OUT,
                 s(R.string.log_script_done, e.optString("command"), e.optDouble("seconds").toString().replace('.', ','), e.optInt("messages")),
+            )
+            "mod_action" -> add(
+                id, LogEntry.Level.WARN,
+                s(R.string.log_mod_action, modActionLabel(e.optString("action")), e.optString("user"), e.optString("chat")) +
+                    e.optString("reason").takeIf { it.isNotBlank() }?.let { " — $it" }.orEmpty() +
+                    e.optString("by").takeIf { it.isNotBlank() }?.let { " " + s(R.string.log_mod_by, it) }.orEmpty(),
             )
             "feed_posted" -> add(id, LogEntry.Level.OUT, s(R.string.log_feed_posted, e.optString("label"), e.optString("title")))
             "schedule_fired" -> add(id, LogEntry.Level.OUT, s(R.string.log_schedule_fired, e.optString("label"), e.optInt("recipients")))

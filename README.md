@@ -133,6 +133,26 @@ No menu **Adicionar › Agendamentos**:
 - **No Python**: `buscar(url, json=..., cabecalhos=...)`, `preco("BTC")`,
   `cambio("USD")` e `clima("Recife")`.
 
+## Moderação de grupos
+
+Em **Moderação de grupos**, na tela do bot (vale para todos os grupos em que ele é
+admin, com as permissões Apagar mensagens e Banir usuários):
+
+- **Verificação na entrada**: quem entra fica sem escrever até tocar em "Não sou um robô"
+  (ou acertar uma conta simples); quem não responde a tempo é removido. Quem foi
+  adicionado por um admin não precisa.
+- **Apagar os avisos** de "fulano entrou/saiu".
+- **Filtros**: links (com sites liberados), palavras proibidas, mensagens encaminhadas e
+  novatos sem links e mídia nas primeiras horas. A mensagem é apagada e, se quiser, a
+  pessoa recebe uma advertência.
+- **Advertências**: no limite (ex.: 3), a pessoa é silenciada, removida ou banida.
+- **Comandos** respondendo à mensagem da pessoa (só admins do grupo ou do bot):
+  `/ban`, `/unban ID`, `/kick`, `/mute 2h`, `/unmute`, `/warn motivo`, `/unwarn`, `/warns`,
+  `/del` (também `/banir`, `/silenciar`, `/advertir`…). `/regras` mostra as regras.
+- **Modo lento**: uma mensagem por pessoa a cada X segundos.
+
+Os avisos do bot somem do grupo depois de 1 minuto, e cada ação aparece no registro do app.
+
 ## Python facilitado
 
 Para quem quer um pouco mais que blocos, sem virar programador: um pedaço de Python

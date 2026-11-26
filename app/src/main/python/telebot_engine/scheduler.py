@@ -216,6 +216,7 @@ class Scheduler:
         if drips:
             self._drips(drips, now_ts)
         self._reminders(now_ts)
+        self.engine.mod.tick(now_ts)
         for a in feed_items:
             self._feed(a, now_ts)
 

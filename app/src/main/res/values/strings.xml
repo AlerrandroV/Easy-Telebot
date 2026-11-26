@@ -261,7 +261,7 @@
     <string name="add_title">What do you want to add?</string>
     <string name="add_simple_command">Simple command</string>
     <string name="add_simple_command_sub">One or more commands (e.g. /start and /begin) that reply with one or more messages: formatted text, photos, videos, files and link buttons.</string>
-    <string name="add_more_soon">Coming soon: group moderation, support desk, AI and more.</string>
+    <string name="add_more_soon">Coming soon: support desk, AI, community and more.</string>
     <string name="add_admin_command">Admin command</string>
     <string name="add_admin_command_sub">Like a simple command, but only administrators of the chosen class (or higher) can use it. For everyone else, the bot doesn’t answer.</string>
     <string name="add_admin">Add administrator</string>
@@ -1456,4 +1456,90 @@
         <item>rate:EUR</item>
         <item>weather:London</item>
     </string-array>
+
+    <!-- Group moderation -->
+    <string name="mod_title">Group moderation</string>
+    <string name="bot_mod_on">On: verification, filters and warnings in groups</string>
+    <string name="bot_mod_off">Join verification, filters, warnings, /ban and /mute (off)</string>
+    <string name="mod_intro">Applies to every group where the bot is an administrator. Group and bot administrators are never filtered or warned.</string>
+    <string name="mod_rights_note">Promote the bot to group administrator with the Delete messages and Ban users permissions. As an admin, it also sees every message (needed for the filters).</string>
+    <string name="mod_enable">Moderation on</string>
+    <string name="mod_enable_sub">When off, nothing below applies (/rules still answers, if there are rules).</string>
+    <string name="mod_section_join">Joining the group</string>
+    <string name="mod_captcha">“I\'m not a robot” check</string>
+    <string name="mod_captcha_sub">Newcomers can\'t write until they tap the button. People added by an admin don\'t need to.</string>
+    <string name="mod_captcha_mode">Type</string>
+    <string name="mod_captcha_button">Button</string>
+    <string name="mod_captcha_math">Simple math</string>
+    <string name="mod_captcha_timeout">Time to answer</string>
+    <string name="mod_captcha_fail">If they don\'t answer</string>
+    <string name="mod_captcha_fail_kick">Remove from the group</string>
+    <string name="mod_captcha_fail_mute">Keep them muted</string>
+    <string name="mod_delete_service">Delete join and leave notices</string>
+    <string name="mod_delete_service_sub">Removes the “X joined the group” and “left the group” notices.</string>
+    <string name="mod_section_filters">Filters</string>
+    <string name="mod_links">Block links</string>
+    <string name="mod_links_sub">Deletes messages with links (including t.me), except for the sites allowed below.</string>
+    <string name="mod_allowed_domains">Allowed site (e.g. mysite.com)</string>
+    <string name="mod_words">Forbidden words</string>
+    <string name="mod_words_sub">Whole word, ignoring accents and case.</string>
+    <string name="mod_word">Word</string>
+    <string name="mod_forwards">Block forwarded messages</string>
+    <string name="mod_forwards_sub">Good against chain messages and promotion of other channels.</string>
+    <string name="mod_newcomer">Newcomers without links and media</string>
+    <string name="mod_newcomer_sub">People who just joined can\'t send links, photos, videos or files during this time.</string>
+    <string name="mod_off">Off</string>
+    <string name="mod_filter_action">What to do with the message</string>
+    <string name="mod_action_warn">Delete and warn</string>
+    <string name="mod_action_delete">Just delete</string>
+    <string name="mod_section_warnings">Warnings</string>
+    <string name="mod_warn_limit">Warning limit</string>
+    <string name="mod_warn_action">When the limit is reached</string>
+    <string name="mod_mute">Mute</string>
+    <string name="mod_kick">Remove</string>
+    <string name="mod_ban">Ban</string>
+    <string name="mod_mute_for">Mute for</string>
+    <string name="mod_warn_help">At warning %1$d, the action happens and the count resets. The bot\'s notices disappear from the group after 1 minute.</string>
+    <string name="mod_section_more">Commands and slow mode</string>
+    <string name="mod_commands">Moderation commands</string>
+    <string name="mod_commands_sub">Group (or bot) admins reply to the person\'s message with the command. For everyone else, the command disappears.</string>
+    <string-array name="mod_command_list">
+        <item>/ban — ban</item>
+        <item>/unban ID — unban</item>
+        <item>/kick — remove (can come back)</item>
+        <item>/mute 2h — mute (10m, 2h, 1d)</item>
+        <item>/unmute — unmute</item>
+        <item>/warn reason — warn</item>
+        <item>/unwarn — clear warnings</item>
+        <item>/warns — see warnings</item>
+        <item>/del — delete the message</item>
+        <item>/rules — show the rules (everyone)</item>
+    </string-array>
+    <string name="mod_slowmode">Slow mode</string>
+    <string name="mod_slowmode_sub">Each person can send only one message in this interval; the others are deleted.</string>
+    <string name="dur_seconds">%1$d s</string>
+    <string name="mod_rules">Group rules</string>
+    <string name="mod_rules_text">Rules</string>
+    <string name="mod_rules_sub">Sent when someone sends /rules (or /regras). Accepts formatting: *bold*, _italic_…</string>
+    <string name="err_mod_rights_title">The bot isn\'t allowed to moderate</string>
+    <string name="err_mod_rights_msg">Moderation tried to delete, mute or remove someone, but the bot isn\'t a group administrator or lacks the permission.</string>
+    <string-array name="err_mod_rights_steps">
+        <item>Open the group and tap its name.</item>
+        <item>Administrators › Add administrator › choose the bot.</item>
+        <item>Turn on Delete messages and Ban users and save.</item>
+    </string-array>
+    <string name="log_mod_action">Moderation: %1$s %2$s in %3$s</string>
+    <string name="log_mod_by">(by %1$s)</string>
+    <string name="mod_log_deleted">message deleted from</string>
+    <string name="mod_log_warn">warning for</string>
+    <string name="mod_log_mute">muted</string>
+    <string name="mod_log_unmute">unmuted</string>
+    <string name="mod_log_kick">removed</string>
+    <string name="mod_log_ban">banned</string>
+    <string name="mod_log_unban">unbanned</string>
+    <string name="mod_log_unwarn">cleared the warnings of</string>
+    <string name="mod_log_del">deleted a message from</string>
+    <string name="mod_log_verified">verification passed by</string>
+    <string name="mod_log_captcha_kick">removed for not passing verification:</string>
+    <string name="mod_log_captcha_mute">still muted (no verification):</string>
 </resources>

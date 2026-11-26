@@ -29,7 +29,7 @@ A versão 1 (``command`` + ``response``) é convertida automaticamente.
 
 import json
 
-from . import antispam, automations, flows, i18n, pyfacil, termux, webfetch
+from . import antispam, automations, flows, i18n, moderation, pyfacil, termux, webfetch
 from .shop import catalog as shop_catalog
 
 MEDIA_TYPES = ("photo", "video", "animation", "audio", "voice", "document", "sticker")
@@ -283,6 +283,7 @@ def normalize(data):
         "version": 2,
         "language": i18n.normalize(data.get("language")),
         "antispam": antispam.normalize_settings(data.get("antispam")),
+        "moderation": moderation.normalize(data.get("moderation")),
         "termux": termux.normalize_settings(data.get("termux")),
         "flows": flows.normalize(data.get("flows"), _message),
         "callbacks": callbacks,

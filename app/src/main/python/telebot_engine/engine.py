@@ -30,6 +30,7 @@ from . import termux as termux_mod
 from . import config as config_mod
 from . import automations, code_runner, errors, flows, i18n, template, webfetch
 from . import scheduler as scheduler_mod
+from . import moderation as moderation_mod
 from .api import Aborted, NetworkError, TelegramApi, TelegramError
 
 POLL_TIMEOUT = 50  # segundos que o Telegram segura a conexão esperando mensagens
@@ -227,6 +228,7 @@ class Engine:
         self.flows = FlowRunner(self)
         self.auto = automations.AutomationRunner(self)
         self.scheduler = scheduler_mod.Scheduler(self)
+        self.mod = moderation_mod.Moderator(self)
         self.send_source = "auto"  # "auto" = resposta de comando; "manual" = enviada pelo app
         self.storage = None
         if storage:
@@ -585,6 +587,8 @@ class Engine:
         parsed = parse_command(text, bot_username)
         if self.check_spam(message, parsed):
             return BLOCKED
+        if self.mod.handle(message, parsed):
+            return True
         if self.shop.handle_message(message, parsed):
             return True
         if self.post.handle(message, parsed):
@@ -752,6 +756,8 @@ class Engine:
 
     def handle_callback(self, query):
         """Botões da loja e do aviso de antispam (✅ Desbloquear / 🚫 Manter bloqueado)."""
+        if self.mod.handle_callback(query):
+            return True
         if self.shop.handle_callback(query):
             return True
         if self.handle_script_callback(query):
