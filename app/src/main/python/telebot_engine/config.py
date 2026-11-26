@@ -29,7 +29,7 @@ A versão 1 (``command`` + ``response``) é convertida automaticamente.
 
 import json
 
-from . import antispam, flows, i18n, pyfacil, termux
+from . import antispam, automations, flows, i18n, pyfacil, termux
 from .shop import catalog as shop_catalog
 
 MEDIA_TYPES = ("photo", "video", "animation", "audio", "voice", "document", "sticker")
@@ -92,7 +92,27 @@ def _message(item):
         "media": media,
         "buttons": rows,
         "link_preview": bool(item.get("link_preview", False)),
+        "reply_keyboard": _reply_keyboard(item.get("reply_keyboard")),
     }
+
+
+def _reply_keyboard(kb):
+    """Teclado fixo: linhas de teclas (texto, pedir contato ou pedir localização) ou "remover"."""
+    if not isinstance(kb, dict):
+        return None
+    rows = []
+    for row in kb.get("rows") or []:
+        keys = []
+        for k in row if isinstance(row, list) else []:
+            k = {"text": k} if isinstance(k, str) else (k if isinstance(k, dict) else {})
+            text = str(k.get("text") or "").strip()[:64]
+            if text:
+                keys.append({"text": text, "request": k.get("request") if k.get("request") in ("contact", "location") else ""})
+        if keys:
+            rows.append(keys[:8])
+    if rows:
+        return {"rows": rows[:12], "remove": False}
+    return {"rows": [], "remove": True} if kb.get("remove") else None
 
 
 BLOCK_TYPES = ("message", "termux", "flow")
@@ -191,11 +211,37 @@ def _blocks(item, legacy_messages):
     return [{"type": "message", "message": m} for m in legacy_messages]
 
 
+def _level(item):
+    """Classe de admin exigida (``None`` = qualquer pessoa)."""
+    level = item.get("admin_level")
+    if level is None and item.get("admin_only"):
+        level = 1
+    if level is None:
+        return None
+    try:
+        return max(1, min(10, int(level)))
+    except (TypeError, ValueError):
+        return 1
+
+
 def normalize(data):
     data = data if isinstance(data, dict) else {}
-    commands = []
+    commands, autos = [], []
     for i, item in enumerate(data.get("commands") or []):
         if not isinstance(item, dict):
+            continue
+        kind = item.get("kind") if item.get("kind") in automations.KINDS else "command"
+        if kind != "command":
+            spec = automations.normalize_spec(kind, item.get("trigger"))
+            if spec is not None and item.get("enabled", True):
+                autos.append({
+                    "id": str(item.get("id") or "auto%d" % i),
+                    "kind": kind,
+                    "trigger": spec,
+                    "admin_level": _level(item),
+                    "description": str(item.get("description") or "").strip(),
+                    "blocks": _block_list(item.get("blocks")),
+                })
             continue
         if "triggers" in item:
             triggers = [_clean_trigger(t) for t in item.get("triggers") or []]
@@ -206,14 +252,7 @@ def normalize(data):
         triggers = [t for t in dict.fromkeys(triggers) if t]
         if not triggers:
             continue
-        level = item.get("admin_level")
-        if level is None and item.get("admin_only"):
-            level = 1
-        if level is not None:
-            try:
-                level = max(1, min(10, int(level)))
-            except (TypeError, ValueError):
-                level = 1
+        level = _level(item)
         commands.append({
             "id": str(item.get("id") or "cmd%d" % i),
             "admin_level": level,
@@ -229,7 +268,7 @@ def normalize(data):
             "script": next((b["script"] for b in blocks if b["type"] == "termux"), None),
             "flow": next((b["node"] for b in blocks if b["type"] == "flow"), None),
         })
-    callbacks, waits = _index(commands)
+    callbacks, waits = _index(commands + autos)
     b = data.get("broadcast") if isinstance(data.get("broadcast"), dict) else {}
     try:
         b_level = max(1, min(10, int(b.get("admin_level", 1))))
@@ -247,6 +286,7 @@ def normalize(data):
         "shop": shop_catalog.normalize(data.get("shop"), _message),
         "auto_menu": bool(data.get("auto_menu", True)),
         "commands": commands,
+        "automations": autos,
         "broadcast": {
             "enabled": bool(b.get("enabled", True)),
             "admin_level": b_level,

@@ -150,6 +150,37 @@ object BotRuntime {
 
     private fun s(res: Int, vararg args: Any): String = app.getString(res, *args)
 
+    private fun automationLabel(kind: String, event: String, label: String): String = when (kind) {
+        "keyword" -> s(R.string.log_auto_keyword, label)
+        "media" -> s(R.string.log_auto_media, s(
+            when (label) {
+                "photo" -> R.string.media_photo
+                "video" -> R.string.media_video
+                "animation" -> R.string.media_animation
+                "voice" -> R.string.media_voice
+                "audio" -> R.string.media_audio
+                "video_note" -> R.string.media_video_note
+                "document" -> R.string.media_document
+                "sticker" -> R.string.media_sticker
+                "location" -> R.string.media_location
+                "contact" -> R.string.media_contact
+                else -> R.string.media_poll
+            }
+        ))
+        "start" -> s(R.string.log_auto_start, label)
+        "event" -> s(
+            when (event) {
+                "join" -> R.string.event_join
+                "leave" -> R.string.event_leave
+                "join_request" -> R.string.event_join_request
+                "reaction" -> R.string.event_reaction
+                "bot_added" -> R.string.event_bot_added
+                else -> R.string.event_bot_promoted
+            }
+        )
+        else -> label
+    }
+
     /** Evento JSON vindo de um motor Python (`Engine.emit`). Chamado na thread do motor. */
     fun handleEvent(id: Long, json: String) {
         val e = try { JSONObject(json) } catch (ex: Exception) { return }
@@ -190,7 +221,16 @@ object BotRuntime {
                 )
                 onNotificationChange?.invoke()
             }
-            "replied" -> add(id, LogEntry.Level.OUT, s(R.string.log_replied, e.optString("command"), e.optInt("messages", 1)))
+            "replied" -> add(
+                id, LogEntry.Level.OUT,
+                if (e.optString("kind", "command") == "command") s(R.string.log_replied, e.optString("command"), e.optInt("messages", 1))
+                else s(R.string.log_replied_auto, e.optString("command"), e.optInt("messages", 1)),
+            )
+            "automation" -> add(
+                id, LogEntry.Level.IN,
+                s(R.string.log_automation, automationLabel(e.optString("kind"), e.optString("event"), e.optString("label")), e.optString("user")),
+            )
+            "inline_query" -> add(id, LogEntry.Level.IN, s(R.string.log_inline, e.optString("user"), e.optString("query"), e.optInt("results")))
             "unknown_command" -> add(id, LogEntry.Level.WARN, s(R.string.log_unknown_command, e.optString("command")))
             "recovered" -> add(id, LogEntry.Level.INFO, s(R.string.log_recovered))
             "storage_ok" -> add(id, LogEntry.Level.INFO, s(R.string.log_storage_ok))

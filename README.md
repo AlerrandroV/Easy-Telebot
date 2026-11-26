@@ -79,6 +79,26 @@ Em **Vendas**, na tela do bot:
 - **Logs**: guardados no celular (3.000 por bot), com filtros, busca, exportação
   e uma visão de todos os bots juntos.
 
+## Gatilhos automáticos
+
+Além dos comandos, o bot reage sozinho (menu **Adicionar › Gatilhos**):
+
+- **Palavra-chave**: a mensagem contém, tem a palavra inteira, começa com, é igual
+  ou bate com uma expressão regular. Acentos não importam. Em grupos, desligue o
+  modo de privacidade no @BotFather (ou deixe o bot admin) para ele ver as mensagens.
+- **Tipo de mensagem**: foto, vídeo, áudio, voz, documento, figurinha, localização,
+  contato, enquete…
+- **Eventos do grupo**: alguém entrou (boas-vindas), saiu, pediu para entrar (aprovar
+  ou recusar sozinho e responder no privado), reagiu a uma mensagem; bot adicionado
+  a um grupo ou promovido a admin.
+- **Link de convite**: `t.me/seubot?start=promo` com resposta própria; com "começa
+  com", `ref_` atende `ref_123`, `ref_ana`… (indicações). O parâmetro chega em `{args}`.
+- **Modo inline**: `@seubot texto` em qualquer conversa mostra resultados prontos
+  (ative com `/setinline` no @BotFather).
+- **Teclado fixo**: nos três pontinhos de uma mensagem, teclas que ficam no lugar do
+  teclado do celular (texto, pedir contato, pedir localização) — combine com uma
+  palavra-chave "é igual a" para responder cada tecla.
+
 ## Python facilitado
 
 Para quem quer um pouco mais que blocos, sem virar programador: um pedaço de Python

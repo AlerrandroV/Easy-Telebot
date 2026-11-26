@@ -7,6 +7,8 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -92,6 +94,8 @@ fun BotScreen(
     onShop: () -> Unit,
     onTermux: () -> Unit,
     onNewScriptCommand: () -> Unit,
+    /** Novo gatilho automático (palavra-chave, tipo de mensagem, evento, link de convite, inline). */
+    onNewTrigger: (String) -> Unit,
     /** Novo produto (true = assinatura de canal). */
     onNewProduct: (Boolean) -> Unit,
     onChangeToken: () -> Unit,
@@ -292,7 +296,8 @@ fun BotScreen(
             }
 
             item { SectionTitle(stringResource(R.string.bot_section_commands)) }
-            if (config.commands.isEmpty()) {
+            val (commandItems, autoItems) = config.commands.partition { it.isCommand }
+            if (commandItems.isEmpty()) {
                 item {
                     Text(
                         stringResource(R.string.commands_empty),
@@ -301,7 +306,18 @@ fun BotScreen(
                     )
                 }
             }
-            items(config.commands, key = { it.id }) { cmd -> CommandCard(cmd) { onEditCommand(cmd.id, false) } }
+            items(commandItems, key = { it.id }) { cmd -> CommandCard(cmd) { onEditCommand(cmd.id, false) } }
+            item { SectionTitle(stringResource(R.string.bot_section_triggers)) }
+            if (autoItems.isEmpty()) {
+                item {
+                    Text(
+                        stringResource(R.string.triggers_empty),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            items(autoItems, key = { it.id }) { cmd -> AutomationCard(cmd) { onEditCommand(cmd.id, false) } }
 
             item { SectionTitle(stringResource(R.string.bot_section_settings)) }
             item {
@@ -363,7 +379,7 @@ fun BotScreen(
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         ) {
             Column(
-                Modifier.padding(start = 16.dp, end = 16.dp, bottom = 32.dp),
+                Modifier.padding(start = 16.dp, end = 16.dp, bottom = 32.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(stringResource(R.string.add_title), style = MaterialTheme.typography.titleLarge)
@@ -394,6 +410,27 @@ fun BotScreen(
                         onNewScriptCommand()
                     },
                 )
+                Text(stringResource(R.string.add_triggers_title), style = MaterialTheme.typography.titleSmall)
+                io.github.alerrandrov.easytelebot.data.TriggerKinds.AUTOMATIC.forEach { kind ->
+                    SectionCard(
+                        icon = triggerIcon(kind),
+                        title = triggerKindLabel(kind),
+                        subtitle = stringResource(
+                            when (kind) {
+                                io.github.alerrandrov.easytelebot.data.TriggerKinds.KEYWORD -> R.string.add_trigger_keyword_sub
+                                io.github.alerrandrov.easytelebot.data.TriggerKinds.MEDIA -> R.string.add_trigger_media_sub
+                                io.github.alerrandrov.easytelebot.data.TriggerKinds.EVENT -> R.string.add_trigger_event_sub
+                                io.github.alerrandrov.easytelebot.data.TriggerKinds.START -> R.string.add_trigger_start_sub
+                                else -> R.string.add_trigger_inline_sub
+                            }
+                        ),
+                        onClick = {
+                            showAddSheet = false
+                            onNewTrigger(kind)
+                        },
+                    )
+                }
+                Text(stringResource(R.string.add_more_title), style = MaterialTheme.typography.titleSmall)
                 SectionCard(
                     icon = R.drawable.ic_sell,
                     title = stringResource(R.string.add_product),

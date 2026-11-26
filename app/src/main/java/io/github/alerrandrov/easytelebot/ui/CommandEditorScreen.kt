@@ -66,6 +66,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import io.github.alerrandrov.easytelebot.R
+import io.github.alerrandrov.easytelebot.data.TriggerKinds
 import io.github.alerrandrov.easytelebot.data.AdminLevels
 import io.github.alerrandrov.easytelebot.data.BotMessage
 import io.github.alerrandrov.easytelebot.data.ConfigRepository
@@ -102,6 +103,8 @@ fun CommandEditorScreen(
     commandId: String?,
     newAsAdmin: Boolean = false,
     newAsScript: Boolean = false,
+    /** Gatilho novo (palavra-chave, evento...) em vez de comando. */
+    newKind: String = TriggerKinds.COMMAND,
     /** Etapas de fluxo antigas (comandos que já iniciavam um fluxo). */
     onOpenFlows: () -> Unit = {},
     onDone: () -> Unit,
@@ -114,8 +117,13 @@ fun CommandEditorScreen(
             adminLevel = if (newAsAdmin) 1 else null,
             showInMenu = true,
             blocks = if (newAsScript) listOf(CommandBlock.Termux(CommandScript())) else emptyList(),
+            kind = newKind,
         )
     }
+    val isCommand = start.isCommand
+    var spec by remember { mutableStateOf(start.trigger) }
+    var enabled by remember { mutableStateOf(start.enabled) }
+    val botUsername = remember { io.github.alerrandrov.easytelebot.data.BotRepository.bots.value.firstOrNull { it.id == botId }?.username.orEmpty() }
 
     var triggers by remember { mutableStateOf(start.triggers) }
     var triggerInput by remember { mutableStateOf("") }
@@ -138,12 +146,20 @@ fun CommandEditorScreen(
         showInMenu = showInMenu,
         adminLevel = adminLevel,
         blocks = blocks,
+        trigger = spec,
+        enabled = enabled,
     )
     val changed = current() != start
 
     val callbackCounts = (config.commands.filter { it.id != start.id }.flatMap { CommandBlock.callbackValues(it.blocks) } +
         CommandBlock.callbackValues(blocks)).groupingBy { it }.eachCount()
-    val errors = validate(context, triggers, blocks, otherTriggers, nodeIds, callbackCounts)
+    fun problems() = if (isCommand) validate(context, triggers, blocks, otherTriggers, nodeIds, callbackCounts)
+    else triggerErrors(context, start.kind, spec, blocks.any { it is CommandBlock.Message }, blocks.isNotEmpty()) +
+        buildList {
+            validateBlocks(context, blocks, null, nodeIds, this)
+            callbackCounts.filter { it.value > 1 && it.key.isNotBlank() }.keys.forEach { add(context.getString(R.string.cmd_err_callback_dup, it)) }
+        }
+    val errors = problems()
 
     fun addTrigger() {
         val parts = triggerInput.split(' ', ',', ';').map { it.trim().removePrefix("/").lowercase() }.filter { it.isNotEmpty() }
@@ -155,7 +171,7 @@ fun CommandEditorScreen(
 
     fun save() {
         if (triggerInput.isNotBlank()) addTrigger()
-        if (validate(context, triggers, blocks, otherTriggers, nodeIds, callbackCounts).isNotEmpty()) {
+        if (problems().isNotEmpty()) {
             showErrors = true
             return
         }
@@ -185,7 +201,8 @@ fun CommandEditorScreen(
             else onOpenFlows()
         }),
     )
-    val rootName = "/" + (triggers.firstOrNull() ?: triggerInput.trim().removePrefix("/").ifBlank { stringResource(R.string.command_placeholder) })
+    val rootName = if (!isCommand) triggerSummary(current())
+    else "/" + (triggers.firstOrNull() ?: triggerInput.trim().removePrefix("/").ifBlank { stringResource(R.string.command_placeholder) })
     val crumbs = folderCrumbs(blocks, path, rootName)
 
     BackHandler {
@@ -200,7 +217,9 @@ fun CommandEditorScreen(
         contentWindowInsets = screenInsets,
         topBar = {
             AppBar(
-                if (path.isNotEmpty()) crumbs.last() else stringResource(
+                if (path.isNotEmpty()) crumbs.last()
+                else if (!isCommand) triggerKindLabel(start.kind)
+                else stringResource(
                     when {
                         original != null -> R.string.cmd_edit
                         newAsAdmin -> R.string.cmd_new_admin
@@ -264,7 +283,10 @@ fun CommandEditorScreen(
                 return@LazyColumn
             }
 
-            item {
+            if (!isCommand) item {
+                TriggerEditor(start.kind, spec, botUsername, enabled, { enabled = it }) { spec = it }
+            }
+            if (isCommand) item {
                 TriggersEditor(
                     triggers = triggers,
                     input = triggerInput,
@@ -274,7 +296,7 @@ fun CommandEditorScreen(
                     onRemove = { t -> triggers = triggers - t },
                 )
             }
-            item {
+            if (isCommand) item {
                 Card(Modifier.fillMaxWidth()) {
                     Column {
                         OutlinedTextField(
@@ -295,7 +317,7 @@ fun CommandEditorScreen(
                     }
                 }
             }
-            item {
+            if (start.kind != TriggerKinds.EVENT) item {
                 Card(
                     Modifier.fillMaxWidth(),
                     colors = if (adminLevel != null) {
@@ -335,7 +357,10 @@ fun CommandEditorScreen(
     }
 
     if (showPreview) {
-        CommandPreviewDialog(triggers.firstOrNull() ?: triggerInput.trim().removePrefix("/"), blocks, botId, config.flows) {
+        CommandPreviewDialog(
+            if (isCommand) triggers.firstOrNull() ?: triggerInput.trim().removePrefix("/") else rootName,
+            blocks, botId, config.flows, asText = !isCommand,
+        ) {
             showPreview = false
         }
     }

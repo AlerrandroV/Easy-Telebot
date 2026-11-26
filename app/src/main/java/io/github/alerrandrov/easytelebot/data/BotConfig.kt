@@ -138,7 +138,107 @@ data class BotMessage(
     /** Linhas de botões (cada linha tem até 8 botões). */
     val buttons: List<List<LinkButton>> = emptyList(),
     val linkPreview: Boolean = false,
+    /** Teclado fixo (no lugar do teclado do celular). Só vale se a mensagem não tiver botões. */
+    val replyKeyboard: ReplyKeyboard? = null,
 )
+
+/** Uma tecla do teclado fixo: manda o texto, ou pede o contato/localização da pessoa. */
+data class ReplyKey(val text: String, val request: String = "") {
+    companion object {
+        const val CONTACT = "contact"
+        const val LOCATION = "location"
+    }
+}
+
+/** Teclado fixo: linhas de teclas, ou [remove] = tirar o teclado que estava aberto. */
+data class ReplyKeyboard(val rows: List<List<ReplyKey>> = emptyList(), val remove: Boolean = false) {
+    fun toJson(): JSONObject = JSONObject().put("remove", remove).put("rows", JSONArray().apply {
+        rows.forEach { row ->
+            put(JSONArray().apply { row.forEach { put(JSONObject().put("text", it.text).put("request", it.request)) } })
+        }
+    })
+
+    companion object {
+        fun fromJson(o: JSONObject?): ReplyKeyboard? {
+            if (o == null) return null
+            val arr = o.optJSONArray("rows") ?: JSONArray()
+            val rows = (0 until arr.length()).mapNotNull { i ->
+                val row = arr.optJSONArray(i) ?: return@mapNotNull null
+                (0 until row.length()).mapNotNull { j ->
+                    when (val k = row.opt(j)) {
+                        is JSONObject -> ReplyKey(k.optString("text"), k.optString("request"))
+                        is String -> ReplyKey(k)
+                        else -> null
+                    }
+                }.takeIf { it.isNotEmpty() }
+            }
+            val remove = o.optBoolean("remove", false)
+            return if (rows.isEmpty() && !remove) null else ReplyKeyboard(rows, remove && rows.isEmpty())
+        }
+    }
+}
+
+/** Tipos de gatilho (mesmos nomes de `automations.py`). */
+object TriggerKinds {
+    const val COMMAND = "command"
+    const val KEYWORD = "keyword"
+    const val MEDIA = "media"
+    const val EVENT = "event"
+    const val START = "start"
+    const val INLINE = "inline"
+    val AUTOMATIC = listOf(KEYWORD, MEDIA, EVENT, START, INLINE)
+    val MATCHES = listOf("contains", "word", "starts", "equals", "regex")
+    val WHERE = listOf("all", "private", "groups")
+    val MEDIA_KINDS = listOf("photo", "video", "animation", "voice", "audio", "video_note", "document", "sticker",
+        "location", "contact", "poll")
+    val EVENTS = listOf("join", "leave", "join_request", "reaction", "bot_added", "bot_promoted")
+    val APPROVE = listOf("none", "approve", "decline")
+    val START_PARAM = Regex("^[A-Za-z0-9_-]{1,64}$")
+}
+
+/** Opções de um gatilho automático (palavra-chave, tipo de mensagem, evento, convite, inline). */
+data class TriggerSpec(
+    /** Palavras-chave, parâmetros do link de convite ou palavras da busca inline. */
+    val words: List<String> = emptyList(),
+    val match: String = "contains",
+    val caseSensitive: Boolean = false,
+    val where: String = "all",
+    val kinds: List<String> = emptyList(),
+    val event: String = "join",
+    val approve: String = "none",
+    val emojis: List<String> = emptyList(),
+    /** Link de convite: vale para parâmetros que começam com a palavra (ex.: ref_). */
+    val prefix: Boolean = false,
+    /** Modo inline: título e descrição do resultado. */
+    val title: String = "",
+    val subtitle: String = "",
+) {
+    fun toJson(): JSONObject = JSONObject()
+        .put("words", JSONArray(words)).put("match", match).put("case", caseSensitive).put("where", where)
+        .put("kinds", JSONArray(kinds)).put("event", event).put("approve", approve).put("emojis", JSONArray(emojis))
+        .put("prefix", prefix).put("title", title).put("description", subtitle)
+
+    companion object {
+        private fun list(a: JSONArray?) = if (a == null) emptyList() else (0 until a.length()).map { a.optString(it) }.filter { it.isNotBlank() }
+
+        fun fromJson(o: JSONObject?): TriggerSpec {
+            if (o == null) return TriggerSpec()
+            return TriggerSpec(
+                words = list(o.optJSONArray("words")),
+                match = o.optString("match").takeIf { it in TriggerKinds.MATCHES } ?: "contains",
+                caseSensitive = o.optBoolean("case", false),
+                where = o.optString("where").takeIf { it in TriggerKinds.WHERE } ?: "all",
+                kinds = list(o.optJSONArray("kinds")).filter { it in TriggerKinds.MEDIA_KINDS },
+                event = o.optString("event").takeIf { it in TriggerKinds.EVENTS } ?: "join",
+                approve = o.optString("approve").takeIf { it in TriggerKinds.APPROVE } ?: "none",
+                emojis = list(o.optJSONArray("emojis")),
+                prefix = o.optBoolean("prefix", false),
+                title = o.optString("title"),
+                subtitle = o.optString("description"),
+            )
+        }
+    }
+}
 
 /**
  * Comando: um ou mais gatilhos (/start, /iniciar) e a resposta em **blocos**, executados
@@ -152,7 +252,13 @@ data class SimpleCommand(
     /** `null` = qualquer pessoa. 1..10 = só admins dessa classe ou acima (1 = classe I). */
     val adminLevel: Int? = null,
     val blocks: List<CommandBlock> = emptyList(),
+    /** `command` (o de sempre) ou um gatilho automático (veja [TriggerKinds]). */
+    val kind: String = TriggerKinds.COMMAND,
+    val trigger: TriggerSpec = TriggerSpec(),
+    /** Gatilho pausado: fica salvo, mas o bot não reage. */
+    val enabled: Boolean = true,
 ) {
+    val isCommand get() = kind == TriggerKinds.COMMAND
     val messages: List<BotMessage> get() = blocks.filterIsInstance<CommandBlock.Message>().map { it.msg }
     val script: CommandScript? get() = blocks.filterIsInstance<CommandBlock.Termux>().firstOrNull()?.script
     val flow: String? get() = blocks.filterIsInstance<CommandBlock.Flow>().firstOrNull()?.node
@@ -416,6 +522,9 @@ data class BotConfig(
                     put("show_in_menu", c.showInMenu)
                     put("admin_level", c.adminLevel ?: JSONObject.NULL)
                     put("blocks", JSONArray().apply { c.blocks.forEach { put(CommandBlock.toJson(it)) } })
+                    put("kind", c.kind)
+                    put("enabled", c.enabled)
+                    if (!c.isCommand) put("trigger", c.trigger.toJson())
                 })
             }
         })
@@ -501,6 +610,7 @@ data class BotConfig(
                 }
             })
             put("link_preview", m.linkPreview)
+            m.replyKeyboard?.let { put("reply_keyboard", it.toJson()) }
         }
 
         internal fun parseMessage(o: JSONObject): BotMessage {
@@ -514,7 +624,8 @@ data class BotConfig(
                     row.optJSONObject(j)?.let { LinkButton.fromJson(it) }
                 }.takeIf { it.isNotEmpty() }
             }
-            return BotMessage(o.optString("text"), media, buttons, o.optBoolean("link_preview", false))
+            return BotMessage(o.optString("text"), media, buttons, o.optBoolean("link_preview", false),
+                ReplyKeyboard.fromJson(o.optJSONObject("reply_keyboard")))
         }
 
         fun fromJson(json: JSONObject): BotConfig {
@@ -533,6 +644,9 @@ data class BotConfig(
                         blocks = o.optJSONArray("blocks")?.let { bl ->
                             (0 until bl.length()).mapNotNull { j -> bl.optJSONObject(j)?.let(CommandBlock::fromJson) }
                         } ?: legacyBlocks(o, m),
+                        kind = o.optString("kind").takeIf { it in TriggerKinds.AUTOMATIC } ?: TriggerKinds.COMMAND,
+                        trigger = TriggerSpec.fromJson(o.optJSONObject("trigger")),
+                        enabled = o.optBoolean("enabled", true),
                     )
                 } else {
                     // versão 1: um comando → um texto

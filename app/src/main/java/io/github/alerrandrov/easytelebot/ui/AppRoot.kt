@@ -31,6 +31,8 @@ fun AppRoot(openRequest: OpenRequest? = null, onOpenHandled: () -> Unit = {}) {
     var newCommandIsAdmin by rememberSaveable { mutableStateOf(false) }
     /** Novo comando já como "comando de script" (Termux); para onde voltar do editor. */
     var newCommandIsScript by rememberSaveable { mutableStateOf(false) }
+    /** Tipo do item novo: comando ou um gatilho automático (palavra-chave, evento...). */
+    var newCommandKind by rememberSaveable { mutableStateOf(io.github.alerrandrov.easytelebot.data.TriggerKinds.COMMAND) }
     var commandReturn by rememberSaveable { mutableStateOf(Screen.BOT) }
     /** Etapa de fluxo em edição (`null` = nova) e para onde voltar. */
     var nodeId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -102,6 +104,7 @@ fun AppRoot(openRequest: OpenRequest? = null, onOpenHandled: () -> Unit = {}) {
                 commandId = id
                 newCommandIsAdmin = admin
                 newCommandIsScript = false
+                newCommandKind = io.github.alerrandrov.easytelebot.data.TriggerKinds.COMMAND
                 commandReturn = Screen.BOT
                 screen = Screen.COMMAND
             },
@@ -109,6 +112,15 @@ fun AppRoot(openRequest: OpenRequest? = null, onOpenHandled: () -> Unit = {}) {
                 commandId = null
                 newCommandIsAdmin = false
                 newCommandIsScript = true
+                newCommandKind = io.github.alerrandrov.easytelebot.data.TriggerKinds.COMMAND
+                commandReturn = Screen.BOT
+                screen = Screen.COMMAND
+            },
+            onNewTrigger = { kind ->
+                commandId = null
+                newCommandIsAdmin = false
+                newCommandIsScript = false
+                newCommandKind = kind
                 commandReturn = Screen.BOT
                 screen = Screen.COMMAND
             },
@@ -138,6 +150,7 @@ fun AppRoot(openRequest: OpenRequest? = null, onOpenHandled: () -> Unit = {}) {
             commandId = commandId,
             newAsAdmin = newCommandIsAdmin,
             newAsScript = newCommandIsScript,
+            newKind = newCommandKind,
             onOpenFlows = { screen = Screen.FLOWS },
             onDone = { screen = commandReturn },
         )

@@ -261,7 +261,7 @@
     <string name="add_title">What do you want to add?</string>
     <string name="add_simple_command">Simple command</string>
     <string name="add_simple_command_sub">One or more commands (e.g. /start and /begin) that reply with one or more messages: formatted text, photos, videos, files and link buttons.</string>
-    <string name="add_more_soon">Coming soon: welcome messages, keywords, scheduled messages and more.</string>
+    <string name="add_more_soon">Coming soon: scheduled messages, internet without Termux, group moderation and more.</string>
     <string name="add_admin_command">Admin command</string>
     <string name="add_admin_command_sub">Like a simple command, but only administrators of the chosen class (or higher) can use it. For everyone else, the bot doesn’t answer.</string>
     <string name="add_admin">Add administrator</string>
@@ -1243,4 +1243,102 @@
     <string name="preview_sample_first">Ann</string>
     <string name="preview_sample_last">Smith</string>
     <string name="preview_sample_bot">\@your_bot</string>
+
+    <!-- Automatic triggers and reply keyboard -->
+    <string name="media_contact">Contact</string>
+    <string name="media_poll">Poll</string>
+    <string name="bot_section_triggers">Automatic triggers</string>
+    <string name="triggers_empty">No triggers yet. With them the bot reacts by itself: to a word, a photo, someone joining the group…</string>
+    <string name="add_triggers_title">Triggers (the bot reacts without a command)</string>
+    <string name="add_more_title">More</string>
+    <string name="trigger_keyword">Keyword</string>
+    <string name="trigger_media">Message type</string>
+    <string name="trigger_event">Group event</string>
+    <string name="trigger_start">Invite link</string>
+    <string name="trigger_inline">Inline mode</string>
+    <string name="trigger_inline_any">Any search</string>
+    <string name="trigger_paused">paused</string>
+    <string name="add_trigger_keyword_sub">Replies when the message has a word or phrase (e.g. price, hours, hi).</string>
+    <string name="add_trigger_media_sub">Replies when a photo, audio, document, location, contact… arrives.</string>
+    <string name="add_trigger_event_sub">Welcome for newcomers, goodbye, join requests, reactions, bot added to a group.</string>
+    <string name="add_trigger_start_sub">t.me/yourbot?start=… links with different replies per campaign or referral.</string>
+    <string name="add_trigger_inline_sub">Ready replies anyone can use in any chat by typing @yourbot.</string>
+    <string name="trigger_keyword_help">The bot replies when someone sends a message with one of these words. Accents don\'t matter. The first matching keyword wins, in list order.</string>
+    <string name="trigger_media_help">The bot replies when a message of the checked types arrives, no command needed.</string>
+    <string name="trigger_event_help">The bot replies to something that happens in the group or channel. Variables ({name}…) belong to whoever joined, left or reacted.</string>
+    <string name="trigger_start_help">Whoever opens the bot through a link with a parameter gets this reply instead of the regular /start. The parameter arrives in {args}.</string>
+    <string name="trigger_inline_help">In any chat, the person types @yourbot and picks a result: the first message of the reply is sent in their name.</string>
+    <string name="trigger_keyword_words">Word or phrase</string>
+    <string name="trigger_regex_invalid">Invalid regular expression.</string>
+    <string name="trigger_match">When the message…</string>
+    <string name="trigger_match_contains">contains</string>
+    <string name="trigger_match_word">has the word</string>
+    <string name="trigger_match_starts">starts with</string>
+    <string name="trigger_match_equals">equals</string>
+    <string name="trigger_match_regex">regular expression</string>
+    <string name="trigger_match_contains_help">Anywhere in the text: “price” matches “what\'s the price?”.</string>
+    <string name="trigger_match_word_help">Only the whole word: “hi” matches “hi there”, but not “this”.</string>
+    <string name="trigger_match_starts_help">The text starts with the word: “good morning” matches “Good morning, folks!”.</string>
+    <string name="trigger_match_equals_help">The whole text is the word. Ideal for reply keyboard keys.</string>
+    <string name="trigger_match_regex_help">For those who know regex (Python syntax). E.g. \\d{5}(-\\d{4})? for a ZIP code.</string>
+    <string name="trigger_case">Case-sensitive</string>
+    <string name="trigger_where">Where</string>
+    <string name="trigger_where_all">Everywhere</string>
+    <string name="trigger_where_private">Private chat only</string>
+    <string name="trigger_where_groups">Groups only</string>
+    <string name="trigger_privacy_note">In groups, the bot only sees regular messages if it\'s an administrator or if privacy mode is off: @BotFather › /mybots › your bot › Bot Settings › Group Privacy › Turn off. Then remove and add the bot to the group again.</string>
+    <string name="trigger_media_kinds">Message types</string>
+    <string name="trigger_event_pick">When</string>
+    <string name="event_join">Someone joined the group</string>
+    <string name="event_leave">Someone left the group</string>
+    <string name="event_join_request">Join request</string>
+    <string name="event_reaction">Reaction to a message</string>
+    <string name="event_bot_added">Bot added to a group or channel</string>
+    <string name="event_bot_promoted">Bot became an administrator</string>
+    <string name="event_join_help">Welcome: the reply goes to the group, with {name} of whoever joined.</string>
+    <string name="event_leave_help">The reply goes to the group, with {name} of whoever left.</string>
+    <string name="event_join_request_help">For groups and channels with “approve new members” (invite link with approval). The reply goes to the person\'s private chat, with {args} = group name.</string>
+    <string name="event_reaction_help">When someone reacts to a message. {args} = the emoji. The reply goes to the same chat.</string>
+    <string name="event_bot_added_help">When someone adds the bot to a group or channel: good for introducing itself. {name} = who added it.</string>
+    <string name="event_bot_promoted_help">When the bot becomes an administrator of a group or channel.</string>
+    <string name="trigger_approve">What to do with the request</string>
+    <string name="trigger_approve_none">Leave it to an admin</string>
+    <string name="trigger_approve_yes">Approve automatically</string>
+    <string name="trigger_approve_no">Decline automatically</string>
+    <string name="trigger_emojis">Only these emojis (optional)</string>
+    <string name="trigger_emojis_hint">Empty = any reaction.</string>
+    <string name="trigger_admin_note">The bot must be an administrator of the group or channel to receive this event (join requests: with permission to invite users).</string>
+    <string name="trigger_start_params">Parameter</string>
+    <string name="trigger_start_invalid">Use only letters without accents, numbers, _ and - (up to 64).</string>
+    <string name="trigger_start_prefix">Match parameters that start with this</string>
+    <string name="trigger_start_prefix_help">E.g. ref_ matches ref_123, ref_ann… Good for referrals: each person shares their own link.</string>
+    <string name="trigger_inline_title">Result title</string>
+    <string name="trigger_inline_subtitle">Description (optional)</string>
+    <string name="trigger_inline_words">Shows when the search has (optional)</string>
+    <string name="trigger_inline_words_hint">Without words, the result shows whenever someone types @%1$s.</string>
+    <string name="trigger_inline_note">Turn on inline mode in @BotFather: /setinline › choose the bot › write a placeholder text. Photos and files only show after the bot has sent the media once.</string>
+    <string name="trigger_err_words">Add at least one keyword.</string>
+    <string name="trigger_err_regex">Invalid regular expression: %1$s</string>
+    <string name="trigger_err_kinds">Check at least one message type.</string>
+    <string name="trigger_err_params">Add at least one link parameter.</string>
+    <string name="trigger_err_inline">The inline result uses the reply\'s first Simple message: add one.</string>
+    <string name="reply_kb_title">Reply keyboard</string>
+    <string name="reply_kb_help">Keys shown in place of the phone keyboard. Tapping a key sends its text: create a keyword (equals) or a command to answer it. Messages with buttons can\'t have a reply keyboard.</string>
+    <string name="reply_kb_row">Row %1$d</string>
+    <string name="reply_kb_key">Key text</string>
+    <string name="reply_kb_text">Sends the text</string>
+    <string name="reply_kb_contact">Asks for contact</string>
+    <string name="reply_kb_location">Asks for location</string>
+    <string name="reply_kb_add_key">Key</string>
+    <string name="reply_kb_add_row">Row of keys</string>
+    <string name="reply_kb_remove">Remove the reply keyboard</string>
+    <string name="reply_kb_remove_sub">This message removes the keyboard another message opened.</string>
+    <string name="reply_kb_removes">Removes the reply keyboard</string>
+    <string name="reply_kb_conflict">With buttons on the message, the reply keyboard isn\'t sent.</string>
+    <string name="log_replied_auto">Automatic reply sent (%1$s, %2$d message(s)).</string>
+    <string name="log_automation">%1$s: %2$s</string>
+    <string name="log_auto_keyword">Keyword “%1$s”</string>
+    <string name="log_auto_media">Message of type %1$s</string>
+    <string name="log_auto_start">Invite link ?start=%1$s</string>
+    <string name="log_inline">%1$s searched “%2$s” in inline mode (%3$d result(s)).</string>
 </resources>

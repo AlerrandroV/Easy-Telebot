@@ -284,6 +284,7 @@ private fun MessageBlockCard(
     var editing by remember(key) { mutableStateOf<Pair<Int, Int>?>(null) }
     var formatMenu by remember { mutableStateOf(false) }
     var varsMenu by remember { mutableStateOf(false) }
+    var keyboardSheet by remember { mutableStateOf(false) }
 
     fun setText(v: TextFieldValue) {
         field = v
@@ -313,6 +314,11 @@ private fun MessageBlockCard(
                     text = { Text(stringResource(if (msg.linkPreview) R.string.block_preview_off else R.string.block_preview_on)) },
                     leadingIcon = { AppIcon(R.drawable.ic_link) },
                     onClick = { dismiss(); onChange(msg.copy(text = field.text, linkPreview = !msg.linkPreview)) },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.reply_kb_title)) },
+                    leadingIcon = { AppIcon(R.drawable.ic_keyboard) },
+                    onClick = { dismiss(); keyboardSheet = true },
                 )
             }
             Column(Modifier.padding(end = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -390,8 +396,17 @@ private fun MessageBlockCard(
                         onOpen = { r, c -> env.onOpen(TreeStep.Button(key, r, c)) },
                     ) { r, c -> editing = r to c }
                 }
+                msg.replyKeyboard?.let { kb ->
+                    if (msg.buttons.isNotEmpty()) Text(stringResource(R.string.reply_kb_conflict), style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error)
+                    ReplyKeyboardPreview(kb) { keyboardSheet = true }
+                }
             }
         }
+    }
+
+    if (keyboardSheet) {
+        ReplyKeyboardSheet(msg.replyKeyboard, { kb -> onChange(msg.copy(text = field.text, replyKeyboard = kb)) }) { keyboardSheet = false }
     }
 
     editing?.let { (r, c) ->
@@ -1008,7 +1023,8 @@ private fun FlowBlockCard(node: String, nodes: List<FlowNode>, onChange: (String
 
 /** Como a conversa vai ficar no Telegram, com valores de exemplo nas variáveis. */
 @Composable
-fun CommandPreviewDialog(trigger: String, blocks: List<CommandBlock>, botId: Long, nodes: List<FlowNode>, onDismiss: () -> Unit) {
+fun CommandPreviewDialog(trigger: String, blocks: List<CommandBlock>, botId: Long, nodes: List<FlowNode>, asText: Boolean = false,
+                         onDismiss: () -> Unit) {
     val now = remember { Date() }
     val first = stringResource(R.string.preview_sample_first)
     val last = stringResource(R.string.preview_sample_last)
@@ -1041,7 +1057,7 @@ fun CommandPreviewDialog(trigger: String, blocks: List<CommandBlock>, botId: Lon
                     // Mensagem da pessoa
                     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
                         Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.primary) {
-                            Text("/" + trigger.ifBlank { stringResource(R.string.command_placeholder) }, color = MaterialTheme.colorScheme.onPrimary,
+                            Text(if (asText) trigger else "/" + trigger.ifBlank { stringResource(R.string.command_placeholder) }, color = MaterialTheme.colorScheme.onPrimary,
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
                         }
                     }

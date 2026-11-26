@@ -28,7 +28,7 @@ from .termux import TermuxBridge
 from .flows import FlowRunner
 from . import termux as termux_mod
 from . import config as config_mod
-from . import code_runner, errors, i18n, template
+from . import automations, code_runner, errors, i18n, template
 from .api import Aborted, NetworkError, TelegramApi, TelegramError
 
 POLL_TIMEOUT = 50  # segundos que o Telegram segura a conexão esperando mensagens
@@ -174,6 +174,27 @@ def build_keyboard(rows, private=True):
     return {"inline_keyboard": keyboard} if keyboard else None
 
 
+def reply_keyboard(msg):
+    """Teclado fixo (no lugar do teclado do celular) ou o pedido para tirá-lo."""
+    kb = msg.get("reply_keyboard")
+    if not kb:
+        return None
+    if kb.get("remove"):
+        return {"remove_keyboard": True}
+    rows = []
+    for row in kb["rows"]:
+        keys = []
+        for k in row:
+            key = {"text": k["text"]}
+            if k.get("request") == "contact":
+                key["request_contact"] = True
+            elif k.get("request") == "location":
+                key["request_location"] = True
+            keys.append(key)
+        rows.append(keys)
+    return {"keyboard": rows, "resize_keyboard": True, "is_persistent": True} if rows else None
+
+
 class Engine:
     def __init__(self, token, config_path, data_dir, callbacks, api=None, storage=None, payments=None):
         self.token = token.strip()
@@ -203,6 +224,7 @@ class Engine:
         self.shop = ShopFlow(self, payments)
         self.termux = TermuxBridge(self)
         self.flows = FlowRunner(self)
+        self.auto = automations.AutomationRunner(self)
         self.send_source = "auto"  # "auto" = resposta de comando; "manual" = enviada pelo app
         self.storage = None
         if storage:
@@ -411,7 +433,7 @@ class Engine:
             try:
                 params = {"timeout": POLL_TIMEOUT, "allowed_updates": self.termux.allowed_updates(
                     ["message", "edited_message", "channel_post", "my_chat_member", "callback_query",
-                     "pre_checkout_query"])}
+                     "pre_checkout_query"] + automations.UPDATES)}
                 if self.offset is not None:
                     params["offset"] = self.offset
                 updates = self.api.call("getUpdates", params, timeout=POLL_TIMEOUT + 15)
@@ -454,6 +476,13 @@ class Engine:
             self.record_chat(update["channel_post"])
         elif update.get("my_chat_member"):
             self.handle_membership(update["my_chat_member"])
+            self.auto.handle_my_membership(update["my_chat_member"])
+        elif update.get("inline_query"):
+            return self.auto.handle_inline(update["inline_query"])
+        elif update.get("chat_join_request"):
+            return self.auto.handle_join_request(update["chat_join_request"])
+        elif update.get("message_reaction"):
+            return self.auto.handle_reaction(update)
         elif update.get("callback_query"):
             return self.handle_callback(update["callback_query"])
         elif update.get("pre_checkout_query"):
@@ -560,8 +589,10 @@ class Engine:
         if self.flows.handle_message(message, parsed):
             return True
         if parsed is None:
-            return False
+            return self.auto.handle_message(message)
         name, args = parsed
+        if name == "start" and args.strip() and self.auto.handle_start(message, args.strip()):
+            return True
         sender = _display_name(user)
         if name == NEWADMIN_COMMAND:
             self.handle_newadmin(message, args, sender)
@@ -589,18 +620,19 @@ class Engine:
                           update={"message": message})
         return True
 
-    def start_blocks(self, blocks, name, chat_id, user, args="", reply_to=None, update=None, edit_message=None):
-        """Executa uma resposta (comando, botão callback ou regra de espera)."""
+    def start_blocks(self, blocks, name, chat_id, user, args="", reply_to=None, update=None, edit_message=None,
+                     kind="command"):
+        """Executa uma resposta (comando, gatilho, botão callback ou regra de espera)."""
         job = (blocks, name, chat_id, user, args, reply_to, update, edit_message)
         if any(b["type"] in ("termux", "code") for b in blocks) and not self.termux.sync_scripts:
             # Script no meio: roda numa thread com conexão própria (o bot segue respondendo).
-            threading.Thread(target=self.run_blocks, args=job, kwargs={"sender": self.termux._sender()},
+            threading.Thread(target=self.run_blocks, args=job, kwargs={"sender": self.termux._sender(), "kind": kind},
                              name="blocks", daemon=True).start()
         else:
-            self.run_blocks(*job)
+            self.run_blocks(*job, kind=kind)
 
     def run_blocks(self, blocks, name, chat_id, user, args="", reply_to=None, update=None, edit_message=None,
-                   sender=None):
+                   sender=None, kind="command"):
         """Bloco por bloco, na ordem. ``Aguardar resposta`` encerra: o resto vem da próxima mensagem."""
         sender = sender or self
         update = update or {}
@@ -640,7 +672,7 @@ class Engine:
                 self.flows.wait_for(block, chat_id, user, name)
                 break
         if sent:
-            self.emit("replied", command=name, chat=chat_id, messages=sent)
+            self.emit("replied", command=name, chat=chat_id, messages=sent, kind=kind)
 
     # -- antispam ----------------------------------------------------------------
 
@@ -797,7 +829,7 @@ class Engine:
     def send_message(self, chat_id, msg, context, command_name, reply_to=None):
         """Envia uma mensagem configurada (texto e/ou mídia + botões). ``True`` se deu certo."""
         body = template.render(msg["text"], context) if msg["text"].strip() else ""
-        keyboard = build_keyboard(msg["buttons"], private=_is_private(chat_id))
+        keyboard = build_keyboard(msg["buttons"], private=_is_private(chat_id)) or reply_keyboard(msg)
         base = {"chat_id": chat_id}
         if reply_to:
             base["reply_parameters"] = reply_to
